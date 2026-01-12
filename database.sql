@@ -2,8 +2,8 @@
 -- MySQL Database Creation Script
 
 -- Create Database (optional - may need to create via Hostinger panel)
--- CREATE DATABASE IF NOT EXISTS pms_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE pms_system;
+-- CREATE DATABASE IF NOT EXISTS project_management_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE project_management_system;
 
 -- ============================================
 -- 1. USERS TABLE

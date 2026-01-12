@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <title>PM System</title>
-    <link rel="stylesheet" href="maxcdn.bootstrapcdn.com">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <style>
         .navbar { border-radius: 0; }
         .dashboard-header { margin-bottom: 30px; }
@@ -22,27 +22,19 @@
         <div class="dashboard-header">
             <h1>Project Dashboard</h1>
         </div>
-
-        <!-- Analytics Row -->
         <div class="row">
-            <?php 
-            $stats = getProjectStats($db);
-            while($row = $stats->fetch_assoc()) {
-                renderComponent('stats-widget', $row);
-            }
-            ?>
-        </div>
-
-        <!-- Projects Grid -->
-        <div class="row">
-            <h3>Active Projects</h3>
-            <?php 
-            $projects = getProjects($db);
-            while($project = $projects->fetch_assoc()) {
-                renderComponent('project-card', $project);
-            }
-            ?>
+            <div class="col-md-4">
+                <div class="panel panel-default">
+                    <div class="panel-heading">Projects</div>
+                    <div class="panel-body">
+                        <p>Total Projects: 12</p>
+                        <p>Ongoing: 8</p>
+                        <p>Completed: 4</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
 </body>
 </html>

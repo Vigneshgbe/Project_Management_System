@@ -1,0 +1,255 @@
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.page-header {
+    border-bottom: 2px solid #337ab7;
+    padding-bottom: 10px;
+    margin-top: 20px;
+}
+
+.panel-custom {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-box {
+    background: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.stat-box h3 {
+    margin-top: 0;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.stat-box p {
+    color: #777;
+    margin: 0;
+}
+
+.stat-icon {
+    font-size: 48px;
+    color: #337ab7;
+}
+
+.project-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: box-shadow 0.3s;
+}
+
+.project-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.project-card h4 {
+    margin-top: 0;
+    color: #337ab7;
+}
+
+.project-meta {
+    color: #777;
+    font-size: 13px;
+}
+
+.badge-status {
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.badge-planning { background-color: #f0ad4e; color: #fff; }
+.badge-in_progress { background-color: #5bc0de; color: #fff; }
+.badge-on_hold { background-color: #d9534f; color: #fff; }
+.badge-completed { background-color: #5cb85c; color: #fff; }
+.badge-cancelled { background-color: #777; color: #fff; }
+
+.badge-priority {
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.badge-low { background-color: #5cb85c; color: #fff; }
+.badge-medium { background-color: #f0ad4e; color: #fff; }
+.badge-high { background-color: #d9534f; color: #fff; }
+.badge-critical { background-color: #8b0000; color: #fff; }
+
+.progress-custom {
+    height: 25px;
+    margin-bottom: 10px;
+    border-radius: 3px;
+}
+
+.progress-custom .progress-bar {
+    line-height: 25px;
+    font-size: 13px;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+.footer {
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #ddd;
+    margin-top: 50px;
+    padding-top: 20px;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h2 {
+    color: #337ab7;
+    margin-bottom: 5px;
+}
+
+.form-group label {
+    font-weight: 600;
+}
+
+.btn-block {
+    margin-top: 20px;
+}
+
+.alert {
+    border-radius: 4px;
+}
+
+.filter-box {
+    background: #fff;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+}
+
+.task-item {
+    padding: 15px;
+    background: #fff;
+    border-left: 4px solid #337ab7;
+    margin-bottom: 10px;
+    border-radius: 3px;
+}
+
+.task-item.critical {
+    border-left-color: #8b0000;
+}
+
+.task-item.high {
+    border-left-color: #d9534f;
+}
+
+.task-item.medium {
+    border-left-color: #f0ad4e;
+}
+
+.task-item.low {
+    border-left-color: #5cb85c;
+}
+
+.modal-header {
+    background-color: #337ab7;
+    color: #fff;
+}
+
+.modal-header .close {
+    color: #fff;
+    opacity: 0.8;
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+}
+
+.requirement-item {
+    border-left: 3px solid #337ab7;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+}
+
+.pricing-item {
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    margin-bottom: 10px;
+}
+
+.chart-container {
+    background: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.activity-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #337ab7;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.btn-action {
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+    .stat-box {
+        margin-bottom: 15px;
+    }
+    
+    .table-responsive {
+        border: none;
+    }
+}

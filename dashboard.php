@@ -37,11 +37,19 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
 ?>
 
 <style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background-attachment: fixed !important;
+        min-height: 100vh;
+    }
+    
     .container-fluid {
-        background: #f8fafc;
+        background: transparent !important;
         min-height: calc(100vh - 120px);
         padding: 30px;
         animation: fadeIn 0.5s ease;
+        margin-top: 0 !important;
+        padding-top: 30px !important;
     }
     
     @keyframes fadeIn {
@@ -50,13 +58,14 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     }
     
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        color: #1e293b;
         padding: 35px 40px;
         border-radius: 20px;
         margin-bottom: 35px;
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         animation: slideDown 0.6s ease;
         position: relative;
         overflow: hidden;
@@ -69,7 +78,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
         right: -50%;
         width: 200%;
         height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
         animation: rotate 20s linear infinite;
     }
     
@@ -89,22 +98,35 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
         font-size: 32px;
         position: relative;
         z-index: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .page-header h1 i {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .page-header small {
-        opacity: 0.95;
+        opacity: 0.8;
         font-size: 16px;
         font-weight: 500;
+        color: #64748b;
     }
     
     .stat-box {
-        background: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
         padding: 30px;
         border-radius: 20px;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
         margin-bottom: 25px;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        border-left: 5px solid transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
         position: relative;
         overflow: hidden;
         animation: scaleIn 0.5s ease;
@@ -133,7 +155,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     
     .stat-box:hover {
         transform: translateY(-8px);
-        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.2);
+        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.3);
     }
     
     .stat-box h3 {
@@ -171,11 +193,13 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     
     .panel {
         border: none;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
         border-radius: 20px;
         overflow: hidden;
         transition: all 0.3s ease;
-        background: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         animation: slideUp 0.5s ease;
     }
     
@@ -185,7 +209,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     }
     
     .panel:hover {
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         transform: translateY(-3px);
     }
     
@@ -205,6 +229,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     
     .panel-body {
         padding: 30px 25px;
+        background: white;
     }
     
     .project-card {
@@ -414,12 +439,14 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
         font-size: 13px;
         letter-spacing: 0.5px;
         box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        color: white;
     }
     
     .btn-primary:hover {
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
     }
     
     .text-center h2 {
@@ -437,7 +464,6 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
         font-weight: 500;
     }
     
-    /* Responsive */
     @media (max-width: 768px) {
         .page-header h1 {
             font-size: 24px;

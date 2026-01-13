@@ -35,9 +35,10 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         
         body {
             font-family: 'Inter', 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            background-attachment: fixed;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            background-attachment: fixed !important;
             min-height: 100vh;
+            padding-top: 65px !important;
         }
         
         /* Modern Navbar */
@@ -50,6 +51,11 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             margin-bottom: 0;
             min-height: 65px;
             transition: all 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
         }
         
         .navbar-fixed-top {
@@ -231,6 +237,10 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         
         /* Responsive */
         @media (max-width: 767px) {
+            body {
+                padding-top: 65px !important;
+            }
+            
             .navbar-inverse .navbar-nav {
                 margin: 0;
                 background: white;
@@ -374,7 +384,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             </div>
         </div>
     </nav>
-    <div style="margin-top: 70px;"></div>
     <?php endif; ?>
     
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

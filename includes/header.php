@@ -5,11 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../components/auth.php';
 $auth = new Auth();
 
-// Get current page for active state detection
 $current_page = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
-
-// Check if we're in admin section
 $is_admin_section = strpos($current_path, '/admin/') !== false;
 ?>
 <!DOCTYPE html>
@@ -32,9 +29,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         html, body {
             margin: 0 !important;
             padding: 0 !important;
-        }
-        
-        html {
             scroll-behavior: smooth;
         }
         
@@ -47,14 +41,14 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             margin-top: 0 !important;
         }
         
-        /* MAIN CONTENT WRAPPER */
         .main-content {
             margin-top: 0 !important;
             padding-top: 80px !important;
             min-height: 100vh !important;
+            position: relative !important;
         }
         
-        /* NAVBAR - COMPLETELY RESPONSIVE */
+        /* NAVBAR - FIXED WITH PROPER Z-INDEX */
         .navbar-inverse {
             background: rgba(255, 255, 255, 0.98) !important;
             backdrop-filter: blur(20px) !important;
@@ -68,8 +62,18 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            z-index: 9999 !important;
+            z-index: 99999 !important;
             width: 100% !important;
+        }
+        
+        /* NAVBAR CONTAINER - PREVENT OVERFLOW CLIPPING */
+        .navbar-inverse .container-fluid {
+            position: relative !important;
+        }
+        
+        .navbar-inverse .navbar-collapse {
+            position: relative !important;
+            overflow: visible !important;
         }
         
         .navbar-inverse .navbar-brand {
@@ -83,6 +87,14 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             letter-spacing: -0.5px !important;
             padding: 20px 15px !important;
             transition: all 0.3s ease !important;
+        }
+        
+        .navbar-inverse .navbar-nav {
+            position: relative !important;
+        }
+        
+        .navbar-inverse .navbar-nav > li {
+            position: relative !important;
         }
         
         .navbar-inverse .navbar-nav > li > a {
@@ -119,14 +131,37 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background: transparent !important;
         }
         
-        /* DROPDOWN STYLES */
+        /* DROPDOWN FIXES - CRITICAL */
+        .navbar-inverse .navbar-nav .dropdown {
+            position: relative !important;
+        }
+        
         .navbar-inverse .navbar-nav .dropdown-menu {
             background: white !important;
             border: none !important;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
             border-radius: 12px !important;
             padding: 8px 0 !important;
-            margin-top: 8px !important;
+            margin-top: 0 !important;
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            z-index: 999999 !important;
+            min-width: 200px !important;
+            display: none !important;
+            opacity: 0 !important;
+            transform: translateY(-10px) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .navbar-inverse .navbar-nav .dropdown.open .dropdown-menu {
+            display: block !important;
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+        
+        .navbar-inverse .navbar-nav .dropdown-menu > li {
+            margin: 0 !important;
         }
         
         .navbar-inverse .navbar-nav .dropdown-menu > li > a {
@@ -134,11 +169,16 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             color: #374151 !important;
             font-weight: 600 !important;
             transition: all 0.3s ease !important;
+            display: block !important;
+            clear: both !important;
+            white-space: nowrap !important;
         }
         
-        .navbar-inverse .navbar-nav .dropdown-menu > li > a:hover {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+        .navbar-inverse .navbar-nav .dropdown-menu > li > a:hover,
+        .navbar-inverse .navbar-nav .dropdown-menu > li > a:focus {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
             color: #667eea !important;
+            text-decoration: none !important;
         }
         
         .navbar-inverse .navbar-nav .dropdown-menu > li > a i {
@@ -147,7 +187,19 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             text-align: center !important;
         }
         
-        /* USER DROPDOWN */
+        .navbar-inverse .navbar-nav .dropdown-menu .divider {
+            height: 1px !important;
+            margin: 8px 0 !important;
+            overflow: hidden !important;
+            background-color: #e2e8f0 !important;
+        }
+        
+        /* USER DROPDOWN - RIGHT ALIGNED */
+        .navbar-inverse .navbar-nav.navbar-right .dropdown-menu {
+            left: auto !important;
+            right: 0 !important;
+        }
+        
         .navbar-inverse .navbar-nav.navbar-right .dropdown-toggle {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
             border-radius: 25px !important;
@@ -188,9 +240,16 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background-color: white !important;
         }
         
-        /* RESPONSIVE BREAKPOINTS */
+        /* CARET ANIMATION */
+        .navbar-inverse .navbar-nav .dropdown .caret {
+            transition: transform 0.3s ease !important;
+        }
         
-        /* LARGE SCREENS */
+        .navbar-inverse .navbar-nav .dropdown.open .caret {
+            transform: rotate(180deg) !important;
+        }
+        
+        /* RESPONSIVE */
         @media (min-width: 1200px) {
             .main-content {
                 padding-top: 80px !important;
@@ -200,7 +259,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* MEDIUM SCREENS */
         @media (min-width: 992px) and (max-width: 1199px) {
             .main-content {
                 padding-top: 75px !important;
@@ -211,7 +269,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* TABLET */
         @media (min-width: 768px) and (max-width: 991px) {
             .main-content {
                 padding-top: 70px !important;
@@ -226,7 +283,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* MOBILE */
+        /* MOBILE DROPDOWN STYLES */
         @media (max-width: 767px) {
             .main-content {
                 padding-top: 65px !important;
@@ -267,10 +324,21 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
             }
             
+            /* MOBILE DROPDOWN BEHAVIOR */
             .navbar-inverse .navbar-nav .dropdown-menu {
-                box-shadow: none !important;
-                background: #f8fafc !important;
+                position: static !important;
+                float: none !important;
+                width: auto !important;
                 margin: 5px 10px !important;
+                background: #f8fafc !important;
+                box-shadow: none !important;
+                border: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            
+            .navbar-inverse .navbar-nav .dropdown.open .dropdown-menu {
+                display: block !important;
             }
             
             .navbar-inverse .navbar-nav.navbar-right .dropdown-toggle {
@@ -279,7 +347,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* EXTRA SMALL MOBILE */
         @media (max-width: 480px) {
             .main-content {
                 padding-top: 60px !important;
@@ -295,19 +362,16 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* CONTAINER FIXES */
         .container-fluid {
             padding-left: 15px !important;
             padding-right: 15px !important;
             margin: 0 !important;
         }
         
-        /* Smooth transitions */
         .navbar-collapse {
             transition: all 0.3s ease !important;
         }
         
-        /* Icon styling */
         .navbar-inverse .navbar-nav > li > a i {
             margin-right: 6px !important;
             transition: transform 0.3s ease !important;
@@ -317,7 +381,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             transform: scale(1.1) !important;
         }
         
-        /* Ensure no conflicts */
         .navbar-fixed-top {
             position: fixed !important;
             top: 0 !important;
@@ -360,7 +423,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                         </li>
                         <?php if ($auth->isAdmin()): ?>
                         <li class="dropdown <?php echo $is_admin_section ? 'active' : ''; ?>">
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-cog"></i> Admin <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
@@ -385,7 +448,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                     </ul>
                     <ul class="nav navbar-nav navbar-right">
                         <li class="dropdown">
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-user-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?> <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
@@ -413,34 +476,39 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
     
     <script>
         $(document).ready(function() {
-            // DYNAMIC NAVBAR HEIGHT CALCULATION - FIXES OVERLAPPING
+            // DYNAMIC NAVBAR HEIGHT
             function adjustMainContent() {
                 const navbarHeight = $('.navbar-fixed-top').outerHeight();
                 $('.main-content').css('padding-top', (navbarHeight + 10) + 'px');
             }
             
-            // Adjust on page load
             setTimeout(adjustMainContent, 100);
-            
-            // Adjust on window resize
             $(window).on('resize', function() {
                 setTimeout(adjustMainContent, 100);
             });
             
-            // Adjust when navbar collapses/expands
             $('.navbar-toggle').on('click', function() {
                 setTimeout(adjustMainContent, 350);
             });
             
-            // Close mobile menu when clicking a link
+            // CLOSE MOBILE MENU ON LINK CLICK
             $('.navbar-nav li a').on('click', function() {
-                if ($(window).width() < 768) {
+                if ($(window).width() < 768 && !$(this).parent().hasClass('dropdown')) {
                     $('.navbar-collapse').collapse('hide');
                     setTimeout(adjustMainContent, 350);
                 }
             });
             
-            // Smooth scroll with proper offset
+            // ENSURE DROPDOWNS WORK ON DESKTOP
+            if ($(window).width() >= 768) {
+                $('.navbar-nav .dropdown').on('mouseenter', function() {
+                    $(this).addClass('open');
+                }).on('mouseleave', function() {
+                    $(this).removeClass('open');
+                });
+            }
+            
+            // SMOOTH SCROLL
             $('a[href^="#"]').on('click', function(e) {
                 var target = $(this.getAttribute('href'));
                 if(target.length) {
@@ -452,7 +520,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 }
             });
             
-            // Navbar scroll effect
+            // NAVBAR SCROLL EFFECT
             $(window).on('scroll', function() {
                 if ($(this).scrollTop() > 50) {
                     $('.navbar-fixed-top').css({

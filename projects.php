@@ -20,11 +20,12 @@ if ($auth->isAdmin() || $auth->isManager()) {
 ?>
 
 <style>
-    .container-fluid {
-        background: #f8fafc;
-        min-height: calc(100vh - 120px);
-        padding: 30px;
-        animation: fadeIn 0.5s ease;
+    .projects-container {
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        animation: fadeIn 0.5s ease !important;
     }
     
     @keyframes fadeIn {
@@ -33,27 +34,27 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 35px 40px;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-        border: none;
-        animation: slideDown 0.6s ease;
-        position: relative;
-        overflow: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        padding: 35px 40px !important;
+        border-radius: 20px !important;
+        margin-bottom: 30px !important;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3) !important;
+        border: none !important;
+        animation: slideDown 0.6s ease !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     
     .page-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
     }
     
     @keyframes rotate {
@@ -67,25 +68,25 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .page-header h1 {
-        margin: 0;
-        font-weight: 800;
-        font-size: 32px;
-        position: relative;
-        z-index: 1;
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 32px !important;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
     .page-header .btn {
-        position: relative;
-        z-index: 1;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
     .filter-box {
-        background: white;
-        padding: 25px 30px;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-        animation: slideUp 0.5s ease;
+        background: white !important;
+        padding: 25px 30px !important;
+        border-radius: 20px !important;
+        margin-bottom: 30px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08) !important;
+        animation: slideUp 0.5s ease !important;
     }
     
     @keyframes slideUp {
@@ -94,81 +95,81 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .filter-box .form-control {
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 12px 18px;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        height: auto;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 12px !important;
+        padding: 12px 18px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        height: auto !important;
     }
     
     .filter-box .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        outline: none;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1) !important;
+        outline: none !important;
     }
     
     .filter-box .form-group {
-        margin-right: 15px;
-        margin-bottom: 10px;
+        margin-right: 15px !important;
+        margin-bottom: 10px !important;
     }
     
     .filter-box .btn {
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 14px;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        padding: 12px 24px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        transition: all 0.3s ease !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3) !important;
     }
     
     .btn-primary:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        color: white;
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
+        color: white !important;
     }
     
     .btn-default {
-        background: white;
-        color: #667eea;
-        border: 2px solid #667eea;
+        background: white !important;
+        color: #667eea !important;
+        border: 2px solid #667eea !important;
     }
     
     .btn-default:hover {
-        background: #667eea;
-        color: white;
-        border-color: #667eea;
-        transform: translateY(-2px);
+        background: #667eea !important;
+        color: white !important;
+        border-color: #667eea !important;
+        transform: translateY(-2px) !important;
     }
     
     .btn-sm {
-        padding: 8px 16px;
-        font-size: 13px;
-        border-radius: 10px;
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        border-radius: 10px !important;
     }
     
     .project-card {
-        background: white;
-        border: none;
-        border-radius: 20px;
-        padding: 30px;
-        margin-bottom: 25px;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        animation: cardSlideUp 0.5s ease;
-        height: 100%;
+        background: white !important;
+        border: none !important;
+        border-radius: 20px !important;
+        padding: 30px !important;
+        margin-bottom: 25px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08) !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        animation: cardSlideUp 0.5s ease !important;
+        height: 100% !important;
     }
     
     @keyframes cardSlideUp {
@@ -177,130 +178,130 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .project-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 5px;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        transform: scaleX(0);
-        transition: transform 0.4s ease;
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 5px !important;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        transform: scaleX(0) !important;
+        transition: transform 0.4s ease !important;
     }
     
     .project-card:hover::before {
-        transform: scaleX(1);
+        transform: scaleX(1) !important;
     }
     
     .project-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.2);
+        transform: translateY(-10px) !important;
+        box-shadow: 0 15px 45px rgba(102, 126, 234, 0.2) !important;
     }
     
     .project-card h4 {
-        margin-top: 0;
-        color: #1e293b;
-        font-weight: 800;
-        font-size: 20px;
-        margin-bottom: 15px;
-        line-height: 1.4;
+        margin-top: 0 !important;
+        color: #1e293b !important;
+        font-weight: 800 !important;
+        font-size: 20px !important;
+        margin-bottom: 15px !important;
+        line-height: 1.4 !important;
     }
     
     .project-card h4 a {
-        color: #1e293b;
-        text-decoration: none;
-        transition: color 0.3s ease;
+        color: #1e293b !important;
+        text-decoration: none !important;
+        transition: color 0.3s ease !important;
     }
     
     .project-card h4 a:hover {
-        color: #667eea;
+        color: #667eea !important;
     }
     
     .project-meta {
-        color: #64748b;
-        font-size: 14px;
-        line-height: 1.6;
+        color: #64748b !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
     }
     
     .project-meta p {
-        color: #475569;
-        margin-bottom: 15px;
-        font-weight: 500;
+        color: #475569 !important;
+        margin-bottom: 15px !important;
+        font-weight: 500 !important;
     }
     
     .badge-status {
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        margin-right: 8px;
-        margin-bottom: 8px;
+        padding: 6px 14px !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        margin-right: 8px !important;
+        margin-bottom: 8px !important;
     }
     
     .badge-planning { 
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        color: white;
-        box-shadow: 0 3px 12px rgba(251, 191, 36, 0.3);
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(251, 191, 36, 0.3) !important;
     }
     
     .badge-in_progress { 
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        box-shadow: 0 3px 12px rgba(59, 130, 246, 0.3);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(59, 130, 246, 0.3) !important;
     }
     
     .badge-on_hold { 
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3) !important;
     }
     
     .badge-completed { 
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3) !important;
     }
     
     .badge-cancelled { 
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        color: white;
-        box-shadow: 0 3px 12px rgba(107, 114, 128, 0.3);
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+        color: white !important;
+        box-shadow: 0 3px 12px rgba(107, 114, 128, 0.3) !important;
     }
     
     .badge-priority {
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        padding: 6px 14px !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 8px !important;
     }
     
     .badge-low { 
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
     }
     
     .badge-medium { 
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        color: white;
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+        color: white !important;
     }
     
     .badge-high { 
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-        color: white;
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+        color: white !important;
     }
     
     .badge-critical { 
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        animation: pulse 2s infinite;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: white !important;
+        animation: pulse 2s infinite !important;
     }
     
     @keyframes pulse {
@@ -309,77 +310,117 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .progress-custom {
-        height: 12px;
-        margin-top: 15px;
-        margin-bottom: 0;
-        border-radius: 10px;
-        background: #e5e7eb;
-        overflow: hidden;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        height: 12px !important;
+        margin-top: 15px !important;
+        margin-bottom: 0 !important;
+        border-radius: 10px !important;
+        background: #e5e7eb !important;
+        overflow: hidden !important;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1) !important;
     }
     
     .progress-custom .progress-bar {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        line-height: 12px;
-        font-size: 10px;
-        font-weight: 700;
-        transition: width 1s ease;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        line-height: 12px !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        transition: width 1s ease !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4) !important;
     }
     
     .alert {
-        border-radius: 16px;
-        padding: 20px 25px;
-        border: none;
-        margin-bottom: 25px;
-        animation: slideDown 0.5s ease;
-        font-weight: 500;
-        font-size: 15px;
+        border-radius: 16px !important;
+        padding: 20px 25px !important;
+        border: none !important;
+        margin-bottom: 25px !important;
+        animation: slideDown 0.5s ease !important;
+        font-weight: 500 !important;
+        font-size: 15px !important;
     }
     
     .alert-info {
-        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        color: #1e40af;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+        color: #1e40af !important;
     }
     
     .col-md-4, .col-sm-6 {
-        margin-bottom: 0;
+        margin-bottom: 0 !important;
+    }
+    
+    /* RESPONSIVE BREAKPOINTS */
+    @media (max-width: 1200px) {
+        .projects-container {
+            padding: 15px !important;
+        }
+        .page-header {
+            padding: 25px 30px !important;
+        }
+        .page-header h1 {
+            font-size: 28px !important;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .filter-box .form-inline .form-group {
+            display: block !important;
+            width: 100% !important;
+            margin-right: 0 !important;
+            margin-bottom: 15px !important;
+        }
+        .filter-box .form-control {
+            width: 100% !important;
+        }
+        .project-card {
+            padding: 25px !important;
+        }
     }
     
     @media (max-width: 768px) {
+        .projects-container {
+            padding: 10px !important;
+        }
+        .page-header {
+            padding: 20px !important;
+            margin-bottom: 20px !important;
+        }
         .page-header h1 {
-            font-size: 24px;
-            margin-bottom: 15px;
+            font-size: 24px !important;
+            margin-bottom: 15px !important;
         }
-        
-        .filter-box .form-inline .form-group {
-            display: block;
-            width: 100%;
-            margin-right: 0;
-            margin-bottom: 15px;
+        .filter-box {
+            padding: 20px !important;
         }
-        
-        .filter-box .form-control {
-            width: 100%;
-        }
-        
         .filter-box .btn {
-            width: 100%;
-            margin-bottom: 10px;
+            width: 100% !important;
+            margin-bottom: 10px !important;
         }
-        
-        .container-fluid {
-            padding: 15px;
-        }
-        
         .project-card {
-            padding: 20px;
+            padding: 20px !important;
+            margin-bottom: 20px !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .projects-container {
+            padding: 8px !important;
+        }
+        .page-header {
+            padding: 15px !important;
+        }
+        .page-header h1 {
+            font-size: 20px !important;
+        }
+        .filter-box {
+            padding: 15px !important;
+        }
+        .project-card {
+            padding: 15px !important;
         }
     }
 </style>
 
-<div class="container-fluid">
+<div class="projects-container container-fluid">
     <div class="page-header">
         <div class="row">
             <div class="col-md-8 col-xs-12">

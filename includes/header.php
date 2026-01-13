@@ -38,7 +38,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
             background-attachment: fixed !important;
             min-height: 100vh;
-            padding-top: 65px !important;
+            padding-top: 75px !important;
         }
         
         /* Modern Navbar */
@@ -49,7 +49,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
             border-bottom: 1px solid rgba(102, 126, 234, 0.1);
             margin-bottom: 0;
-            min-height: 65px;
+            min-height: 70px;
             transition: all 0.3s ease;
             position: fixed;
             top: 0;
@@ -76,7 +76,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             font-weight: 800;
             font-size: 24px;
             letter-spacing: -0.5px;
-            padding: 20px 15px;
+            padding: 22px 15px;
             transition: all 0.3s ease;
         }
         
@@ -89,7 +89,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             color: #374151;
             font-weight: 600;
             font-size: 15px;
-            padding: 20px 20px;
+            padding: 22px 20px;
             transition: all 0.3s ease;
             position: relative;
         }
@@ -168,8 +168,8 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         .navbar-inverse .navbar-nav.navbar-right .dropdown-toggle {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
             border-radius: 25px;
-            padding: 10px 20px !important;
-            margin-top: 10px;
+            padding: 12px 20px !important;
+            margin-top: 12px;
             transition: all 0.3s ease;
         }
         
@@ -189,7 +189,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         .navbar-inverse .navbar-toggle {
             border: 2px solid #667eea;
             border-radius: 8px;
-            margin-top: 15px;
+            margin-top: 17px;
             transition: all 0.3s ease;
         }
         
@@ -238,7 +238,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         /* Responsive */
         @media (max-width: 767px) {
             body {
-                padding-top: 65px !important;
+                padding-top: 70px !important;
             }
             
             .navbar-inverse .navbar-nav {
@@ -252,6 +252,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             .navbar-inverse .navbar-nav > li > a {
                 border-radius: 8px;
                 margin: 2px 10px;
+                padding: 15px 20px;
             }
             
             .navbar-inverse .navbar-nav > li > a::after {
@@ -404,7 +405,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 if(target.length) {
                     e.preventDefault();
                     $('html, body').stop().animate({
-                        scrollTop: target.offset().top - 70
+                        scrollTop: target.offset().top - 80
                     }, 800);
                 }
             });

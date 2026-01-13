@@ -45,11 +45,9 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     
     .container-fluid {
         background: transparent !important;
-        min-height: calc(100vh - 120px);
-        padding: 30px;
+        min-height: calc(100vh - 150px);
+        padding: 20px 30px;
         animation: fadeIn 0.5s ease;
-        margin-top: 0 !important;
-        padding-top: 30px !important;
     }
     
     @keyframes fadeIn {

@@ -35,751 +35,899 @@ $users = $user->getActiveUsers();
 ?>
 
 <style>
-    /* CSS VARIABLES */
-    :root {
-        --primary: #6366f1;
-        --primary-hover: #4f46e5;
-        --secondary: #8b5cf6;
-        --bg-light: #f8fafc;
-        --border: #e2e8f0;
-        --text-dark: #1e293b;
-        --text-muted: #64748b;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-        --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
-        --radius: 12px;
-        --transition: all 0.2s ease;
+    .task-create-container {
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        animation: fadeIn 0.5s ease !important;
     }
     
-    /* BASE LAYOUT */
-    .task-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 24px 16px;
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    /* HEADER */
-    .page-header {
-        background: white;
-        padding: 20px 24px;
-        border-radius: var(--radius);
-        margin-bottom: 24px;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--border);
+    .task-create-header {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        color: #1e293b !important;
+        padding: 35px 40px !important;
+        border-radius: 20px !important;
+        margin-bottom: 35px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: slideDown 0.6s ease !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     
-    .page-header h1 {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--text-dark);
-        margin: 0 0 8px 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .task-create-header::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(34, 197, 94, 0.1) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
     }
     
-    .page-header h1 i {
-        color: var(--primary);
-        font-size: 22px;
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
-    .breadcrumb {
-        font-size: 13px;
-        color: var(--text-muted);
-        font-weight: 500;
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .breadcrumb a {
-        color: var(--primary);
-        text-decoration: none;
-        transition: var(--transition);
+    .task-create-header h1 {
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 32px !important;
+        position: relative !important;
+        z-index: 1 !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
     
-    .breadcrumb a:hover {
-        color: var(--primary-hover);
+    .task-create-header h1 i {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
     
-    .breadcrumb-sep {
-        margin: 0 8px;
-        color: var(--border);
+    .task-create-breadcrumb {
+        margin-top: 15px !important;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
-    /* FORM CARD */
+    .task-create-breadcrumb a {
+        color: #22c55e !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: color 0.3s ease !important;
+    }
+    
+    .task-create-breadcrumb a:hover {
+        color: #16a34a !important;
+    }
+    
+    .task-create-breadcrumb span {
+        color: #64748b !important;
+        margin: 0 8px !important;
+    }
+    
     .form-card {
-        background: white;
-        border-radius: var(--radius);
-        padding: 32px 24px;
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 40px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: slideUp 0.5s ease !important;
+        margin-bottom: 25px !important;
     }
     
-    /* FORM SECTIONS */
-    .form-section {
-        margin-bottom: 28px;
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .section-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text-dark);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 16px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .form-section-title {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #22c55e 0%, #16a34a 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
-    .section-title i {
-        color: var(--primary);
-        font-size: 15px;
+    .form-section-title i {
+        color: #22c55e !important;
     }
     
-    /* FORM GROUPS */
-    .form-group {
-        margin-bottom: 20px;
+    .form-group-modern {
+        margin-bottom: 25px !important;
     }
     
-    .form-group label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-dark);
-        margin-bottom: 6px;
+    .form-group-modern label {
+        display: block !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        color: #1e293b !important;
+        margin-bottom: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     
-    .form-group label .required {
-        color: var(--danger);
-        margin-left: 2px;
+    .form-group-modern label .required {
+        color: #ef4444 !important;
+        margin-left: 4px !important;
     }
     
-    /* FORM CONTROLS */
-    .form-control {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 14px;
-        color: var(--text-dark);
-        background: white;
-        transition: var(--transition);
-        font-family: inherit;
+    .form-control-modern {
+        width: 100% !important;
+        padding: 14px 18px !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #1e293b !important;
+        background: white !important;
+        transition: all 0.3s ease !important;
     }
     
-    .form-control:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    .form-control-modern:focus {
+        outline: none !important;
+        border-color: #22c55e !important;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1) !important;
     }
     
-    .form-control::placeholder {
-        color: #94a3b8;
+    .form-control-modern:hover {
+        border-color: #cbd5e1 !important;
     }
     
-    textarea.form-control {
-        resize: vertical;
-        min-height: 100px;
+    .form-control-modern::placeholder {
+        color: #94a3b8 !important;
     }
     
-    select.form-control {
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236366f1' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        padding-right: 36px;
+    textarea.form-control-modern {
+        resize: vertical !important;
+        min-height: 120px !important;
     }
     
-    input[type="number"].form-control,
-    input[type="date"].form-control {
-        cursor: pointer;
+    select.form-control-modern {
+        cursor: pointer !important;
+        appearance: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2322c55e' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 18px center !important;
+        padding-right: 45px !important;
     }
     
-    /* INPUT WITH ICON */
-    .input-icon {
-        position: relative;
+    input[type="number"].form-control-modern,
+    input[type="date"].form-control-modern {
+        cursor: pointer !important;
     }
     
-    .input-icon i {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-muted);
-        font-size: 14px;
+    .input-icon-wrapper {
+        position: relative !important;
     }
     
-    .input-icon .form-control {
-        padding-left: 38px;
+    .input-icon-wrapper i {
+        position: absolute !important;
+        left: 18px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: #22c55e !important;
+        font-size: 16px !important;
     }
     
-    .input-icon.textarea-icon i {
-        top: 14px;
-        transform: none;
+    .input-icon-wrapper .form-control-modern {
+        padding-left: 45px !important;
     }
     
-    /* CHARACTER COUNTER */
-    .char-count {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
-        text-align: right;
+    .input-icon-wrapper.textarea-wrapper i {
+        top: 20px !important;
+        transform: none !important;
     }
     
-    .char-count.warning {
-        color: var(--warning);
+    .input-icon-wrapper.select-wrapper i {
+        pointer-events: none !important;
+        z-index: 1 !important;
     }
     
-    .char-count.danger {
-        color: var(--danger);
+    .task-info-card {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%) !important;
+        padding: 20px !important;
+        border-radius: 12px !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+        margin-bottom: 25px !important;
     }
     
-    /* PREVIEW BADGES */
-    .preview-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-top: 6px;
-        transition: var(--transition);
+    .task-info-card i {
+        font-size: 18px !important;
+        color: #22c55e !important;
+        margin-right: 10px !important;
     }
     
-    /* STATUS BADGES */
-    .preview-badge.status-todo {
-        background: #f1f5f9;
-        color: #475569;
+    .task-info-card strong {
+        color: #1e293b !important;
+        font-weight: 700 !important;
     }
     
-    .preview-badge.status-in_progress {
-        background: #dbeafe;
-        color: #1e40af;
+    .task-info-card .info-text {
+        color: #64748b !important;
+        font-weight: 600 !important;
     }
     
-    .preview-badge.status-review {
-        background: #fef3c7;
-        color: #92400e;
+    .badge-preview {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 16px !important;
+        border-radius: 20px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-top: 8px !important;
+        color: white !important;
     }
     
-    .preview-badge.status-completed {
-        background: #d1fae5;
-        color: #065f46;
+    .badge-preview.status-todo {
+        background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
     }
     
-    /* PRIORITY BADGES */
-    .preview-badge.priority-low {
-        background: #d1fae5;
-        color: #065f46;
+    .badge-preview.status-in_progress {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
     }
     
-    .preview-badge.priority-medium {
-        background: #fef3c7;
-        color: #92400e;
+    .badge-preview.status-review {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
     }
     
-    .preview-badge.priority-high {
-        background: #fed7aa;
-        color: #9a3412;
+    .badge-preview.status-completed {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     }
     
-    .preview-badge.priority-critical {
-        background: #fee2e2;
-        color: #991b1b;
+    .badge-preview.priority-low {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     }
     
-    /* ASSIGNEE PREVIEW */
-    .assignee-preview {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        background: #f1f5f9;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-dark);
-        margin-top: 6px;
+    .badge-preview.priority-medium {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
     }
     
-    .assignee-preview.has-user {
-        background: #ede9fe;
+    .badge-preview.priority-high {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    }
+    
+    .badge-preview.priority-critical {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        animation: pulse 2s ease-in-out infinite !important;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.85; transform: scale(1.05); }
     }
     
     .user-avatar {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        font-size: 9px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-right: 8px !important;
     }
     
-    /* DATE & HOURS PREVIEW */
-    .date-preview,
+    .assignee-preview {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%) !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+        border-radius: 20px !important;
+        padding: 8px 16px !important;
+        margin-top: 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+    }
+    
+    .assignee-preview.unassigned {
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(100, 116, 139, 0.05) 100%) !important;
+        border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    
+    .due-date-preview {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%) !important;
+        border: 2px solid rgba(59, 130, 246, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px 16px !important;
+        margin-top: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    
+    .due-date-preview.no-date {
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(100, 116, 139, 0.05) 100%) !important;
+        border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    
+    .due-date-preview i {
+        color: #3b82f6 !important;
+    }
+    
+    .due-date-preview.no-date i {
+        color: #94a3b8 !important;
+    }
+    
     .hours-preview {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: #f1f5f9;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-dark);
-        margin-top: 6px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%) !important;
+        border: 2px solid rgba(139, 92, 246, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px 16px !important;
+        margin-top: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
     }
     
-    .date-preview.has-date {
-        background: #dbeafe;
+    .hours-preview i {
+        color: #8b5cf6 !important;
     }
     
-    .hours-preview.has-hours {
-        background: #ede9fe;
-    }
-    
-    /* INFO BOX */
-    .info-box {
-        background: #f0f9ff;
-        border-left: 3px solid var(--primary);
-        padding: 12px 16px;
-        border-radius: 6px;
-        font-size: 13px;
-        color: var(--text-dark);
-        margin: 20px 0;
-    }
-    
-    .info-box i {
-        color: var(--primary);
-        margin-right: 8px;
-    }
-    
-    /* BUTTONS */
     .form-actions {
-        display: flex;
-        gap: 12px;
-        padding-top: 24px;
-        border-top: 2px solid var(--border);
-        margin-top: 28px;
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 35px !important;
+        padding-top: 30px !important;
+        border-top: 2px solid #e2e8f0 !important;
+        flex-wrap: wrap !important;
     }
     
-    .btn {
-        padding: 11px 24px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        transition: var(--transition);
-        border: none;
-        text-transform: none;
+    .btn-modern {
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        text-decoration: none !important;
     }
     
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-        box-shadow: 0 2px 8px rgba(99,102,241,0.2);
+    .btn-modern.primary {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(34, 197, 94, 0.3) !important;
     }
     
-    .btn-primary:hover {
-        background: var(--primary-hover);
-        box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-        transform: translateY(-1px);
-        color: white;
+    .btn-modern.primary:hover {
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4) !important;
     }
     
-    .btn-secondary {
-        background: white;
-        color: var(--text-dark);
-        border: 1.5px solid var(--border);
+    .btn-modern.secondary {
+        background: white !important;
+        color: #22c55e !important;
+        border: 2px solid #22c55e !important;
     }
     
-    .btn-secondary:hover {
-        background: var(--bg-light);
-        border-color: var(--text-muted);
-        color: var(--text-dark);
+    .btn-modern.secondary:hover {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%) !important;
+        transform: translateY(-2px) !important;
     }
     
-    /* GRID LAYOUT */
-    .grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+    .char-counter {
+        font-size: 12px !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        margin-top: 5px !important;
+        text-align: right !important;
     }
     
-    .grid-3 {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 16px;
+    .char-counter.warning {
+        color: #f97316 !important;
+    }
+    
+    .char-counter.danger {
+        color: #ef4444 !important;
     }
     
     /* RESPONSIVE */
-    @media (max-width: 768px) {
-        .task-container {
-            padding: 16px 12px;
+    @media (max-width: 1200px) {
+        .task-create-container {
+            padding: 15px !important;
         }
-        
-        .page-header {
-            padding: 16px 20px;
+        .task-create-header {
+            padding: 25px 30px !important;
         }
-        
-        .page-header h1 {
-            font-size: 20px;
-        }
-        
         .form-card {
-            padding: 24px 20px;
+            padding: 30px !important;
         }
-        
-        .grid-2,
-        .grid-3 {
-            grid-template-columns: 1fr;
-            gap: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .task-create-container {
+            padding: 10px !important;
         }
-        
+        .task-create-header {
+            padding: 20px !important;
+            margin-bottom: 20px !important;
+        }
+        .task-create-header h1 {
+            font-size: 24px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+        }
+        .form-card {
+            padding: 20px !important;
+        }
         .form-actions {
-            flex-direction: column;
+            flex-direction: column !important;
         }
-        
-        .btn {
-            width: 100%;
-            justify-content: center;
+        .btn-modern {
+            width: 100% !important;
+            justify-content: center !important;
         }
     }
     
     @media (max-width: 480px) {
-        .page-header h1 {
-            font-size: 18px;
+        .task-create-container {
+            padding: 8px !important;
         }
-        
+        .task-create-header h1 {
+            font-size: 20px !important;
+        }
         .form-card {
-            padding: 20px 16px;
+            padding: 15px !important;
+        }
+        .form-control-modern {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+        }
+        .input-icon-wrapper .form-control-modern {
+            padding-left: 40px !important;
         }
     }
 </style>
 
-<div class="task-container">
-    <!-- HEADER -->
-    <div class="page-header">
+<div class="task-create-container container-fluid">
+    <div class="task-create-header">
         <h1>
-            <i class="fa fa-plus-circle"></i>
-            Create Task
+            <i class="fa fa-plus-circle"></i> Create Task
         </h1>
-        <div class="breadcrumb">
+        <div class="task-create-breadcrumb">
             <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=tasks">
                 <i class="fa fa-tasks"></i> Project Tasks
             </a>
-            <span class="breadcrumb-sep">/</span>
-            <span>Create Task</span>
+            <span>/</span>
+            <span style="color: #1e293b; font-weight: 600;">Create Task</span>
         </div>
     </div>
     
-    <!-- FORM -->
-    <div class="form-card">
-        <form method="POST" id="taskForm">
-            <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
-            
-            <!-- BASIC INFORMATION -->
-            <div class="form-section">
-                <div class="section-title">
-                    <i class="fa fa-file-text"></i>
-                    Basic Information
-                </div>
-                
-                <div class="form-group">
-                    <label for="task_name">
-                        Task Name <span class="required">*</span>
-                    </label>
-                    <div class="input-icon">
-                        <i class="fa fa-pencil"></i>
-                        <input type="text" 
-                               class="form-control" 
-                               id="task_name" 
-                               name="task_name" 
-                               placeholder="Enter task name"
-                               maxlength="200"
-                               required>
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            <div class="form-card">
+                <form method="POST" action="" id="taskForm">
+                    <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
+                    
+                    <!-- BASIC INFORMATION -->
+                    <div class="form-section-title">
+                        <i class="fa fa-file-text"></i> Basic Information
                     </div>
-                    <div class="char-count" id="nameCount">0 / 200</div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <div class="input-icon textarea-icon">
-                        <i class="fa fa-align-left"></i>
-                        <textarea class="form-control" 
-                                  id="description" 
-                                  name="description" 
-                                  placeholder="Describe the task in detail"
-                                  maxlength="1000"
-                                  style="padding-left: 38px;"></textarea>
-                    </div>
-                    <div class="char-count" id="descCount">0 / 1000</div>
-                </div>
-            </div>
-            
-            <!-- ASSIGNMENT & SCHEDULING -->
-            <div class="form-section">
-                <div class="section-title">
-                    <i class="fa fa-users"></i>
-                    Assignment & Scheduling
-                </div>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label for="assigned_to">Assign To</label>
-                        <div class="input-icon">
-                            <i class="fa fa-user"></i>
-                            <select class="form-control" id="assigned_to" name="assigned_to">
-                                <option value="">Unassigned</option>
-                                <?php foreach ($users as $u): ?>
-                                <option value="<?php echo $u['id']; ?>" 
-                                        data-name="<?php echo htmlspecialchars($u['full_name']); ?>" 
-                                        data-role="<?php echo ucfirst($u['role']); ?>">
-                                    <?php echo htmlspecialchars($u['full_name']); ?> (<?php echo ucfirst($u['role']); ?>)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
+                    
+                    <div class="form-group-modern">
+                        <label for="task_name">
+                            Task Name <span class="required">*</span>
+                        </label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa fa-pencil"></i>
+                            <input type="text" 
+                                   class="form-control-modern" 
+                                   id="task_name" 
+                                   name="task_name" 
+                                   placeholder="Enter task name"
+                                   maxlength="200"
+                                   required>
                         </div>
-                        <div class="assignee-preview" id="assigneePreview">
-                            <i class="fa fa-user-times"></i> Unassigned
+                        <div class="char-counter" id="taskNameCounter">0 / 200 characters</div>
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label for="description">
+                            Description
+                        </label>
+                        <div class="input-icon-wrapper textarea-wrapper">
+                            <i class="fa fa-align-left"></i>
+                            <textarea class="form-control-modern" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="4"
+                                      placeholder="Describe the task in detail"
+                                      maxlength="1000"
+                                      style="padding-left: 45px;"></textarea>
+                        </div>
+                        <div class="char-counter" id="descCounter">0 / 1000 characters</div>
+                    </div>
+                    
+                    <!-- ASSIGNMENT & SCHEDULING -->
+                    <div class="form-section-title" style="margin-top: 40px;">
+                        <i class="fa fa-users"></i> Assignment & Scheduling
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="assigned_to">
+                                    Assign To
+                                </label>
+                                <div class="input-icon-wrapper select-wrapper">
+                                    <i class="fa fa-user"></i>
+                                    <select class="form-control-modern" id="assigned_to" name="assigned_to">
+                                        <option value="">Unassigned</option>
+                                        <?php foreach ($users as $u): ?>
+                                        <option value="<?php echo $u['id']; ?>" data-name="<?php echo htmlspecialchars($u['full_name']); ?>" data-role="<?php echo ucfirst($u['role']); ?>">
+                                            <?php echo htmlspecialchars($u['full_name']); ?> (<?php echo ucfirst($u['role']); ?>)
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="assignee-preview unassigned" id="assigneePreview">
+                                    <i class="fa fa-user-times"></i> Unassigned
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="due_date">
+                                    Due Date
+                                </label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa fa-calendar"></i>
+                                    <input type="date" 
+                                           class="form-control-modern" 
+                                           id="due_date" 
+                                           name="due_date">
+                                </div>
+                                <div class="due-date-preview no-date" id="dueDatePreview">
+                                    <i class="fa fa-calendar-times-o"></i> No due date set
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="due_date">Due Date</label>
-                        <div class="input-icon">
-                            <i class="fa fa-calendar"></i>
-                            <input type="date" 
-                                   class="form-control" 
-                                   id="due_date" 
-                                   name="due_date">
-                        </div>
-                        <div class="date-preview" id="datePreview">
-                            <i class="fa fa-calendar-times-o"></i> No due date
-                        </div>
+                    <!-- CLASSIFICATION & DETAILS -->
+                    <div class="form-section-title" style="margin-top: 40px;">
+                        <i class="fa fa-cogs"></i> Classification & Details
                     </div>
-                </div>
-            </div>
-            
-            <!-- CLASSIFICATION -->
-            <div class="form-section">
-                <div class="section-title">
-                    <i class="fa fa-cogs"></i>
-                    Classification & Details
-                </div>
-                
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <div class="input-icon">
-                            <i class="fa fa-circle"></i>
-                            <select class="form-control" id="status" name="status">
-                                <option value="todo" selected>To Do</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="review">Review</option>
-                                <option value="completed">Completed</option>
-                            </select>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="status">
+                                    Status
+                                </label>
+                                <div class="input-icon-wrapper select-wrapper">
+                                    <i class="fa fa-circle"></i>
+                                    <select class="form-control-modern" id="status" name="status">
+                                        <option value="todo" selected>To Do</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="review">Review</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+                                <div class="badge-preview status-todo" id="statusPreview">
+                                    <i class="fa fa-clock-o"></i> To Do
+                                </div>
+                            </div>
                         </div>
-                        <div class="preview-badge status-todo" id="statusPreview">
-                            <i class="fa fa-clock-o"></i> To Do
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="priority">
+                                    Priority
+                                </label>
+                                <div class="input-icon-wrapper select-wrapper">
+                                    <i class="fa fa-exclamation-circle"></i>
+                                    <select class="form-control-modern" id="priority" name="priority">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                                <div class="badge-preview priority-medium" id="priorityPreview">
+                                    <i class="fa fa-flag"></i> Medium
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="estimated_hours">
+                                    Estimated Hours
+                                </label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa fa-clock-o"></i>
+                                    <input type="number" 
+                                           class="form-control-modern" 
+                                           id="estimated_hours" 
+                                           name="estimated_hours" 
+                                           step="0.5" 
+                                           min="0"
+                                           placeholder="0.0">
+                                </div>
+                                <div class="hours-preview" id="hoursPreview">
+                                    <i class="fa fa-hourglass-o"></i> No estimate
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="priority">Priority</label>
-                        <div class="input-icon">
-                            <i class="fa fa-flag"></i>
-                            <select class="form-control" id="priority" name="priority">
-                                <option value="low">Low</option>
-                                <option value="medium" selected>Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
-                            </select>
-                        </div>
-                        <div class="preview-badge priority-medium" id="priorityPreview">
-                            <i class="fa fa-flag"></i> Medium
-                        </div>
+                    <!-- OPTIONAL DETAILS -->
+                    <div class="form-section-title" style="margin-top: 40px;">
+                        <i class="fa fa-plus"></i> Optional Details
                     </div>
                     
-                    <div class="form-group">
-                        <label for="estimated_hours">Estimated Hours</label>
-                        <div class="input-icon">
-                            <i class="fa fa-clock-o"></i>
+                    <div class="form-group-modern">
+                        <label for="phase_id">
+                            Phase ID (Optional)
+                        </label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa fa-layer-group"></i>
                             <input type="number" 
-                                   class="form-control" 
-                                   id="estimated_hours" 
-                                   name="estimated_hours" 
-                                   step="0.5" 
-                                   min="0"
-                                   placeholder="0.0">
-                        </div>
-                        <div class="hours-preview" id="hoursPreview">
-                            <i class="fa fa-hourglass-o"></i> No estimate
+                                   class="form-control-modern" 
+                                   id="phase_id" 
+                                   name="phase_id" 
+                                   placeholder="Enter phase ID if applicable">
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- OPTIONAL -->
-            <div class="form-section">
-                <div class="section-title">
-                    <i class="fa fa-plus"></i>
-                    Optional Details
-                </div>
-                
-                <div class="form-group">
-                    <label for="phase_id">Phase ID</label>
-                    <div class="input-icon">
-                        <i class="fa fa-layer-group"></i>
-                        <input type="number" 
-                               class="form-control" 
-                               id="phase_id" 
-                               name="phase_id" 
-                               placeholder="Enter phase ID if applicable">
+                    
+                    <!-- INFO CARD -->
+                    <div class="task-info-card">
+                        <i class="fa fa-info-circle"></i>
+                        <strong>Task Guidelines:</strong>
+                        <span class="info-text">Be clear and actionable. Define what needs to be done, who should do it, and when it should be completed.</span>
                     </div>
-                </div>
+                    
+                    <!-- ACTION BUTTONS -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn-modern primary">
+                            <i class="fa fa-save"></i> Create Task
+                        </button>
+                        <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=tasks" class="btn-modern secondary">
+                            <i class="fa fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
-            
-            <div class="info-box">
-                <i class="fa fa-info-circle"></i>
-                <strong>Task Guidelines:</strong> Be clear and actionable. Define what needs to be done, who should do it, and when it should be completed.
-            </div>
-            
-            <!-- ACTIONS -->
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fa fa-save"></i> Create Task
-                </button>
-                <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=tasks" class="btn btn-secondary">
-                    <i class="fa fa-times"></i> Cancel
-                </a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
 <script>
 $(document).ready(function() {
-    // Character counters
+    // FORM ANIMATION
+    $('.form-card').css({
+        'animation': 'slideUp 0.5s ease both'
+    });
+    
+    // CHARACTER COUNTER FOR TASK NAME
     $('#task_name').on('input', function() {
-        const len = $(this).val().length;
-        const $counter = $('#nameCount');
-        $counter.text(len + ' / 200');
+        const length = $(this).val().length;
+        const max = 200;
+        const $counter = $('#taskNameCounter');
         
-        if (len > 180) $counter.addClass('danger').removeClass('warning');
-        else if (len > 150) $counter.addClass('warning').removeClass('danger');
-        else $counter.removeClass('warning danger');
+        $counter.text(length + ' / ' + max + ' characters');
+        
+        if (length > max * 0.9) {
+            $counter.addClass('danger');
+        } else if (length > max * 0.75) {
+            $counter.addClass('warning').removeClass('danger');
+        } else {
+            $counter.removeClass('warning danger');
+        }
     });
     
+    // CHARACTER COUNTER FOR DESCRIPTION
     $('#description').on('input', function() {
-        const len = $(this).val().length;
-        const $counter = $('#descCount');
-        $counter.text(len + ' / 1000');
+        const length = $(this).val().length;
+        const max = 1000;
+        const $counter = $('#descCounter');
         
-        if (len > 900) $counter.addClass('danger').removeClass('warning');
-        else if (len > 750) $counter.addClass('warning').removeClass('danger');
-        else $counter.removeClass('warning danger');
+        $counter.text(length + ' / ' + max + ' characters');
+        
+        if (length > max * 0.9) {
+            $counter.addClass('danger');
+        } else if (length > max * 0.75) {
+            $counter.addClass('warning').removeClass('danger');
+        } else {
+            $counter.removeClass('warning danger');
+        }
     });
     
-    // Assignee preview
+    // ASSIGNEE PREVIEW
     $('#assigned_to').on('change', function() {
-        const $opt = $(this).find(':selected');
-        const $prev = $('#assigneePreview');
+        const $selected = $(this).find(':selected');
+        const $preview = $('#assigneePreview');
         
-        if (!$(this).val()) {
-            $prev.removeClass('has-user').html('<i class="fa fa-user-times"></i> Unassigned');
+        if ($(this).val() === '') {
+            $preview.attr('class', 'assignee-preview unassigned');
+            $preview.html('<i class="fa fa-user-times"></i> Unassigned');
         } else {
-            const name = $opt.data('name');
-            const role = $opt.data('role');
-            const initials = name.split(' ').map(n => n.charAt(0)).join('').substring(0,2);
-            $prev.addClass('has-user').html(
-                '<div class="user-avatar">' + initials + '</div>' + 
-                name + ' <span style="color: var(--text-muted);">(' + role + ')</span>'
-            );
+            const name = $selected.data('name');
+            const role = $selected.data('role');
+            const initials = name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2);
+            
+            $preview.attr('class', 'assignee-preview');
+            $preview.html('<div class="user-avatar">' + initials + '</div>' + name + ' (' + role + ')');
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
-    // Due date preview
+    // DUE DATE PREVIEW
     $('#due_date').on('change', function() {
-        const $prev = $('#datePreview');
-        if (!$(this).val()) {
-            $prev.removeClass('has-date').html('<i class="fa fa-calendar-times-o"></i> No due date');
-        } else {
-            const date = new Date($(this).val());
-            const formatted = date.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
-            $prev.addClass('has-date').html('<i class="fa fa-calendar"></i> ' + formatted);
-        }
-    });
-    
-    // Hours preview
-    $('#estimated_hours').on('input', function() {
-        const $prev = $('#hoursPreview');
-        const val = parseFloat($(this).val());
+        const $preview = $('#dueDatePreview');
+        const value = $(this).val();
         
-        if (isNaN(val) || val <= 0) {
-            $prev.removeClass('has-hours').html('<i class="fa fa-hourglass-o"></i> No estimate');
+        if (value === '') {
+            $preview.attr('class', 'due-date-preview no-date');
+            $preview.html('<i class="fa fa-calendar-times-o"></i> No due date set');
         } else {
-            const unit = val === 1 ? 'hour' : 'hours';
-            $prev.addClass('has-hours').html('<i class="fa fa-hourglass-half"></i> ' + val + ' ' + unit);
+            const date = new Date(value);
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            const formattedDate = date.toLocaleDateString('en-US', options);
+            
+            $preview.attr('class', 'due-date-preview');
+            $preview.html('<i class="fa fa-calendar"></i> Due: ' + formattedDate);
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
-    // Status preview
+    // ESTIMATED HOURS PREVIEW
+    $('#estimated_hours').on('input', function() {
+        const $preview = $('#hoursPreview');
+        const value = parseFloat($(this).val());
+        
+        if (isNaN(value) || value <= 0) {
+            $preview.html('<i class="fa fa-hourglass-o"></i> No estimate');
+        } else {
+            const unit = value === 1 ? 'hour' : 'hours';
+            $preview.html('<i class="fa fa-hourglass-half"></i> ' + value + ' ' + unit);
+        }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
+    });
+    
+    // STATUS BADGE PREVIEW
     $('#status').on('change', function() {
-        const val = $(this).val();
+        const value = $(this).val();
+        const $preview = $('#statusPreview');
         const labels = {
             'todo': '<i class="fa fa-clock-o"></i> To Do',
             'in_progress': '<i class="fa fa-spinner"></i> In Progress',
             'review': '<i class="fa fa-eye"></i> Review',
             'completed': '<i class="fa fa-check-circle"></i> Completed'
         };
-        $('#statusPreview').attr('class', 'preview-badge status-' + val).html(labels[val]);
+        
+        $preview.attr('class', 'badge-preview status-' + value);
+        $preview.html(labels[value]);
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.1)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
-    // Priority preview
+    // PRIORITY BADGE PREVIEW
     $('#priority').on('change', function() {
-        const val = $(this).val();
+        const value = $(this).val();
+        const $preview = $('#priorityPreview');
         const labels = {
             'low': '<i class="fa fa-flag"></i> Low',
             'medium': '<i class="fa fa-flag"></i> Medium',
             'high': '<i class="fa fa-flag"></i> High',
             'critical': '<i class="fa fa-exclamation-triangle"></i> Critical'
         };
-        $('#priorityPreview').attr('class', 'preview-badge priority-' + val).html(labels[val]);
+        
+        $preview.attr('class', 'badge-preview priority-' + value);
+        $preview.html(labels[value]);
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.1)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
-    // Form validation
+    // INPUT FOCUS EFFECTS
+    $('.form-control-modern').on('focus', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#22c55e',
+            'transform': 'scale(1.05)',
+            'transition': 'all 0.3s ease'
+        });
+    }).on('blur', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#1e293b',
+            'transform': 'scale(1)'
+        });
+    });
+    
+    // FORM VALIDATION ENHANCEMENT
     $('#taskForm').on('submit', function(e) {
-        let valid = true;
-        $('.form-control[required]').each(function() {
-            if (!$(this).val().trim()) {
-                valid = false;
-                $(this).css('border-color', 'var(--danger)');
+        let isValid = true;
+        
+        $('.form-control-modern[required]').each(function() {
+            if ($(this).val().trim() === '') {
+                isValid = false;
+                $(this).css('border-color', '#ef4444');
+                $(this).on('input', function() {
+                    $(this).css('border-color', '#e2e8f0');
+                });
             }
         });
         
-        if (!valid) {
+        if (!isValid) {
             e.preventDefault();
             alert('Please fill in all required fields.');
+            $('html, body').animate({
+                scrollTop: $('.form-control-modern[required]').filter(function() {
+                    return $(this).val().trim() === '';
+                }).first().offset().top - 100
+            }, 500);
         }
-    });
-    
-    // Reset border on input
-    $('.form-control').on('input', function() {
-        $(this).css('border-color', 'var(--border)');
     });
 });
 </script>

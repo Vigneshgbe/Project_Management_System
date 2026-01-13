@@ -37,396 +37,435 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
 ?>
 
 <style>
-    /* PERFORMANCE OPTIMIZED - LIGHT PROFESSIONAL THEME */
+    /* MODERN INTERACTIVE DESIGN - ULTRA FAST */
+    
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
     
     .dashboard-container {
-        padding: 20px;
+        padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        animation: fadeIn 0.3s ease;
+        animation: fadeInUp 0.4s ease;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    /* PAGE HEADER */
+    /* MODERN PAGE HEADER */
     .page-header {
         background: white;
-        padding: 28px 32px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        border: 1px solid #e5e7eb;
+        padding: 32px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
     
     .page-header h1 {
         margin: 0;
         font-weight: 700;
-        font-size: 28px;
-        color: #1f2937;
+        font-size: 32px;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
     
     .page-header h1 i {
-        color: #3b82f6;
-        margin-right: 8px;
+        color: var(--primary);
+        font-size: 28px;
     }
     
     .page-header small {
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 500;
-        color: #6b7280;
-        margin-left: 8px;
+        color: #64748b;
+        margin-left: auto;
     }
     
-    /* STAT BOXES */
+    /* MODERN STAT CARDS */
     .stat-box {
         background: white;
-        padding: 24px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        margin-bottom: 20px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border: 1px solid #e5e7eb;
-        border-left: 4px solid #3b82f6;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        margin-bottom: 24px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    
+    .stat-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
     
     .stat-box:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--primary);
+    }
+    
+    .stat-box:hover::before {
+        opacity: 1;
     }
     
     .stat-box h3 {
-        margin: 0 0 6px 0;
-        font-size: 36px;
-        font-weight: 700;
-        color: #1f2937;
+        margin: 0 0 8px 0;
+        font-size: 40px;
+        font-weight: 800;
+        color: var(--dark);
+        position: relative;
     }
     
     .stat-box p {
-        color: #6b7280;
+        color: #64748b;
         margin: 0;
         font-weight: 600;
         font-size: 13px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
+        position: relative;
     }
     
     .stat-icon {
-        font-size: 42px;
-        color: #3b82f6;
-        opacity: 0.9;
+        font-size: 48px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        transition: transform 0.3s ease;
     }
     
-    /* PANELS */
+    .stat-box:hover .stat-icon {
+        transform: scale(1.1);
+    }
+    
+    /* MODERN PANELS */
     .panel {
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        border-radius: 12px;
-        overflow: hidden;
-        transition: box-shadow 0.2s ease;
         background: white;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.3s ease;
         margin-bottom: 24px;
     }
     
     .panel:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--shadow-md);
     }
     
     .panel-heading {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         color: white;
-        padding: 18px 24px;
+        padding: 20px 28px;
         border: none;
-        font-weight: 600;
     }
     
     .panel-title {
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 17px;
+        font-weight: 700;
         margin: 0;
-    }
-    
-    .panel-title i {
-        margin-right: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
     }
     
     .panel-body {
-        padding: 24px;
-        background: white;
+        padding: 28px;
     }
     
-    /* PROJECT CARDS */
+    /* MODERN PROJECT CARDS */
     .project-card {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 18px;
+        background: linear-gradient(135deg, #fafafa 0%, white 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
         margin-bottom: 16px;
-        transition: all 0.2s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .project-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, var(--primary), var(--secondary));
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
     }
     
     .project-card:hover {
+        transform: translateX(4px);
+        box-shadow: var(--shadow-md);
         background: white;
-        border-color: #3b82f6;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        border-color: var(--primary);
+    }
+    
+    .project-card:hover::after {
+        transform: scaleY(1);
     }
     
     .project-card h4 {
-        margin: 0 0 10px 0;
-        color: #1f2937;
-        font-weight: 600;
-        font-size: 16px;
+        margin: 0 0 12px 0;
+        color: var(--dark);
+        font-weight: 700;
+        font-size: 17px;
     }
     
     .project-card h4 a {
-        color: #1f2937;
+        color: var(--dark);
         text-decoration: none;
         transition: color 0.2s ease;
     }
     
     .project-card h4 a:hover {
-        color: #3b82f6;
+        color: var(--primary);
     }
     
     .project-meta {
-        color: #6b7280;
+        color: #64748b;
         font-size: 13px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
     }
     
     .project-meta small {
-        display: inline-block;
+        display: block;
         margin-top: 8px;
+        width: 100%;
     }
     
-    /* BADGES */
-    .badge-status {
-        padding: 5px 12px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        display: inline-block;
-        margin-right: 6px;
-    }
-    
-    .badge-planning { 
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .badge-in_progress { 
-        background: #dbeafe;
-        color: #1e40af;
-    }
-    
-    .badge-on_hold { 
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    .badge-completed { 
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .badge-cancelled { 
-        background: #e5e7eb;
-        color: #374151;
-    }
-    
-    .badge-priority {
-        padding: 5px 12px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-right: 6px;
-    }
-    
-    .badge-low { 
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .badge-medium { 
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .badge-high { 
-        background: #fed7aa;
-        color: #9a3412;
-    }
-    
-    .badge-critical { 
-        background: #fee2e2;
-        color: #991b1b;
-    }
-    
-    /* TASK ITEMS */
-    .task-item {
-        padding: 16px;
-        background: #f9fafb;
-        border-left: 3px solid #3b82f6;
-        margin-bottom: 12px;
+    /* MODERN BADGES */
+    .badge-status, .badge-priority {
+        padding: 6px 14px;
         border-radius: 8px;
-        transition: all 0.2s ease;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .badge-status::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+    }
+    
+    .badge-planning { background: #fef3c7; color: #92400e; }
+    .badge-in_progress { background: #dbeafe; color: #1e40af; }
+    .badge-on_hold { background: #fee2e2; color: #991b1b; }
+    .badge-completed { background: #d1fae5; color: #065f46; }
+    .badge-cancelled { background: #e5e7eb; color: #374151; }
+    
+    .badge-low { background: #d1fae5; color: #065f46; }
+    .badge-medium { background: #fef3c7; color: #92400e; }
+    .badge-high { background: #fed7aa; color: #9a3412; }
+    .badge-critical { background: #fee2e2; color: #991b1b; }
+    
+    /* MODERN TASK ITEMS */
+    .task-item {
+        padding: 18px 20px;
+        background: white;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--primary);
+        margin-bottom: 12px;
+        border-radius: 10px;
+        transition: all 0.3s ease;
     }
     
     .task-item:hover {
-        background: white;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        transform: translateX(4px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary);
     }
     
-    .task-item.critical {
-        border-left-color: #ef4444;
-    }
-    
-    .task-item.high {
-        border-left-color: #f97316;
-    }
-    
-    .task-item.medium {
-        border-left-color: #eab308;
-    }
-    
-    .task-item.low {
-        border-left-color: #10b981;
-    }
+    .task-item.critical { border-left-color: var(--danger); }
+    .task-item.high { border-left-color: #f97316; }
+    .task-item.medium { border-left-color: var(--warning); }
+    .task-item.low { border-left-color: var(--success); }
     
     .task-item strong {
-        color: #1f2937;
-        font-size: 14px;
-        font-weight: 600;
+        color: var(--dark);
+        font-size: 15px;
+        font-weight: 700;
     }
     
-    /* BUTTONS */
+    /* MODERN BUTTONS */
     .btn-default {
         background: white;
-        color: #3b82f6;
-        border: 1px solid #3b82f6;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.2s ease;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+        border-radius: 10px;
+        padding: 12px 24px;
+        font-weight: 700;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-transform: uppercase;
         font-size: 12px;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
     }
     
     .btn-default:hover {
-        background: #3b82f6;
+        background: var(--primary);
         color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-weight: 600;
-        transition: all 0.2s ease;
+        border-radius: 10px;
+        padding: 12px 28px;
+        font-weight: 700;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-transform: uppercase;
         font-size: 12px;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+        letter-spacing: 0.8px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
         color: white;
     }
     
     .btn-primary:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
         color: white;
     }
     
     .text-center h2 {
-        color: #1f2937;
-        font-weight: 700;
-        font-size: 40px;
-        margin: 8px 0;
+        color: var(--dark);
+        font-weight: 800;
+        font-size: 48px;
+        margin: 10px 0;
     }
     
     .text-muted {
-        color: #6b7280;
+        color: #64748b;
         font-weight: 500;
+    }
+    
+    /* SMOOTH SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
     }
     
     /* RESPONSIVE */
     @media (max-width: 1200px) {
-        .dashboard-container {
-            padding: 16px;
-        }
+        .dashboard-container { padding: 20px; }
+        .page-header h1 { font-size: 28px; }
     }
     
     @media (max-width: 992px) {
-        .stat-box {
-            margin-bottom: 16px;
-        }
+        .stat-box { margin-bottom: 20px; }
     }
     
     @media (max-width: 768px) {
-        .dashboard-container {
-            padding: 12px;
-        }
+        .dashboard-container { padding: 16px; }
         .page-header {
-            padding: 20px;
-            margin-bottom: 16px;
+            padding: 24px 20px;
+            margin-bottom: 24px;
         }
         .page-header h1 {
-            font-size: 22px;
+            font-size: 24px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
         }
         .page-header small {
-            font-size: 14px;
-            display: block;
             margin-left: 0;
-            margin-top: 4px;
+            font-size: 14px;
         }
         .stat-box {
-            padding: 18px;
+            padding: 20px;
         }
         .stat-box h3 {
-            font-size: 30px;
+            font-size: 32px;
         }
         .panel-body {
-            padding: 18px;
+            padding: 20px;
         }
     }
     
     @media (max-width: 480px) {
-        .dashboard-container {
-            padding: 10px;
-        }
-        .page-header {
-            padding: 16px;
-        }
-        .page-header h1 {
-            font-size: 20px;
-        }
-        .stat-box {
-            padding: 16px;
-        }
-        .stat-box h3 {
-            font-size: 26px;
-        }
-        .stat-icon {
-            font-size: 32px;
-        }
-        .project-card, .task-item {
-            padding: 14px;
-        }
+        .dashboard-container { padding: 12px; }
+        .page-header { padding: 20px 16px; }
+        .page-header h1 { font-size: 22px; }
+        .stat-box { padding: 18px; }
+        .stat-box h3 { font-size: 28px; }
+        .stat-icon { font-size: 38px; }
+        .project-card, .task-item { padding: 16px; }
     }
 </style>
 
 <div class="dashboard-container container-fluid">
     <div class="page-header">
-        <h1><i class="fa fa-dashboard"></i> Dashboard <small>Welcome back, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</small></h1>
+        <h1>
+            <i class="fa fa-dashboard"></i> 
+            Dashboard 
+            <small>Welcome back, <?php echo htmlspecialchars($_SESSION['full_name']); ?>!</small>
+        </h1>
     </div>
     
     <div class="row">
@@ -489,7 +528,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     
     <div class="row">
         <div class="col-md-6">
-            <div class="panel panel-default panel-custom">
+            <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title"><i class="fa fa-folder"></i> Recent Projects</h3>
                 </div>
@@ -511,7 +550,6 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
                                 <span class="badge-priority badge-<?php echo $proj['priority']; ?>">
                                     <?php echo ucfirst($proj['priority']); ?>
                                 </span>
-                                <br>
                                 <small>
                                     <i class="fa fa-code"></i> <?php echo htmlspecialchars($proj['project_code']); ?> | 
                                     <i class="fa fa-tasks"></i> <?php echo $proj['completed_tasks']; ?>/<?php echo $proj['task_count']; ?> tasks
@@ -527,7 +565,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
         </div>
         
         <div class="col-md-6">
-            <div class="panel panel-default panel-custom">
+            <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title"><i class="fa fa-tasks"></i> My Tasks</h3>
                 </div>
@@ -567,7 +605,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
     <?php if ($auth->isAdmin()): ?>
     <div class="row">
         <div class="col-md-12">
-            <div class="panel panel-default panel-custom">
+            <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title"><i class="fa fa-bar-chart"></i> System Overview</h3>
                 </div>
@@ -600,7 +638,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
 
 <script>
     $(document).ready(function() {
-        // Optimized Counter Animation
+        // Smooth Counter Animation
         $('.counter').each(function() {
             const $this = $(this);
             const countTo = parseInt($this.attr('data-target'));
@@ -608,7 +646,7 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
             $({ countNum: 0 }).animate({
                 countNum: countTo
             }, {
-                duration: 1500,
+                duration: 1200,
                 easing: 'swing',
                 step: function() {
                     $this.text(Math.floor(this.countNum));
@@ -616,6 +654,13 @@ $overdue_tasks = array_filter($user_tasks, function($t) {
                 complete: function() {
                     $this.text(this.countNum);
                 }
+            });
+        });
+        
+        // Add staggered animation to cards
+        $('.project-card, .task-item').each(function(i) {
+            $(this).css({
+                'animation': `fadeInUp 0.4s ease ${i * 0.05}s both`
             });
         });
     });

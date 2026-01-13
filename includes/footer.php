@@ -1,205 +1,252 @@
 <style>
+    /* MODERN FOOTER DESIGN */
     .footer {
-        background: rgba(255, 255, 255, 0.98) !important;
-        backdrop-filter: blur(20px) !important;
-        border-top: none !important;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15) !important;
-        padding: 30px 0 !important;
-        margin-top: 60px !important;
-        position: relative !important;
-        overflow: hidden !important;
-        animation: slideUp 0.6s ease !important;
+        background: white;
+        border-top: 1px solid var(--border, #e2e8f0);
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+        padding: 32px 0;
+        margin-top: 60px;
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.4s ease;
     }
     
     .footer::before {
-        content: '' !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 3px !important;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%) !important;
-        background-size: 200% 100% !important;
-        animation: gradientShift 3s ease infinite !important;
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1);
+        background-size: 200% 100%;
+        animation: gradientFlow 3s ease-in-out infinite;
     }
     
-    @keyframes gradientShift {
+    @keyframes gradientFlow {
         0%, 100% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
     }
     
-    @keyframes slideUp {
+    @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
     .footer .container {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        flex-wrap: wrap !important;
-        gap: 20px !important;
-        padding: 0 20px !important;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 24px;
+        padding: 0 20px;
     }
     
     .footer-copyright {
-        color: #64748b !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        margin: 0 !important;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .footer-copyright i {
+        color: #6366f1;
+        font-size: 16px;
     }
     
     .footer-links {
-        display: flex !important;
-        gap: 30px !important;
-        flex-wrap: wrap !important;
+        display: flex;
+        gap: 32px;
+        flex-wrap: wrap;
+        align-items: center;
     }
     
     .footer-links a {
-        color: #64748b !important;
-        text-decoration: none !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        transition: all 0.3s ease !important;
-        position: relative !important;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        padding: 4px 0;
     }
     
     .footer-links a::after {
-        content: '' !important;
-        position: absolute !important;
-        width: 0 !important;
-        height: 2px !important;
-        bottom: -3px !important;
-        left: 0 !important;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
-        transition: width 0.3s ease !important;
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        transition: width 0.3s ease;
+        border-radius: 2px;
     }
     
     .footer-links a:hover {
-        color: #667eea !important;
+        color: #6366f1;
+        transform: translateY(-2px);
     }
     
     .footer-links a:hover::after {
-        width: 100% !important;
+        width: 100%;
     }
     
+    /* SCROLL TO TOP BUTTON */
     .scroll-top-btn {
-        position: fixed !important;
-        bottom: 30px !important;
-        right: 30px !important;
-        width: 55px !important;
-        height: 55px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        border: none !important;
-        font-size: 20px !important;
-        cursor: pointer !important;
-        opacity: 0 !important;
-        transform: translateY(100px) !important;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        z-index: 99999 !important;
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        opacity: 0;
+        transform: scale(0) translateY(20px);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 9999;
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        outline: none;
     }
     
     .scroll-top-btn.show {
-        opacity: 1 !important;
-        transform: translateY(0) !important;
+        opacity: 1;
+        transform: scale(1) translateY(0);
     }
     
     .scroll-top-btn:hover {
-        transform: translateY(-8px) scale(1.05) !important;
-        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6) !important;
+        transform: scale(1.1) translateY(-4px);
+        box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
     }
     
     .scroll-top-btn:active {
-        transform: translateY(-5px) scale(0.98) !important;
+        transform: scale(0.95) translateY(-2px);
+    }
+    
+    .scroll-top-btn i {
+        transition: transform 0.3s ease;
+    }
+    
+    .scroll-top-btn:hover i {
+        transform: translateY(-2px);
     }
     
     /* RESPONSIVE */
     @media (max-width: 768px) {
         .footer {
-            padding: 25px 0 !important;
-            margin-top: 40px !important;
+            padding: 28px 0;
+            margin-top: 48px;
         }
         
         .footer .container {
-            flex-direction: column !important;
-            text-align: center !important;
-            gap: 15px !important;
+            flex-direction: column;
+            text-align: center;
+            gap: 20px;
+        }
+        
+        .footer-copyright {
+            flex-direction: column;
+            gap: 4px;
         }
         
         .footer-links {
-            justify-content: center !important;
-            gap: 20px !important;
+            justify-content: center;
+            gap: 24px;
         }
         
         .scroll-top-btn {
-            bottom: 20px !important;
-            right: 20px !important;
-            width: 50px !important;
-            height: 50px !important;
+            bottom: 24px;
+            right: 24px;
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
         }
     }
     
     @media (max-width: 480px) {
         .footer {
-            padding: 20px 0 !important;
+            padding: 24px 0;
+            margin-top: 40px;
         }
         
         .footer-copyright {
-            font-size: 13px !important;
+            font-size: 13px;
         }
         
         .footer-links {
-            flex-direction: column !important;
-            gap: 12px !important;
+            flex-direction: column;
+            gap: 16px;
         }
         
         .footer-links a {
-            font-size: 13px !important;
+            font-size: 13px;
         }
         
         .scroll-top-btn {
-            width: 45px !important;
-            height: 45px !important;
-            font-size: 18px !important;
+            bottom: 20px;
+            right: 20px;
+            width: 46px;
+            height: 46px;
+            font-size: 16px;
         }
     }
 </style>
 
 <footer class="footer">
     <div class="container">
-        <p class="footer-copyright">© <?php echo date('Y'); ?> Project Management System. All rights reserved.</p>
+        <p class="footer-copyright">
+            <i class="fa fa-copyright"></i>
+            <span><?php echo date('Y'); ?> Project Management System. All rights reserved.</span>
+        </p>
         <div class="footer-links">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-            <a href="#">Cookie Policy</a>
+            <a href="#"><i class="fa fa-shield"></i> Privacy Policy</a>
+            <a href="#"><i class="fa fa-file-text"></i> Terms of Service</a>
+            <a href="#"><i class="fa fa-cookie-bite"></i> Cookies</a>
         </div>
     </div>
 </footer>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<button class="scroll-top-btn" title="Back to top" aria-label="Scroll to top">
+    <i class="fa fa-chevron-up"></i>
+</button>
 
 <script>
     $(document).ready(function() {
-        // SCROLL TO TOP BUTTON
-        $('<button class="scroll-top-btn" title="Back to top" aria-label="Back to top"><i class="fa fa-chevron-up"></i></button>').appendTo('body');
-        
+        // Smooth scroll to top
         $(window).on('scroll', function() {
-            if ($(this).scrollTop() > 400) {
+            if ($(this).scrollTop() > 300) {
                 $('.scroll-top-btn').addClass('show');
             } else {
                 $('.scroll-top-btn').removeClass('show');
             }
         });
         
-        $('.scroll-top-btn').on('click', function() {
-            $('html, body').animate({scrollTop: 0}, 800, 'swing');
+        $('.scroll-top-btn').on('click', function(e) {
+            e.preventDefault();
+            $('html, body').animate({
+                scrollTop: 0
+            }, 600, 'swing');
+        });
+        
+        // Footer links smooth scroll (if they're anchor links)
+        $('.footer-links a[href^="#"]').on('click', function(e) {
+            var target = $(this.getAttribute('href'));
+            if(target.length) {
+                e.preventDefault();
+                $('html, body').stop().animate({
+                    scrollTop: target.offset().top - 80
+                }, 600);
+            }
         });
     });
 </script>

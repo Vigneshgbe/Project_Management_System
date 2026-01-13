@@ -5,9 +5,40 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../components/auth.php';
 $auth = new Auth();
 
-$current_page = basename($_SERVER['PHP_SELF']);
+// DETERMINE BASE PATH DYNAMICALLY
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$host = $_SERVER['HTTP_HOST'];
+$script_name = $_SERVER['SCRIPT_NAME'];
+$base_path = str_replace(basename($script_name), '', $script_name);
+$base_url = $protocol . "://" . $host . rtrim($base_path, '/');
+
+// Get current page info
+$current_file = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
-$is_admin_section = strpos($current_path, '/admin/') !== false;
+$current_full_path = $_SERVER['PHP_SELF'];
+
+// Check sections
+$is_admin_section = strpos($current_full_path, '/admin/') !== false;
+$is_project_page = strpos($current_file, 'project-') === 0 || $current_file === 'projects.php';
+$is_task_page = strpos($current_file, 'task-') === 0 || $current_file === 'tasks.php';
+$is_user_page = strpos($current_file, 'user-') === 0 || $current_file === 'users.php';
+$is_pricing_page = strpos($current_file, 'pricing-') === 0;
+$is_requirement_page = strpos($current_file, 'requirement-') === 0;
+
+// Helper function for navigation links
+function nav_url($path) {
+    global $base_url;
+    return $base_url . '/' . ltrim($path, '/');
+}
+
+// Helper function for active class
+function is_active($check_file, $check_prefix = null) {
+    global $current_file;
+    if ($check_prefix && strpos($current_file, $check_prefix) === 0) {
+        return 'active';
+    }
+    return $current_file === $check_file ? 'active' : '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +79,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             position: relative !important;
         }
         
-        /* NAVBAR - FIXED WITH PROPER Z-INDEX */
+        /* NAVBAR */
         .navbar-inverse {
             background: rgba(255, 255, 255, 0.98) !important;
             backdrop-filter: blur(20px) !important;
@@ -66,7 +97,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             width: 100% !important;
         }
         
-        /* NAVBAR CONTAINER - PREVENT OVERFLOW CLIPPING */
         .navbar-inverse .container-fluid {
             position: relative !important;
         }
@@ -131,7 +161,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background: transparent !important;
         }
         
-        /* DROPDOWN FIXES - CRITICAL */
+        /* DROPDOWN */
         .navbar-inverse .navbar-nav .dropdown {
             position: relative !important;
         }
@@ -174,6 +204,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             white-space: nowrap !important;
         }
         
+        .navbar-inverse .navbar-nav .dropdown-menu > li.active > a,
         .navbar-inverse .navbar-nav .dropdown-menu > li > a:hover,
         .navbar-inverse .navbar-nav .dropdown-menu > li > a:focus {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
@@ -194,7 +225,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background-color: #e2e8f0 !important;
         }
         
-        /* USER DROPDOWN - RIGHT ALIGNED */
         .navbar-inverse .navbar-nav.navbar-right .dropdown-menu {
             left: auto !important;
             right: 0 !important;
@@ -215,7 +245,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3) !important;
         }
         
-        /* MOBILE TOGGLE */
         .navbar-inverse .navbar-toggle {
             border: 2px solid #667eea !important;
             border-radius: 8px !important;
@@ -240,7 +269,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             background-color: white !important;
         }
         
-        /* CARET ANIMATION */
         .navbar-inverse .navbar-nav .dropdown .caret {
             transition: transform 0.3s ease !important;
         }
@@ -251,18 +279,12 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         
         /* RESPONSIVE */
         @media (min-width: 1200px) {
-            .main-content {
-                padding-top: 80px !important;
-            }
-            .navbar-inverse {
-                min-height: 70px !important;
-            }
+            .main-content { padding-top: 80px !important; }
+            .navbar-inverse { min-height: 70px !important; }
         }
         
         @media (min-width: 992px) and (max-width: 1199px) {
-            .main-content {
-                padding-top: 75px !important;
-            }
+            .main-content { padding-top: 75px !important; }
             .navbar-inverse .navbar-nav > li > a {
                 padding: 18px 15px !important;
                 font-size: 13px !important;
@@ -270,9 +292,7 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         }
         
         @media (min-width: 768px) and (max-width: 991px) {
-            .main-content {
-                padding-top: 70px !important;
-            }
+            .main-content { padding-top: 70px !important; }
             .navbar-inverse .navbar-nav > li > a {
                 padding: 16px 12px !important;
                 font-size: 13px !important;
@@ -283,21 +303,13 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
             }
         }
         
-        /* MOBILE DROPDOWN STYLES */
         @media (max-width: 767px) {
-            .main-content {
-                padding-top: 65px !important;
-            }
-            
-            .navbar-inverse {
-                min-height: 60px !important;
-            }
-            
+            .main-content { padding-top: 65px !important; }
+            .navbar-inverse { min-height: 60px !important; }
             .navbar-inverse .navbar-brand {
                 font-size: 18px !important;
                 padding: 15px !important;
             }
-            
             .navbar-inverse .navbar-nav {
                 margin: 0 !important;
                 background: white !important;
@@ -308,23 +320,18 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 margin-right: 15px !important;
                 box-shadow: 0 5px 20px rgba(0,0,0,0.1) !important;
             }
-            
             .navbar-inverse .navbar-nav > li > a {
                 border-radius: 8px !important;
                 margin: 2px 10px !important;
                 padding: 12px 15px !important;
                 font-size: 14px !important;
             }
-            
             .navbar-inverse .navbar-nav > li > a::after {
                 display: none !important;
             }
-            
             .navbar-inverse .navbar-nav > li.active > a {
                 background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
             }
-            
-            /* MOBILE DROPDOWN BEHAVIOR */
             .navbar-inverse .navbar-nav .dropdown-menu {
                 position: static !important;
                 float: none !important;
@@ -336,11 +343,9 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 opacity: 1 !important;
                 transform: none !important;
             }
-            
             .navbar-inverse .navbar-nav .dropdown.open .dropdown-menu {
                 display: block !important;
             }
-            
             .navbar-inverse .navbar-nav.navbar-right .dropdown-toggle {
                 margin: 2px 10px !important;
                 padding: 12px 15px !important;
@@ -348,14 +353,8 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
         }
         
         @media (max-width: 480px) {
-            .main-content {
-                padding-top: 60px !important;
-            }
-            
-            .navbar-inverse {
-                min-height: 55px !important;
-            }
-            
+            .main-content { padding-top: 60px !important; }
+            .navbar-inverse { min-height: 55px !important; }
             .navbar-inverse .navbar-brand {
                 font-size: 16px !important;
                 padding: 12px !important;
@@ -400,24 +399,24 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                         <span class="icon-bar"></span>
                         <span class="icon-bar"></span>
                     </button>
-                    <a class="navbar-brand" href="/dashboard.php">
+                    <a class="navbar-brand" href="<?php echo nav_url('dashboard.php'); ?>">
                         <i class="fa fa-briefcase"></i> PM System
                     </a>
                 </div>
                 <div class="collapse navbar-collapse" id="mainNavbar">
                     <ul class="nav navbar-nav">
-                        <li class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
-                            <a href="/dashboard.php">
+                        <li class="<?php echo is_active('dashboard.php'); ?>">
+                            <a href="<?php echo nav_url('dashboard.php'); ?>">
                                 <i class="fa fa-dashboard"></i> Dashboard
                             </a>
                         </li>
-                        <li class="<?php echo $current_page == 'projects.php' || strpos($current_page, 'project-') === 0 ? 'active' : ''; ?>">
-                            <a href="/projects.php">
+                        <li class="<?php echo $is_project_page ? 'active' : ''; ?>">
+                            <a href="<?php echo nav_url('projects.php'); ?>">
                                 <i class="fa fa-folder"></i> Projects
                             </a>
                         </li>
-                        <li class="<?php echo $current_page == 'tasks.php' || strpos($current_page, 'task-') === 0 ? 'active' : ''; ?>">
-                            <a href="/tasks.php">
+                        <li class="<?php echo $is_task_page ? 'active' : ''; ?>">
+                            <a href="<?php echo nav_url('tasks.php'); ?>">
                                 <i class="fa fa-tasks"></i> My Tasks
                             </a>
                         </li>
@@ -427,18 +426,18 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                                 <i class="fa fa-cog"></i> Admin <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
-                                <li class="<?php echo $current_page == 'users.php' || strpos($current_page, 'user-') === 0 ? 'active' : ''; ?>">
-                                    <a href="/admin/users.php">
+                                <li class="<?php echo $is_user_page ? 'active' : ''; ?>">
+                                    <a href="<?php echo nav_url('admin/users.php'); ?>">
                                         <i class="fa fa-users"></i> Users
                                     </a>
                                 </li>
-                                <li class="<?php echo $current_page == 'analytics.php' ? 'active' : ''; ?>">
-                                    <a href="/admin/analytics.php">
+                                <li class="<?php echo is_active('analytics.php'); ?>">
+                                    <a href="<?php echo nav_url('admin/analytics.php'); ?>">
                                         <i class="fa fa-bar-chart"></i> Analytics
                                     </a>
                                 </li>
-                                <li class="<?php echo $current_page == 'activity.php' ? 'active' : ''; ?>">
-                                    <a href="/admin/activity.php">
+                                <li class="<?php echo is_active('activity.php'); ?>">
+                                    <a href="<?php echo nav_url('admin/activity.php'); ?>">
                                         <i class="fa fa-history"></i> Activity Log
                                     </a>
                                 </li>
@@ -452,14 +451,14 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                                 <i class="fa fa-user-circle"></i> <?php echo htmlspecialchars($_SESSION['full_name']); ?> <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
-                                <li class="<?php echo $current_page == 'profile.php' ? 'active' : ''; ?>">
-                                    <a href="/profile.php">
+                                <li class="<?php echo is_active('profile.php'); ?>">
+                                    <a href="<?php echo nav_url('profile.php'); ?>">
                                         <i class="fa fa-user"></i> My Profile
                                     </a>
                                 </li>
                                 <li class="divider"></li>
                                 <li>
-                                    <a href="/logout.php">
+                                    <a href="<?php echo nav_url('logout.php'); ?>">
                                         <i class="fa fa-sign-out"></i> Logout
                                     </a>
                                 </li>
@@ -476,7 +475,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
     
     <script>
         $(document).ready(function() {
-            // DYNAMIC NAVBAR HEIGHT
             function adjustMainContent() {
                 const navbarHeight = $('.navbar-fixed-top').outerHeight();
                 $('.main-content').css('padding-top', (navbarHeight + 10) + 'px');
@@ -491,7 +489,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 setTimeout(adjustMainContent, 350);
             });
             
-            // CLOSE MOBILE MENU ON LINK CLICK
             $('.navbar-nav li a').on('click', function() {
                 if ($(window).width() < 768 && !$(this).parent().hasClass('dropdown')) {
                     $('.navbar-collapse').collapse('hide');
@@ -499,7 +496,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 }
             });
             
-            // ENSURE DROPDOWNS WORK ON DESKTOP
             if ($(window).width() >= 768) {
                 $('.navbar-nav .dropdown').on('mouseenter', function() {
                     $(this).addClass('open');
@@ -508,7 +504,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 });
             }
             
-            // SMOOTH SCROLL
             $('a[href^="#"]').on('click', function(e) {
                 var target = $(this.getAttribute('href'));
                 if(target.length) {
@@ -520,7 +515,6 @@ $is_admin_section = strpos($current_path, '/admin/') !== false;
                 }
             });
             
-            // NAVBAR SCROLL EFFECT
             $(window).on('scroll', function() {
                 if ($(this).scrollTop() > 50) {
                     $('.navbar-fixed-top').css({

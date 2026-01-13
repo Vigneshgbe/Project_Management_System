@@ -400,7 +400,7 @@ function is_active($check_file, $check_prefix = null) {
                         <span class="icon-bar"></span>
                     </button>
                     <a class="navbar-brand" href="<?php echo nav_url('dashboard.php'); ?>">
-                        <i class="fa fa-briefcase"></i> PM System
+                        <i class="fa fa-briefcase"></i> PMS
                     </a>
                 </div>
                 <div class="collapse navbar-collapse" id="mainNavbar">

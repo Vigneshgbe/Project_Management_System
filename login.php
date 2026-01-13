@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     
     <style>
-        /* MODERN ULTRA-FAST LOGIN DESIGN */
+        /* MODERN ULTRA-FAST INTERACTIVE LOGIN */
         
         :root {
             --primary: #6366f1;
@@ -63,102 +63,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             overflow: hidden;
         }
         
-        /* ANIMATED BACKGROUND PARTICLES */
-        .bg-particles {
+        /* Animated Particles Background */
+        .particles {
             position: absolute;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            z-index: 0;
         }
         
         .particle {
             position: absolute;
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            animation: float-particle 15s infinite;
-        }
-        
-        .particle:nth-child(1) {
-            width: 80px;
-            height: 80px;
-            top: 10%;
-            left: 15%;
-            animation-delay: 0s;
-            animation-duration: 12s;
-        }
-        
-        .particle:nth-child(2) {
-            width: 60px;
-            height: 60px;
-            top: 70%;
-            left: 80%;
-            animation-delay: 2s;
-            animation-duration: 18s;
-        }
-        
-        .particle:nth-child(3) {
-            width: 100px;
-            height: 100px;
-            top: 40%;
-            left: 5%;
-            animation-delay: 4s;
-            animation-duration: 20s;
-        }
-        
-        .particle:nth-child(4) {
-            width: 70px;
-            height: 70px;
-            top: 80%;
-            left: 20%;
-            animation-delay: 1s;
-            animation-duration: 16s;
-        }
-        
-        .particle:nth-child(5) {
-            width: 90px;
-            height: 90px;
-            top: 20%;
-            left: 85%;
-            animation-delay: 3s;
-            animation-duration: 14s;
+            animation: float-particle linear infinite;
         }
         
         @keyframes float-particle {
-            0%, 100% {
-                transform: translate(0, 0) scale(1);
-                opacity: 0.3;
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
             }
-            25% {
-                transform: translate(30px, -30px) scale(1.1);
-                opacity: 0.5;
+            10% {
+                opacity: 1;
             }
-            50% {
-                transform: translate(-20px, -50px) scale(0.9);
-                opacity: 0.3;
+            90% {
+                opacity: 1;
             }
-            75% {
-                transform: translate(40px, -20px) scale(1.05);
-                opacity: 0.6;
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
             }
+        }
+        
+        /* Gradient Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: float-orb ease-in-out infinite;
+        }
+        
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.4), transparent);
+            top: -250px;
+            right: -250px;
+            animation-duration: 8s;
+        }
+        
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.4), transparent);
+            bottom: -200px;
+            left: -200px;
+            animation-duration: 10s;
+            animation-delay: -2s;
+        }
+        
+        .orb-3 {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.3), transparent);
+            top: 50%;
+            left: 50%;
+            animation-duration: 12s;
+            animation-delay: -4s;
+        }
+        
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-30px, 30px) scale(0.9); }
         }
         
         .container {
             position: relative;
             z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
         }
         
-        /* MODERN LOGIN CONTAINER */
+        /* Modern Glass Card */
         .login-container {
-            background: rgba(255, 255, 255, 0.98);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             border-radius: 24px;
-            padding: 50px 45px;
-            max-width: 480px;
+            padding: 48px 40px;
+            max-width: 460px;
             width: 100%;
-            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
-            animation: slideUpFade 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2);
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(90deg, var(--primary), var(--secondary));
         }
         
-        @keyframes slideUpFade {
+        @keyframes slideUp {
             from {
                 opacity: 0;
                 transform: translateY(40px) scale(0.95);
@@ -184,83 +184,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        /* HEADER SECTION */
+        /* Header */
         .login-header {
             text-align: center;
-            margin-bottom: 40px;
-            animation: fadeIn 0.8s ease 0.2s both;
+            margin-bottom: 36px;
         }
         
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .logo-wrapper {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 24px;
-        }
-        
-        .logo {
-            width: 80px;
-            height: 80px;
+        .login-header .logo {
+            width: 72px;
+            height: 72px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 20px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto;
-            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
             animation: logoPulse 3s ease-in-out infinite;
             position: relative;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        .logo::before {
+        .login-header .logo::after {
             content: '';
             position: absolute;
             inset: -4px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 22px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            border-radius: 18px;
             z-index: -1;
-        }
-        
-        .logo:hover {
-            transform: scale(1.05) rotate(5deg);
-            box-shadow: 0 20px 45px rgba(99, 102, 241, 0.5);
-        }
-        
-        .logo:hover::before {
             opacity: 0.3;
-            animation: rotate 3s linear infinite;
-        }
-        
-        @keyframes rotate {
-            to { transform: rotate(360deg); }
-        }
-        
-        .logo i {
-            font-size: 36px;
-            color: white;
-            transition: transform 0.3s ease;
-        }
-        
-        .logo:hover i {
-            transform: scale(1.1);
+            animation: logoGlow 3s ease-in-out infinite;
         }
         
         @keyframes logoPulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
-            }
-            50% {
-                transform: scale(1.03);
-                box-shadow: 0 20px 45px rgba(99, 102, 241, 0.5);
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes logoGlow {
+            0%, 100% { opacity: 0.3; filter: blur(8px); }
+            50% { opacity: 0.6; filter: blur(12px); }
+        }
+        
+        .login-header .logo i {
+            font-size: 34px;
+            color: white;
         }
         
         .login-header h2 {
@@ -269,9 +236,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-weight: 800;
-            font-size: 32px;
-            margin-bottom: 10px;
-            letter-spacing: -0.8px;
+            font-size: 28px;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
         }
         
         .login-header p {
@@ -280,88 +247,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 500;
         }
         
-        /* ALERT MESSAGES */
+        /* Alert */
         .alert {
-            border-radius: 14px;
-            padding: 16px 20px;
+            border-radius: 12px;
+            padding: 14px 18px;
             border: none;
-            margin-bottom: 28px;
-            animation: shakeSlide 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 24px;
+            animation: shake 0.5s, fadeIn 0.3s;
             font-weight: 600;
             font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .alert::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: currentColor;
+            gap: 10px;
         }
         
         .alert-danger {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
             color: #991b1b;
-            border: 1px solid #fca5a5;
+            border-left: 4px solid #dc2626;
         }
         
         .alert i {
             font-size: 18px;
         }
         
-        @keyframes shakeSlide {
-            0% {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            10%, 30%, 50%, 70%, 90% {
-                transform: translateX(-3px);
-            }
-            20%, 40%, 60%, 80% {
-                transform: translateX(3px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+            20%, 40%, 60%, 80% { transform: translateX(8px); }
         }
         
-        /* FORM GROUPS */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Form Groups */
         .form-group {
-            margin-bottom: 26px;
+            margin-bottom: 22px;
             position: relative;
-            animation: slideIn 0.5s ease both;
-        }
-        
-        .form-group:nth-child(1) { animation-delay: 0.3s; }
-        .form-group:nth-child(2) { animation-delay: 0.4s; }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
         
         .form-group label {
-            font-weight: 700;
+            font-weight: 600;
             color: var(--dark);
             margin-bottom: 10px;
             font-size: 14px;
             display: block;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
         }
         
         .input-wrapper {
@@ -370,60 +303,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         .input-icon {
             position: absolute;
-            left: 18px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
             color: #94a3b8;
-            font-size: 18px;
+            font-size: 16px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 2;
+            pointer-events: none;
         }
         
         .form-control {
             border: 2px solid var(--border);
-            border-radius: 14px;
-            padding: 16px 20px 16px 52px;
+            border-radius: 12px;
+            padding: 14px 16px 14px 46px;
             font-size: 15px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: auto;
             font-weight: 500;
+            width: 100%;
             background: white;
-            position: relative;
         }
         
         .form-control:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
             outline: none;
-            background: white;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
         
-        .form-control:focus ~ .input-icon {
+        .form-control:focus + .input-icon {
             color: var(--primary);
             transform: translateY(-50%) scale(1.1);
         }
         
-        .form-control::placeholder {
-            color: #94a3b8;
+        .form-control.has-value {
+            border-color: #cbd5e1;
         }
         
-        /* PASSWORD TOGGLE */
+        /* Password Toggle */
         .password-toggle {
             position: absolute;
-            right: 18px;
+            right: 16px;
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
             color: #94a3b8;
             transition: all 0.3s ease;
-            z-index: 2;
-            font-size: 18px;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 16px;
+            z-index: 10;
+            padding: 4px;
         }
         
         .password-toggle:hover {
@@ -431,22 +359,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: translateY(-50%) scale(1.15);
         }
         
-        /* SUBMIT BUTTON */
-        .btn-submit-wrapper {
-            animation: slideIn 0.5s ease 0.5s both;
-        }
-        
+        /* Submit Button */
         .btn-primary {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             border: none;
-            border-radius: 14px;
-            padding: 17px 24px;
-            font-size: 16px;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 15px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 10px;
-            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.4);
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
@@ -461,9 +385,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             width: 0;
             height: 0;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.3);
             transform: translate(-50%, -50%);
-            transition: width 0.6s ease, height 0.6s ease;
+            transition: width 0.6s, height 0.6s;
         }
         
         .btn-primary:hover::before {
@@ -473,64 +397,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         .btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 18px 40px rgba(99, 102, 241, 0.5);
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.5);
             color: white;
         }
         
         .btn-primary:active {
             transform: translateY(-1px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
-        }
-        
-        .btn-primary:focus {
-            color: white;
         }
         
         .btn-text {
             position: relative;
             z-index: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
         }
         
-        /* LOADING STATE */
+        /* Loading State */
         .btn-loading {
             pointer-events: none;
             opacity: 0.8;
         }
         
-        .btn-loading .btn-text::after {
+        .btn-loading .btn-text {
+            opacity: 0;
+        }
+        
+        .btn-loading::after {
             content: '';
+            position: absolute;
             width: 18px;
             height: 18px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            top: 50%;
+            left: 50%;
+            margin-left: -9px;
+            margin-top: -9px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: white;
-            animation: spin 0.6s linear infinite;
+            animation: spin 0.7s linear infinite;
+            z-index: 2;
         }
         
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         
-        /* CREDENTIALS INFO */
+        /* Credentials Info */
         .credentials-info {
-            margin-top: 30px;
-            padding: 18px 20px;
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            border-radius: 14px;
+            margin-top: 28px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-radius: 12px;
             text-align: center;
-            animation: slideIn 0.5s ease 0.6s both;
             border: 1px solid #93c5fd;
+            animation: fadeIn 0.5s 0.3s both;
         }
         
         .credentials-info p {
             color: #1e40af;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
             margin: 0;
             display: flex;
             align-items: center;
@@ -539,123 +463,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .credentials-info strong {
-            background: rgba(30, 64, 175, 0.1);
+            background: white;
             padding: 4px 10px;
             border-radius: 6px;
             font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--primary);
         }
         
-        /* FOOTER */
+        /* Footer */
         .footer-text {
-            margin-top: 28px;
+            margin-top: 24px;
             text-align: center;
-            color: #64748b;
+            color: #94a3b8;
             font-size: 13px;
             font-weight: 500;
-            animation: fadeIn 0.5s ease 0.7s both;
         }
         
-        /* INPUT FLOATING LABEL EFFECT */
-        .form-control:focus::placeholder {
-            transform: translateY(-20px);
-            opacity: 0;
+        /* Input Animation */
+        .input-animate {
+            animation: inputFocus 0.3s ease;
         }
         
-        /* SMOOTH SCROLLBAR */
-        ::-webkit-scrollbar {
-            width: 8px;
+        @keyframes inputFocus {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
         
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-        
-        /* RESPONSIVE */
+        /* Responsive */
         @media (max-width: 576px) {
             .login-container {
-                padding: 40px 30px;
+                padding: 36px 28px;
                 margin: 20px;
                 border-radius: 20px;
             }
             
-            .login-header h2 {
-                font-size: 26px;
-            }
-            
-            .logo {
-                width: 70px;
-                height: 70px;
-                border-radius: 18px;
-            }
-            
-            .logo i {
-                font-size: 32px;
-            }
-            
-            .form-control {
-                padding: 14px 18px 14px 48px;
-                font-size: 14px;
-            }
-            
-            .btn-primary {
-                padding: 15px 20px;
-                font-size: 15px;
-            }
-            
-            .particle {
-                display: none;
-            }
-        }
-        
-        @media (max-width: 400px) {
-            .login-container {
-                padding: 35px 25px;
+            .login-header {
+                margin-bottom: 32px;
             }
             
             .login-header h2 {
                 font-size: 24px;
             }
             
+            .login-header .logo {
+                width: 64px;
+                height: 64px;
+            }
+            
+            .login-header .logo i {
+                font-size: 30px;
+            }
+            
+            .form-control {
+                padding: 13px 16px 13px 44px;
+                font-size: 14px;
+            }
+            
+            .btn-primary {
+                padding: 15px;
+                font-size: 14px;
+            }
+            
+            .orb-1, .orb-2, .orb-3 {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .login-container {
+                padding: 32px 24px;
+            }
+            
+            .credentials-info {
+                padding: 14px 16px;
+            }
+            
             .credentials-info p {
                 flex-direction: column;
-                gap: 6px;
+                gap: 8px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- ANIMATED BACKGROUND -->
-    <div class="bg-particles">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-    </div>
-
+    <!-- Animated Background -->
+    <div class="particles" id="particles"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    
     <div class="container">
         <div class="login-container">
             <div class="login-header">
-                <div class="logo-wrapper">
-                    <div class="logo">
-                        <i class="fa fa-briefcase"></i>
-                    </div>
+                <div class="logo">
+                    <i class="fa fa-briefcase"></i>
                 </div>
                 <h2>Project Management</h2>
                 <p>Sign in to continue to your dashboard</p>
             </div>
             
             <?php if ($error): ?>
-            <div class="alert alert-danger">
+            <div class="alert alert-danger" id="errorAlert">
                 <i class="fa fa-exclamation-circle"></i>
                 <span><?php echo htmlspecialchars($error); ?></span>
             </div>
@@ -679,19 +589,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 
-                <div class="btn-submit-wrapper">
-                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">
-                        <span class="btn-text">
-                            <span>Sign In</span>
-                        </span>
-                    </button>
-                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="submitBtn">
+                    <span class="btn-text">Sign In</span>
+                </button>
             </form>
             
             <div class="credentials-info">
                 <p>
                     <i class="fa fa-info-circle"></i> 
-                    <span>Default credentials:</span>
+                    <span>Default:</span>
                     <strong>admin</strong> 
                     <span>/</span> 
                     <strong>password</strong>
@@ -699,7 +605,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="footer-text">
-                <p><i class="fa fa-shield"></i> Protected by secure authentication</p>
+                <p>Protected by advanced security</p>
             </div>
         </div>
     </div>
@@ -709,22 +615,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <script>
         $(document).ready(function() {
-            // Password Toggle with smooth animation
+            // Create floating particles
+            function createParticles() {
+                const particlesContainer = $('#particles');
+                const particleCount = 15;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = $('<div class="particle"></div>');
+                    const size = Math.random() * 4 + 2;
+                    const left = Math.random() * 100;
+                    const duration = Math.random() * 10 + 10;
+                    const delay = Math.random() * 5;
+                    
+                    particle.css({
+                        width: size + 'px',
+                        height: size + 'px',
+                        left: left + '%',
+                        animationDuration: duration + 's',
+                        animationDelay: delay + 's'
+                    });
+                    
+                    particlesContainer.append(particle);
+                }
+            }
+            
+            createParticles();
+            
+            // Password Toggle with smooth transition
             $('#togglePassword').on('click', function() {
                 const passwordField = $('#password');
-                const icon = $(this);
-                const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
+                const currentType = passwordField.attr('type');
+                const newType = currentType === 'password' ? 'text' : 'password';
                 
-                // Add animation effect
-                icon.css('transform', 'translateY(-50%) scale(0.8)');
+                passwordField.attr('type', newType);
+                $(this).toggleClass('fa-eye fa-eye-slash');
+                
+                // Add animation
+                $(this).css('transform', 'translateY(-50%) scale(1.2)');
                 setTimeout(() => {
-                    passwordField.attr('type', type);
-                    icon.toggleClass('fa-eye fa-eye-slash');
-                    icon.css('transform', 'translateY(-50%) scale(1)');
-                }, 150);
+                    $(this).css('transform', 'translateY(-50%) scale(1)');
+                }, 200);
             });
             
-            // Form Submit with Loading State
+            // Form Submit with loading state
             let formSubmitted = false;
             $('#loginForm').on('submit', function(e) {
                 if (formSubmitted) {
@@ -734,120 +667,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 formSubmitted = true;
                 const btn = $('#submitBtn');
-                const btnText = btn.find('.btn-text span:first');
-                
                 btn.addClass('btn-loading');
-                btnText.text('Signing in');
-                
-                // Prevent going back if submission fails
-                setTimeout(() => {
-                    if (formSubmitted) {
-                        formSubmitted = false;
-                        btn.removeClass('btn-loading');
-                        btnText.text('Sign In');
-                    }
-                }, 5000);
+                btn.find('.btn-text').text('Signing in...');
             });
             
-            // Enhanced Input Focus Effects
+            // Enhanced input focus effects
             $('.form-control').on('focus', function() {
-                const wrapper = $(this).closest('.input-wrapper');
-                wrapper.find('.input-icon').css({
-                    'color': '#6366f1',
-                    'transform': 'translateY(-50%) scale(1.1)'
+                $(this).addClass('input-animate');
+                $(this).siblings('.input-icon').css({
+                    color: 'var(--primary)',
+                    transform: 'translateY(-50%) scale(1.1)'
                 });
+                $(this).closest('.form-group').find('label').css('color', 'var(--primary)');
             }).on('blur', function() {
+                $(this).removeClass('input-animate');
+                
                 if (!$(this).val()) {
-                    const wrapper = $(this).closest('.input-wrapper');
-                    wrapper.find('.input-icon').css({
-                        'color': '#94a3b8',
-                        'transform': 'translateY(-50%) scale(1)'
+                    $(this).siblings('.input-icon').css({
+                        color: '#94a3b8',
+                        transform: 'translateY(-50%) scale(1)'
                     });
+                    $(this).closest('.form-group').find('label').css('color', 'var(--dark)');
                 }
             });
             
-            // Auto-hide and fade out error messages
-            if ($('.alert-danger').length) {
+            // Track input value
+            $('.form-control').on('input', function() {
+                if ($(this).val()) {
+                    $(this).addClass('has-value');
+                } else {
+                    $(this).removeClass('has-value');
+                }
+            });
+            
+            // Auto-hide error alert
+            if ($('#errorAlert').length) {
                 setTimeout(function() {
-                    $('.alert-danger').fadeOut(600, function() {
-                        $(this).remove();
-                    });
+                    $('#errorAlert').fadeOut('slow');
                 }, 5000);
             }
             
-            // Add ripple effect on button click
-            $('.btn-primary').on('mousedown', function(e) {
-                const btn = $(this);
-                const ripple = $('<span class="ripple"></span>');
-                const x = e.pageX - btn.offset().left;
-                const y = e.pageY - btn.offset().top;
-                
-                ripple.css({
-                    top: y + 'px',
-                    left: x + 'px',
-                    position: 'absolute',
-                    width: '0',
-                    height: '0',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.5)',
-                    transform: 'translate(-50%, -50%)',
-                    pointerEvents: 'none'
-                });
-                
-                btn.append(ripple);
-                
-                setTimeout(() => {
-                    ripple.css({
-                        width: '300px',
-                        height: '300px',
-                        opacity: 0,
-                        transition: 'all 0.6s ease'
-                    });
-                }, 10);
-                
-                setTimeout(() => ripple.remove(), 650);
-            });
+            // Smooth entrance for credentials info
+            setTimeout(function() {
+                $('.credentials-info').css('opacity', '1');
+            }, 300);
             
-            // Prevent double submission
-            $('#loginForm input').on('keypress', function(e) {
-                if (e.which === 13 && formSubmitted) {
-                    e.preventDefault();
-                    return false;
+            // Add ripple effect to button
+            $('.btn-primary').on('click', function(e) {
+                if (!$(this).hasClass('btn-loading')) {
+                    const ripple = $('<span class="ripple"></span>');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size / 2;
+                    const y = e.clientY - rect.top - size / 2;
+                    
+                    ripple.css({
+                        width: size + 'px',
+                        height: size + 'px',
+                        left: x + 'px',
+                        top: y + 'px'
+                    });
+                    
+                    $(this).append(ripple);
+                    
+                    setTimeout(() => ripple.remove(), 600);
                 }
             });
             
-            // Add floating effect to logo on mouse move
-            let logoTimeout;
-            $(document).on('mousemove', function(e) {
-                clearTimeout(logoTimeout);
-                const logo = $('.logo');
-                const rect = logo[0].getBoundingClientRect();
-                const x = (e.clientX - rect.left - rect.width / 2) / 20;
-                const y = (e.clientY - rect.top - rect.height / 2) / 20;
-                
-                logo.css('transform', `translate(${x}px, ${y}px)`);
-                
-                logoTimeout = setTimeout(() => {
-                    logo.css('transform', 'translate(0, 0)');
-                }, 100);
+            // Keyboard shortcuts
+            $(document).on('keydown', function(e) {
+                // Alt + L to focus username
+                if (e.altKey && e.key === 'l') {
+                    e.preventDefault();
+                    $('#username').focus();
+                }
             });
             
-            // Enhanced particle animation on scroll
-            let particles = $('.particle');
-            $(window).on('scroll', function() {
-                const scrollTop = $(window).scrollTop();
-                particles.each(function(i) {
-                    const speed = (i + 1) * 0.1;
-                    $(this).css('transform', `translateY(${scrollTop * speed}px)`);
-                });
+            // Form validation feedback
+            $('.form-control').on('blur', function() {
+                if ($(this).val() && $(this)[0].checkValidity()) {
+                    $(this).css('border-color', 'var(--success)');
+                    setTimeout(() => {
+                        if (!$(this).is(':focus')) {
+                            $(this).css('border-color', '');
+                        }
+                    }, 1000);
+                }
             });
-            
-            // Preload check - Remove loading if page is cached
-            if (performance.navigation.type === 2) {
-                formSubmitted = false;
-                $('#submitBtn').removeClass('btn-loading');
-                $('#submitBtn .btn-text span:first').text('Sign In');
-            }
         });
     </script>
 </body>

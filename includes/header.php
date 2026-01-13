@@ -2,42 +2,113 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once __DIR__ . '/../components/auth.php';
+
+// DETERMINE AUTH COMPONENT PATH DYNAMICALLY
+$current_dir = dirname(__FILE__);
+if (file_exists($current_dir . '/../components/auth.php')) {
+    require_once $current_dir . '/../components/auth.php';
+} elseif (file_exists($current_dir . '/components/auth.php')) {
+    require_once $current_dir . '/components/auth.php';
+} else {
+    require_once __DIR__ . '/../components/auth.php';
+}
+
 $auth = new Auth();
 
-// DETERMINE BASE PATH DYNAMICALLY
+// ROBUST BASE URL DETECTION
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $host = $_SERVER['HTTP_HOST'];
 $script_name = $_SERVER['SCRIPT_NAME'];
-$base_path = str_replace(basename($script_name), '', $script_name);
-$base_url = $protocol . "://" . $host . rtrim($base_path, '/');
+
+// Get the directory of the current script
+$current_dir = dirname($script_name);
+
+// Determine if we're in admin subdirectory
+$is_in_admin_dir = (basename($current_dir) === 'admin');
+
+// Calculate project root path
+if ($is_in_admin_dir) {
+    // We're in admin folder, go up one level
+    $project_root = dirname($current_dir);
+} else {
+    // We're in root folder
+    $project_root = $current_dir;
+}
+
+// Ensure project root starts with / and doesn't end with /
+$project_root = '/' . trim($project_root, '/');
+if ($project_root === '/') {
+    $project_root = '';
+}
+
+$base_url = $protocol . "://" . $host . $project_root;
 
 // Get current page info
 $current_file = basename($_SERVER['PHP_SELF']);
 $current_path = $_SERVER['REQUEST_URI'];
 $current_full_path = $_SERVER['PHP_SELF'];
 
-// Check sections
+// Check sections with improved logic
 $is_admin_section = strpos($current_full_path, '/admin/') !== false;
-$is_project_page = strpos($current_file, 'project-') === 0 || $current_file === 'projects.php';
-$is_task_page = strpos($current_file, 'task-') === 0 || $current_file === 'tasks.php';
-$is_user_page = strpos($current_file, 'user-') === 0 || $current_file === 'users.php';
-$is_pricing_page = strpos($current_file, 'pricing-') === 0;
-$is_requirement_page = strpos($current_file, 'requirement-') === 0;
+$is_project_page = (strpos($current_file, 'project-') === 0 || $current_file === 'projects.php') && !$is_admin_section;
+$is_task_page = (strpos($current_file, 'task-') === 0 || $current_file === 'tasks.php') && !$is_admin_section;
+$is_user_page = (strpos($current_file, 'user-') === 0 || $current_file === 'users.php') && $is_admin_section;
+$is_pricing_page = strpos($current_file, 'pricing-') === 0 && !$is_admin_section;
+$is_requirement_page = strpos($current_file, 'requirement-') === 0 && !$is_admin_section;
 
-// Helper function for navigation links
+// Helper function for navigation links with proper cross-directory support
 function nav_url($path) {
     global $base_url;
-    return $base_url . '/' . ltrim($path, '/');
+    
+    // Remove leading slash if present
+    $path = ltrim($path, '/');
+    
+    // Always use base_url + path for consistent navigation
+    return $base_url . '/' . $path;
 }
 
-// Helper function for active class
+// Improved active class detection
 function is_active($check_file, $check_prefix = null) {
-    global $current_file;
+    global $current_file, $current_full_path, $is_admin_section;
+    
+    // Handle prefix-based matching (like project-, task-, etc.)
     if ($check_prefix && strpos($current_file, $check_prefix) === 0) {
         return 'active';
     }
-    return $current_file === $check_file ? 'active' : '';
+    
+    // Handle exact file matching
+    if ($current_file === $check_file) {
+        return 'active';
+    }
+    
+    // Special handling for admin section
+    if ($check_file === 'admin-section' && $is_admin_section) {
+        return 'active';
+    }
+    
+    return '';
+}
+
+// Helper function to check admin section active states
+function is_admin_active($check_file = null) {
+    global $current_file, $is_admin_section;
+    
+    // If we're not in admin section, never active
+    if (!$is_admin_section) {
+        return '';
+    }
+    
+    // If checking for general admin active state
+    if ($check_file === null) {
+        return 'active';
+    }
+    
+    // Check specific file in admin section
+    if ($current_file === $check_file) {
+        return 'active';
+    }
+    
+    return '';
 }
 ?>
 <!DOCTYPE html>
@@ -421,22 +492,22 @@ function is_active($check_file, $check_prefix = null) {
                             </a>
                         </li>
                         <?php if ($auth->isAdmin()): ?>
-                        <li class="dropdown <?php echo $is_admin_section ? 'active' : ''; ?>">
+                        <li class="dropdown <?php echo is_admin_active(); ?>">
                             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-cog"></i> Admin <span class="caret"></span>
                             </a>
                             <ul class="dropdown-menu">
-                                <li class="<?php echo $is_user_page ? 'active' : ''; ?>">
+                                <li class="<?php echo is_admin_active('users.php'); ?>">
                                     <a href="<?php echo nav_url('admin/users.php'); ?>">
                                         <i class="fa fa-users"></i> Users
                                     </a>
                                 </li>
-                                <li class="<?php echo is_active('analytics.php'); ?>">
+                                <li class="<?php echo is_admin_active('analytics.php'); ?>">
                                     <a href="<?php echo nav_url('admin/analytics.php'); ?>">
                                         <i class="fa fa-bar-chart"></i> Analytics
                                     </a>
                                 </li>
-                                <li class="<?php echo is_active('activity.php'); ?>">
+                                <li class="<?php echo is_admin_active('activity.php'); ?>">
                                     <a href="<?php echo nav_url('admin/activity.php'); ?>">
                                         <i class="fa fa-history"></i> Activity Log
                                     </a>
@@ -475,27 +546,40 @@ function is_active($check_file, $check_prefix = null) {
     
     <script>
         $(document).ready(function() {
+            // IMPROVED NAVBAR HEIGHT ADJUSTMENT
             function adjustMainContent() {
                 const navbarHeight = $('.navbar-fixed-top').outerHeight();
-                $('.main-content').css('padding-top', (navbarHeight + 10) + 'px');
+                $('.main-content').css('padding-top', (navbarHeight + 15) + 'px');
             }
             
+            // Initial adjustment with delay to ensure elements are loaded
             setTimeout(adjustMainContent, 100);
+            
+            // Adjust on window resize
             $(window).on('resize', function() {
                 setTimeout(adjustMainContent, 100);
             });
             
+            // IMPROVED NAVBAR TOGGLE HANDLING
             $('.navbar-toggle').on('click', function() {
                 setTimeout(adjustMainContent, 350);
             });
             
-            $('.navbar-nav li a').on('click', function() {
-                if ($(window).width() < 768 && !$(this).parent().hasClass('dropdown')) {
-                    $('.navbar-collapse').collapse('hide');
-                    setTimeout(adjustMainContent, 350);
+            // ENHANCED LINK CLICK HANDLING
+            $('.navbar-nav li a').on('click', function(e) {
+                const $this = $(this);
+                const href = $this.attr('href');
+                
+                // Don't collapse if it's a dropdown toggle
+                if (!$this.hasClass('dropdown-toggle') && href && href !== '#') {
+                    if ($(window).width() < 768) {
+                        $('.navbar-collapse').collapse('hide');
+                        setTimeout(adjustMainContent, 350);
+                    }
                 }
             });
             
+            // DESKTOP DROPDOWN HOVER EFFECT
             if ($(window).width() >= 768) {
                 $('.navbar-nav .dropdown').on('mouseenter', function() {
                     $(this).addClass('open');
@@ -504,6 +588,23 @@ function is_active($check_file, $check_prefix = null) {
                 });
             }
             
+            // MOBILE DROPDOWN CLICK HANDLING
+            $('.navbar-nav .dropdown-toggle').on('click', function(e) {
+                if ($(window).width() < 768) {
+                    e.preventDefault();
+                    const $dropdown = $(this).parent();
+                    
+                    // Close other dropdowns
+                    $('.navbar-nav .dropdown').not($dropdown).removeClass('open');
+                    
+                    // Toggle current dropdown
+                    $dropdown.toggleClass('open');
+                    
+                    setTimeout(adjustMainContent, 100);
+                }
+            });
+            
+            // SMOOTH SCROLL FOR ANCHOR LINKS
             $('a[href^="#"]').on('click', function(e) {
                 var target = $(this.getAttribute('href'));
                 if(target.length) {
@@ -515,18 +616,51 @@ function is_active($check_file, $check_prefix = null) {
                 }
             });
             
+            // NAVBAR SCROLL EFFECT
             $(window).on('scroll', function() {
-                if ($(this).scrollTop() > 50) {
-                    $('.navbar-fixed-top').css({
+                const scrollTop = $(this).scrollTop();
+                const $navbar = $('.navbar-fixed-top');
+                
+                if (scrollTop > 50) {
+                    $navbar.css({
                         'box-shadow': '0 4px 30px rgba(0, 0, 0, 0.15)',
                         'background': 'rgba(255, 255, 255, 0.99)'
                     });
                 } else {
-                    $('.navbar-fixed-top').css({
+                    $navbar.css({
                         'box-shadow': '0 4px 30px rgba(0, 0, 0, 0.1)',
                         'background': 'rgba(255, 255, 255, 0.98)'
                     });
                 }
             });
+            
+            // CLOSE DROPDOWNS ON OUTSIDE CLICK
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.navbar-nav .dropdown').length) {
+                    $('.navbar-nav .dropdown').removeClass('open');
+                }
+            });
+            
+            // PREVENT DROPDOWN CLOSE ON MENU ITEM CLICK (FOR MOBILE)
+            $('.dropdown-menu').on('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // NAVBAR COLLAPSE ON NAVIGATION (IMPROVED)
+            $('.navbar-nav a:not(.dropdown-toggle)').on('click', function() {
+                if ($(window).width() < 768) {
+                    setTimeout(function() {
+                        $('.navbar-collapse').collapse('hide');
+                    }, 100);
+                }
+            });
+            
+            // ENSURE PROPER STATE ON PAGE LOAD
+            setTimeout(function() {
+                $('.navbar-collapse').removeClass('collapsing');
+                adjustMainContent();
+            }, 500);
         });
     </script>
+</body>
+</html>

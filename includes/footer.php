@@ -208,11 +208,11 @@
             <i class="fa fa-copyright"></i>
             <span><?php echo date('Y'); ?> Project Management System. All rights reserved.</span>
         </p>
-        <div class="footer-links">
+        <!-- <div class="footer-links">
             <a href="#"><i class="fa fa-shield"></i> Privacy Policy</a>
             <a href="#"><i class="fa fa-file-text"></i> Terms of Service</a>
             <a href="#"><i class="fa fa-cookie-bite"></i> Cookies</a>
-        </div>
+        </div> -->
     </div>
 </footer>
 

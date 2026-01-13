@@ -385,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="footer-text">
-                <p>Protected by enterprise-grade security</p>
+                <p>Protected by padak security</p>
             </div>
         </div>
     </div>

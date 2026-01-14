@@ -471,7 +471,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 </style>
 
-<div class="requirement-create-container container-fluid">
+<div class="requirement-create-container">
     <div class="page-header">
         <h1>
             <i class="fa fa-plus-circle"></i> Create Requirement
@@ -485,17 +485,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     
-    <div class="row">
-        <div class="col-md-8 col-md-offset-2">
-            <div class="form-card">
-                <form method="POST" action="" id="requirementForm">
-                    <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
-                    
-                    <!-- BASIC INFORMATION -->
-                    <div class="form-section-title">
-                        <i class="fa fa-file-text"></i> Basic Information
-                    </div>
-                    
+    <div class="form-card">
+        <form method="POST" action="" id="requirementForm">
+            <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
+            
+            <!-- BASIC INFORMATION -->
+            <div class="form-section-title">
+                <i class="fa fa-file-text"></i> Basic Information
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
                     <div class="form-group-modern">
                         <label for="requirement_title">
                             Requirement Title <span class="required">*</span>
@@ -512,7 +512,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="char-counter" id="titleCounter">0 / 200 characters</div>
                     </div>
-                    
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
                     <div class="form-group-modern">
                         <label for="description">
                             Description
@@ -529,94 +533,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="char-counter" id="descCounter">0 / 1000 characters</div>
                     </div>
-                    
-                    <!-- CLASSIFICATION -->
-                    <div class="form-section-title">
-                        <i class="fa fa-tags"></i> Classification
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group-modern">
-                                <label for="type">
-                                    Type
-                                </label>
-                                <div class="input-icon-wrapper select-wrapper">
-                                    <i class="fa fa-tag"></i>
-                                    <select class="form-control-modern" id="type" name="type">
-                                        <option value="functional">Functional</option>
-                                        <option value="non_functional">Non-Functional</option>
-                                        <option value="technical">Technical</option>
-                                        <option value="business">Business</option>
-                                    </select>
-                                </div>
-                                <div class="badge-preview type-functional" id="typePreview">
-                                    <i class="fa fa-cog"></i> Functional
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group-modern">
-                                <label for="priority">
-                                    Priority
-                                </label>
-                                <div class="input-icon-wrapper select-wrapper">
-                                    <i class="fa fa-exclamation-circle"></i>
-                                    <select class="form-control-modern" id="priority" name="priority">
-                                        <option value="low">Low</option>
-                                        <option value="medium" selected>Medium</option>
-                                        <option value="high">High</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                </div>
-                                <div class="badge-preview priority-medium" id="priorityPreview">
-                                    <i class="fa fa-flag"></i> Medium
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group-modern">
-                                <label for="status">
-                                    Status
-                                </label>
-                                <div class="input-icon-wrapper select-wrapper">
-                                    <i class="fa fa-circle"></i>
-                                    <select class="form-control-modern" id="status" name="status">
-                                        <option value="pending" selected>Pending</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="rejected">Rejected</option>
-                                    </select>
-                                </div>
-                                <div class="badge-preview status-pending" id="statusPreview">
-                                    <i class="fa fa-clock-o"></i> Pending
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- INFO CARD -->
-                    <div class="requirement-info-card">
-                        <i class="fa fa-info-circle"></i>
-                        <div>
-                            <strong>Requirement Guidelines:</strong>
-                            <span class="info-text">Be clear and specific. Define what the system should do, who will use it, and what value it provides.</span>
-                        </div>
-                    </div>
-                    
-                    <!-- ACTION BUTTONS -->
-                    <div class="form-actions">
-                        <button type="submit" class="btn-modern primary">
-                            <i class="fa fa-save"></i> Create Requirement
-                        </button>
-                        <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=requirements" class="btn-modern secondary">
-                            <i class="fa fa-times"></i> Cancel
-                        </a>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+            
+            <!-- CLASSIFICATION -->
+            <div class="form-section-title">
+                <i class="fa fa-tags"></i> Classification
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group-modern">
+                        <label for="type">
+                            Type
+                        </label>
+                        <div class="input-icon-wrapper select-wrapper">
+                            <i class="fa fa-tag"></i>
+                            <select class="form-control-modern" id="type" name="type">
+                                <option value="functional">Functional</option>
+                                <option value="non_functional">Non-Functional</option>
+                                <option value="technical">Technical</option>
+                                <option value="business">Business</option>
+                            </select>
+                        </div>
+                        <div class="badge-preview type-functional" id="typePreview">
+                            <i class="fa fa-cog"></i> Functional
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group-modern">
+                        <label for="priority">
+                            Priority
+                        </label>
+                        <div class="input-icon-wrapper select-wrapper">
+                            <i class="fa fa-exclamation-circle"></i>
+                            <select class="form-control-modern" id="priority" name="priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="badge-preview priority-medium" id="priorityPreview">
+                            <i class="fa fa-flag"></i> Medium
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group-modern">
+                        <label for="status">
+                            Status
+                        </label>
+                        <div class="input-icon-wrapper select-wrapper">
+                            <i class="fa fa-circle"></i>
+                            <select class="form-control-modern" id="status" name="status">
+                                <option value="pending" selected>Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="badge-preview status-pending" id="statusPreview">
+                            <i class="fa fa-clock-o"></i> Pending
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- INFO CARD -->
+            <div class="requirement-info-card">
+                <i class="fa fa-info-circle"></i>
+                <div>
+                    <strong>Requirement Guidelines:</strong>
+                    <span class="info-text">Be clear and specific. Define what the system should do, who will use it, and what value it provides.</span>
+                </div>
+            </div>
+            
+            <!-- ACTION BUTTONS -->
+            <div class="form-actions">
+                <button type="submit" class="btn-modern primary">
+                    <i class="fa fa-save"></i> Create Requirement
+                </button>
+                <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=requirements" class="btn-modern secondary">
+                    <i class="fa fa-times"></i> Cancel
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 

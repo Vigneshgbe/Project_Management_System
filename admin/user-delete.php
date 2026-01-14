@@ -28,15 +28,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 ?>
 
 <style>
+    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED */
+    
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --danger-dark: #dc2626;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+    
     .user-delete-container {
-        background: transparent !important;
-        min-height: calc(100vh - 100px) !important;
-        padding: 20px !important;
-        margin: 0 !important;
-        animation: fadeIn 0.5s ease !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+        min-height: calc(100vh - 100px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.4s ease;
     }
     
     @keyframes fadeIn {
@@ -44,340 +62,376 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         to { opacity: 1; transform: translateY(0); }
     }
     
+    /* DELETE MODAL CARD */
     .delete-modal-card {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(20px) !important;
-        border-radius: 24px !important;
-        padding: 0 !important;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        animation: scaleIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
-        max-width: 600px !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        position: relative !important;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border);
+        max-width: 650px;
+        width: 100%;
+        overflow: hidden;
+        animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.8); }
+        from { opacity: 0; transform: scale(0.9); }
         to { opacity: 1; transform: scale(1); }
     }
     
+    /* MODAL HEADER */
     .delete-modal-header {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        color: white !important;
-        padding: 35px 40px !important;
-        text-align: center !important;
-        position: relative !important;
-        overflow: hidden !important;
+        background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+        color: white;
+        padding: 40px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
     }
     
     .delete-modal-header::before {
-        content: '' !important;
-        position: absolute !important;
-        top: -50% !important;
-        right: -50% !important;
-        width: 200% !important;
-        height: 200% !important;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%) !important;
-        animation: rotate 20s linear infinite !important;
-    }
-    
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
     }
     
     .delete-icon-wrapper {
-        width: 100px !important;
-        height: 100px !important;
-        border-radius: 50% !important;
-        background: rgba(255, 255, 255, 0.2) !important;
-        backdrop-filter: blur(10px) !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin-bottom: 20px !important;
-        position: relative !important;
-        z-index: 1 !important;
-        animation: pulse 2s ease-in-out infinite !important;
-        border: 3px solid rgba(255, 255, 255, 0.3) !important;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
-        50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.25);
     }
     
     .delete-icon-wrapper i {
-        font-size: 48px !important;
-        color: white !important;
+        font-size: 40px;
+        color: white;
     }
     
     .delete-modal-header h1 {
-        margin: 0 !important;
-        font-weight: 800 !important;
-        font-size: 28px !important;
-        position: relative !important;
-        z-index: 1 !important;
+        margin: 0;
+        font-weight: 700;
+        font-size: 28px;
     }
     
+    .delete-modal-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.9;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    /* MODAL BODY */
     .delete-modal-body {
-        padding: 40px !important;
+        padding: 40px;
     }
     
-    .user-info-card {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.05) 100%) !important;
-        border-radius: 16px !important;
-        padding: 25px !important;
-        margin-bottom: 30px !important;
-        border: 2px solid rgba(239, 68, 68, 0.2) !important;
-        text-align: center !important;
-    }
-    
-    .user-avatar-delete {
-        width: 90px !important;
-        height: 90px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-weight: 800 !important;
-        font-size: 36px !important;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3) !important;
-        margin-bottom: 15px !important;
-        border: 4px solid white !important;
-    }
-    
-    .user-name-delete {
-        font-size: 22px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        margin-bottom: 8px !important;
-    }
-    
-    .user-details-delete {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 8px !important;
-        margin-top: 15px !important;
-    }
-    
-    .user-detail-item {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        color: #64748b !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-    }
-    
-    .user-detail-item i {
-        color: #ef4444 !important;
-    }
-    
-    .user-detail-item .badge-inline {
-        display: inline-flex !important;
-        align-items: center !important;
-        padding: 4px 12px !important;
-        border-radius: 12px !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-    }
-    
-    .user-detail-item .badge-inline.admin {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%) !important;
-        color: #dc2626 !important;
-    }
-    
-    .user-detail-item .badge-inline.manager {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%) !important;
-        color: #f59e0b !important;
-    }
-    
-    .user-detail-item .badge-inline.member {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
-        color: #667eea !important;
-    }
-    
-    .warning-box {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%) !important;
-        border-left: 4px solid #f59e0b !important;
-        border-radius: 12px !important;
-        padding: 20px !important;
-        margin-bottom: 30px !important;
-    }
-    
-    .warning-box-header {
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        margin-bottom: 12px !important;
-    }
-    
-    .warning-box-header i {
-        font-size: 24px !important;
-        color: #f59e0b !important;
-    }
-    
-    .warning-box-header strong {
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        color: #92400e !important;
-    }
-    
-    .warning-box p {
-        margin: 0 0 10px 0 !important;
-        color: #78350f !important;
-        font-weight: 500 !important;
-        line-height: 1.6 !important;
-    }
-    
-    .warning-box ul {
-        margin: 10px 0 0 20px !important;
-        padding: 0 !important;
-    }
-    
-    .warning-box li {
-        color: #78350f !important;
-        font-weight: 500 !important;
-        margin-bottom: 6px !important;
-    }
-    
+    /* ERROR MESSAGE */
     .error-message {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%) !important;
-        border-left: 4px solid #ef4444 !important;
-        border-radius: 12px !important;
-        padding: 15px 20px !important;
-        margin-bottom: 20px !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.03));
+        border-left: 4px solid var(--danger);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     .error-message i {
-        font-size: 20px !important;
-        color: #ef4444 !important;
+        font-size: 18px;
+        color: var(--danger);
+        flex-shrink: 0;
     }
     
     .error-message span {
-        color: #991b1b !important;
-        font-weight: 600 !important;
+        color: #991b1b;
+        font-weight: 600;
+        font-size: 14px;
     }
     
+    /* USER INFO CARD */
+    .user-info-card {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), rgba(220, 38, 38, 0.02));
+        border: 2px solid rgba(239, 68, 68, 0.15);
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 28px;
+        text-align: center;
+    }
+    
+    .user-avatar-delete {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 32px;
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+        margin-bottom: 16px;
+        border: 3px solid white;
+    }
+    
+    .user-name-delete {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 12px;
+    }
+    
+    .user-details-delete {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .user-detail-item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .user-detail-item i {
+        color: var(--danger);
+        font-size: 13px;
+        width: 16px;
+        text-align: center;
+    }
+    
+    .badge-inline {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-inline.admin {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .badge-inline.manager {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .badge-inline.user {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    /* WARNING BOX */
+    .warning-box {
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), rgba(245, 158, 11, 0.03));
+        border-left: 4px solid var(--warning);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 28px;
+    }
+    
+    .warning-box-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    
+    .warning-box-header i {
+        font-size: 20px;
+        color: var(--warning);
+    }
+    
+    .warning-box-header strong {
+        font-size: 15px;
+        font-weight: 700;
+        color: #92400e;
+    }
+    
+    .warning-box p {
+        margin: 0 0 12px 0;
+        color: #78350f;
+        font-weight: 500;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+    
+    .warning-box ul {
+        margin: 12px 0 0 20px;
+        padding: 0;
+    }
+    
+    .warning-box li {
+        color: #78350f;
+        font-weight: 500;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    
+    .warning-box .final-warning {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(251, 191, 36, 0.2);
+        font-weight: 700;
+        color: #92400e;
+    }
+    
+    /* DELETE ACTIONS */
     .delete-actions {
-        display: flex !important;
-        gap: 15px !important;
-        padding-top: 25px !important;
-        border-top: 2px solid #e2e8f0 !important;
+        display: flex;
+        gap: 12px;
+        padding-top: 24px;
+        border-top: 2px solid var(--border);
     }
     
     .btn-delete-action {
-        flex: 1 !important;
-        padding: 16px 32px !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        font-size: 14px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.3s ease !important;
-        border: none !important;
-        cursor: pointer !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 10px !important;
-        text-decoration: none !important;
+        flex: 1;
+        padding: 14px 28px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
     }
     
     .btn-delete-action.danger {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-        color: white !important;
-        box-shadow: 0 5px 20px rgba(239, 68, 68, 0.3) !important;
+        background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+        color: white;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
     }
     
-    .btn-delete-action.danger:hover {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4) !important;
+    .btn-delete-action.danger:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+    }
+    
+    .btn-delete-action.danger:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
     
     .btn-delete-action.cancel {
-        background: white !important;
-        color: #667eea !important;
-        border: 2px solid #667eea !important;
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
     }
     
     .btn-delete-action.cancel:hover {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
-        transform: translateY(-2px) !important;
-        border-color: #764ba2 !important;
-        color: #764ba2 !important;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+        transform: translateY(-2px);
     }
     
-    /* RESPONSIVE */
+    /* SMOOTH SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--danger);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--danger-dark);
+    }
+    
+    /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
         .user-delete-container {
-            padding: 15px !important;
+            padding: 16px;
         }
         .delete-modal-card {
-            max-width: 100% !important;
+            max-width: 100%;
         }
         .delete-modal-header {
-            padding: 30px 25px !important;
+            padding: 32px 24px;
         }
         .delete-icon-wrapper {
-            width: 80px !important;
-            height: 80px !important;
+            width: 75px;
+            height: 75px;
         }
         .delete-icon-wrapper i {
-            font-size: 40px !important;
+            font-size: 32px;
         }
         .delete-modal-header h1 {
-            font-size: 24px !important;
+            font-size: 24px;
         }
         .delete-modal-body {
-            padding: 30px 25px !important;
+            padding: 32px 24px;
         }
         .user-avatar-delete {
-            width: 75px !important;
-            height: 75px !important;
-            font-size: 30px !important;
+            width: 70px;
+            height: 70px;
+            font-size: 28px;
         }
         .user-name-delete {
-            font-size: 20px !important;
+            font-size: 20px;
         }
         .delete-actions {
-            flex-direction: column !important;
+            flex-direction: column-reverse;
         }
     }
     
     @media (max-width: 480px) {
         .user-delete-container {
-            padding: 10px !important;
+            padding: 12px;
         }
         .delete-modal-header {
-            padding: 25px 20px !important;
+            padding: 28px 20px;
         }
         .delete-modal-header h1 {
-            font-size: 20px !important;
+            font-size: 22px;
         }
         .delete-modal-body {
-            padding: 25px 20px !important;
+            padding: 28px 20px;
         }
         .user-info-card {
-            padding: 20px !important;
+            padding: 24px 20px;
         }
         .warning-box {
-            padding: 15px !important;
+            padding: 16px 20px;
         }
         .btn-delete-action {
-            padding: 14px 24px !important;
-            font-size: 13px !important;
+            padding: 12px 24px;
+            font-size: 12px;
         }
     }
 </style>
@@ -389,6 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 <i class="fa fa-exclamation-triangle"></i>
             </div>
             <h1>Confirm User Deletion</h1>
+            <p>This action cannot be undone</p>
         </div>
         
         <div class="delete-modal-body">
@@ -414,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                         <span><?php echo htmlspecialchars($user['email']); ?></span>
                     </div>
                     <div class="user-detail-item">
-                        <i class="fa fa-shield"></i>
+                        <i class="fa fa-shield-alt"></i>
                         <span class="badge-inline <?php echo $user['role']; ?>">
                             <?php echo ucfirst($user['role']); ?>
                         </span>
@@ -434,13 +489,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                     <li>Access permissions and settings</li>
                     <li>User activity history</li>
                 </ul>
-                <p style="margin-top: 15px; font-weight: 700;">Are you absolutely sure you want to proceed?</p>
+                <p class="final-warning">Are you absolutely sure you want to proceed?</p>
             </div>
             
             <form method="POST" action="" id="deleteForm">
                 <div class="delete-actions">
                     <a href="users.php" class="btn-delete-action cancel">
-                        <i class="fa fa-times"></i> Cancel
+                        <i class="fa fa-arrow-left"></i> Cancel
                     </a>
                     <button type="submit" name="confirm_delete" class="btn-delete-action danger" id="confirmDeleteBtn">
                         <i class="fa fa-trash"></i> Delete User
@@ -453,13 +508,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
 <script>
 $(document).ready(function() {
+    const deleteForm = $('#deleteForm');
+    const confirmBtn = $('#confirmDeleteBtn');
+    
     // DOUBLE CONFIRMATION FOR CRITICAL ACTION
-    $('#deleteForm').on('submit', function(e) {
+    deleteForm.on('submit', function(e) {
         e.preventDefault();
         
         const confirmed = confirm(
             '⚠️ FINAL CONFIRMATION ⚠️\n\n' +
-            'You are about to permanently delete:\n' +
+            'You are about to permanently delete:\n' + '\n'
             '<?php echo htmlspecialchars($user['full_name']); ?>\n\n' +
             'This action CANNOT be reversed.\n\n' +
             'Click OK to proceed with deletion or Cancel to abort.'
@@ -467,14 +525,9 @@ $(document).ready(function() {
         
         if (confirmed) {
             // Add loading state to button
-            $('#confirmDeleteBtn').html('<i class="fa fa-spinner fa-spin"></i> Deleting...').prop('disabled', true);
+            confirmBtn.html('<i class="fa fa-spinner fa-spin"></i> Deleting...').prop('disabled', true);
             this.submit();
         }
-    });
-    
-    // ANIMATE CARD ENTRANCE
-    $('.delete-modal-card').css({
-        'animation': 'scaleIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) both'
     });
     
     // ESCAPE KEY TO CANCEL

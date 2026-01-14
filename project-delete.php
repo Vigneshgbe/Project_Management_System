@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Delete Project';
 require_once 'includes/header.php';
 require_once 'components/project.php';
@@ -10,12 +12,14 @@ $project_obj = new Project();
 $project = $project_obj->getById($project_id);
 
 if (!$project) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     if ($project_obj->delete($project_id)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: projects.php?deleted=1');
         exit;
     }

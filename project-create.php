@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Create Project';
 require_once 'includes/header.php';
 require_once 'components/project.php';
@@ -25,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($project_id = $project->create($data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $project_id);
         exit;
     } else {

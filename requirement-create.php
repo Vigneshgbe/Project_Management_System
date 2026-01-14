@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Create Requirement';
 require_once 'includes/header.php';
 require_once 'components/requirement.php';
@@ -21,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($req->create($data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $_POST['project_id'] . '&tab=requirements');
         exit;
     }

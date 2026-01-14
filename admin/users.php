@@ -16,7 +16,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN SYSTEM */
+    /* MODERN PREMIUM DESIGN SYSTEM */
     
     :root {
         --primary: #6366f1;
@@ -28,38 +28,41 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         --dark: #1e293b;
         --light: #f8fafc;
         --border: #e2e8f0;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-        --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.12);
+        --shadow-xl: 0 30px 60px rgba(0, 0, 0, 0.15);
     }
     
     /* CONTAINER */
     .user-management-container {
-        padding: 24px;
+        padding: 32px;
         max-width: 1600px;
         margin: 0 auto;
-        animation: fadeIn 0.5s ease;
+        animation: pageLoad 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
+    @keyframes pageLoad {
+        from { opacity: 0; transform: translateY(30px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* PAGE HEADER */
-    .page-header {
-        background: white;
-        padding: 40px;
-        border-radius: 20px;
-        margin-bottom: 32px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border);
+    /* HEADER SECTION */
+    .user-management-header {
+        background: linear-gradient(135deg, 
+            rgba(255, 255, 255, 0.95) 0%, 
+            rgba(248, 250, 252, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 40px 48px;
+        margin-bottom: 40px;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid rgba(99, 102, 241, 0.1);
         position: relative;
         overflow: hidden;
     }
     
-    .page-header::before {
+    .user-management-header::before {
         content: '';
         position: absolute;
         top: 0;
@@ -69,103 +72,105 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
     
-    .page-header::after {
+    .user-management-header::after {
         content: '';
         position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 400px;
-        height: 400px;
+        top: -100%;
+        right: -100%;
+        width: 300%;
+        height: 300%;
         background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
-        border-radius: 50%;
-        animation: headerFloat 20s ease-in-out infinite;
+        animation: headerRotate 30s linear infinite;
     }
     
-    @keyframes headerFloat {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        50% { transform: translate(-30px, 30px) scale(1.1); }
+    @keyframes headerRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
-    .header-content {
+    .user-management-header-content {
         position: relative;
         z-index: 2;
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 24px;
+        align-items: center;
+        gap: 32px;
         flex-wrap: wrap;
     }
     
     .header-left h1 {
-        margin: 0 0 24px 0;
-        font-weight: 800;
-        font-size: 36px;
-        color: var(--dark);
+        margin: 0 0 20px 0;
+        font-size: 42px;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         display: flex;
         align-items: center;
         gap: 16px;
         letter-spacing: -1px;
     }
     
-    .header-icon {
-        width: 56px;
-        height: 56px;
+    .header-left h1 i {
+        font-size: 38px;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 28px;
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-        animation: iconPulse 3s ease-in-out infinite;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: iconBounce 2s ease-in-out infinite;
     }
     
-    @keyframes iconPulse {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.05) rotate(5deg); }
+    @keyframes iconBounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
     }
     
     /* STATS ROW */
-    .stats-row {
+    .user-stats-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 16px;
         margin-top: 8px;
     }
     
-    .stat-card {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border: 2px solid rgba(99, 102, 241, 0.1);
-        border-radius: 14px;
-        padding: 20px 24px;
+    .user-stat-item {
+        background: linear-gradient(135deg, 
+            rgba(99, 102, 241, 0.08) 0%, 
+            rgba(139, 92, 246, 0.05) 100%);
+        padding: 18px 24px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
-        gap: 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        gap: 14px;
+        border: 2px solid transparent;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         position: relative;
         overflow: hidden;
     }
     
-    .stat-card::before {
+    .user-stat-item::before {
         content: '';
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
-        transition: left 0.5s ease;
+        background: linear-gradient(90deg, 
+            transparent, 
+            rgba(255, 255, 255, 0.4), 
+            transparent);
+        transition: left 0.6s ease;
     }
     
-    .stat-card:hover::before {
-        left: 100%;
-    }
-    
-    .stat-card:hover {
+    .user-stat-item:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
         border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+    }
+    
+    .user-stat-item:hover::before {
+        left: 100%;
     }
     
     .stat-icon {
@@ -177,49 +182,55 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 22px;
+        font-size: 20px;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        transition: transform 0.3s ease;
+    }
+    
+    .user-stat-item:hover .stat-icon {
+        transform: scale(1.1) rotate(5deg);
     }
     
     .stat-content {
         flex: 1;
     }
     
-    .stat-number {
-        font-size: 28px;
-        font-weight: 900;
-        color: var(--primary);
-        line-height: 1;
-        margin-bottom: 4px;
-        letter-spacing: -1px;
-    }
-    
     .stat-label {
         font-size: 12px;
         font-weight: 700;
-        color: var(--dark);
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        opacity: 0.7;
+        margin-bottom: 4px;
     }
     
-    /* ACTION BUTTON */
+    .stat-number {
+        font-size: 28px;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+    }
+    
+    /* ADD USER BUTTON */
     .btn-add-user {
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         color: white;
-        padding: 14px 32px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 13px;
+        padding: 16px 32px;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 14px;
         text-transform: uppercase;
-        letter-spacing: 0.8px;
+        letter-spacing: 1px;
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border: none;
         cursor: pointer;
         position: relative;
@@ -234,7 +245,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         width: 0;
         height: 0;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.3);
         transform: translate(-50%, -50%);
         transition: width 0.6s, height 0.6s;
     }
@@ -246,14 +257,18 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
     
     .btn-add-user:hover {
         transform: translateY(-3px);
-        box-shadow: 0 12px 28px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
     }
     
     .btn-add-user i {
-        font-size: 16px;
-        transition: transform 0.3s ease;
+        font-size: 18px;
         position: relative;
         z-index: 1;
+        transition: transform 0.3s ease;
+    }
+    
+    .btn-add-user:hover i {
+        transform: rotate(90deg);
     }
     
     .btn-add-user span {
@@ -261,249 +276,317 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         z-index: 1;
     }
     
-    .btn-add-user:hover i {
-        transform: rotate(90deg);
-    }
-    
     /* TABLE CARD */
-    .table-card {
+    .user-table-card {
         background: white;
-        border-radius: 20px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border);
+        border-radius: 24px;
+        box-shadow: var(--shadow-lg);
         overflow: hidden;
-        animation: slideUp 0.6s ease;
+        border: 1px solid var(--border);
+        animation: tableSlideUp 0.6s ease 0.2s both;
     }
     
-    @keyframes slideUp {
-        from { opacity: 0; transform: translateY(30px); }
+    @keyframes tableSlideUp {
+        from { opacity: 0; transform: translateY(40px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
-    .table-wrapper {
+    .user-table-wrapper {
         overflow-x: auto;
         position: relative;
     }
     
-    .table-wrapper::-webkit-scrollbar {
+    .user-table-wrapper::-webkit-scrollbar {
         height: 10px;
     }
     
-    .table-wrapper::-webkit-scrollbar-track {
+    .user-table-wrapper::-webkit-scrollbar-track {
         background: #f1f5f9;
         border-radius: 10px;
     }
     
-    .table-wrapper::-webkit-scrollbar-thumb {
+    .user-table-wrapper::-webkit-scrollbar-thumb {
         background: linear-gradient(90deg, var(--primary), var(--secondary));
         border-radius: 10px;
     }
     
+    .user-table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(90deg, var(--secondary), var(--primary));
+    }
+    
     /* TABLE */
-    .user-table {
+    .user-management-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
     }
     
-    .user-table thead {
+    .user-management-table thead {
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         position: sticky;
         top: 0;
         z-index: 10;
     }
     
-    .user-table thead th {
+    .user-management-table thead th {
         color: white;
         font-weight: 800;
-        font-size: 11px;
+        font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 1px;
-        padding: 20px 16px;
+        padding: 24px 20px;
         border: none;
         white-space: nowrap;
         text-align: left;
     }
     
-    .user-table thead th:first-child {
-        padding-left: 32px;
-        border-top-left-radius: 20px;
-    }
-    
-    .user-table thead th:last-child {
-        padding-right: 32px;
-        border-top-right-radius: 20px;
-    }
-    
-    .user-table thead th i {
-        margin-right: 6px;
+    .user-management-table thead th i {
+        margin-right: 8px;
         opacity: 0.9;
     }
     
-    .user-table tbody tr {
+    .user-management-table tbody tr {
         transition: all 0.3s ease;
         background: white;
         position: relative;
     }
     
-    .user-table tbody tr::after {
+    .user-management-table tbody tr::after {
         content: '';
         position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
         height: 1px;
-        background: var(--border);
+        background: linear-gradient(90deg, 
+            transparent,
+            var(--border),
+            transparent);
     }
     
-    .user-table tbody tr:last-child::after {
+    .user-management-table tbody tr:hover {
+        background: linear-gradient(135deg, 
+            rgba(99, 102, 241, 0.04) 0%, 
+            rgba(139, 92, 246, 0.02) 100%);
+        transform: scale(1.005);
+        box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
+        z-index: 1;
+    }
+    
+    .user-management-table tbody tr:last-child::after {
         display: none;
     }
     
-    .user-table tbody tr:hover {
-        background: linear-gradient(90deg, rgba(99, 102, 241, 0.03), transparent);
-        transform: scale(1.002);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
-    }
-    
-    .user-table tbody td {
-        padding: 20px 16px;
+    .user-management-table tbody td {
+        padding: 20px;
         color: var(--dark);
-        font-weight: 500;
+        font-weight: 600;
         font-size: 14px;
         vertical-align: middle;
     }
     
-    .user-table tbody td:first-child {
-        padding-left: 32px;
-    }
-    
-    .user-table tbody td:last-child {
-        padding-right: 32px;
-    }
-    
     /* USER CELL */
-    .user-cell {
+    .user-cell-name {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 16px;
     }
     
     .user-avatar {
-        width: 48px;
-        height: 48px;
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 800;
-        font-size: 18px;
+        font-weight: 900;
+        font-size: 20px;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         position: relative;
+        overflow: hidden;
     }
     
-    .user-avatar::after {
+    .user-avatar::before {
         content: '';
         position: absolute;
-        inset: -4px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        z-index: -1;
-        filter: blur(8px);
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, 
+            transparent, 
+            rgba(255, 255, 255, 0.3), 
+            transparent);
+        transform: rotate(45deg);
+        transition: all 0.6s ease;
     }
     
-    .user-table tbody tr:hover .user-avatar {
-        transform: scale(1.1) rotate(5deg);
+    .user-management-table tbody tr:hover .user-avatar {
+        transform: scale(1.15) rotate(-5deg);
+        box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
     }
     
-    .user-table tbody tr:hover .user-avatar::after {
-        opacity: 0.4;
+    .user-management-table tbody tr:hover .user-avatar::before {
+        left: 100%;
     }
     
-    .user-name {
+    .user-name-text {
         font-weight: 700;
         color: var(--dark);
         font-size: 15px;
     }
     
     /* BADGES */
-    .badge {
+    .user-role-badge,
+    .user-status-badge {
         display: inline-flex;
         align-items: center;
-        padding: 6px 14px;
-        border-radius: 20px;
+        padding: 8px 16px;
+        border-radius: 12px;
         font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.6px;
+        letter-spacing: 0.8px;
         white-space: nowrap;
+        border: 2px solid;
+        transition: all 0.3s ease;
     }
     
-    .badge.admin {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(220, 38, 38, 0.12));
+    /* Role Badges */
+    .user-role-badge.admin {
+        background: linear-gradient(135deg, 
+            rgba(239, 68, 68, 0.12) 0%, 
+            rgba(220, 38, 38, 0.08) 100%);
         color: #dc2626;
-        border: 2px solid rgba(239, 68, 68, 0.2);
+        border-color: rgba(220, 38, 38, 0.3);
     }
     
-    .badge.manager {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(245, 158, 11, 0.12));
+    .user-role-badge.admin:hover {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
+        transform: scale(1.05);
+    }
+    
+    .user-role-badge.manager {
+        background: linear-gradient(135deg, 
+            rgba(251, 191, 36, 0.12) 0%, 
+            rgba(245, 158, 11, 0.08) 100%);
         color: #f59e0b;
-        border: 2px solid rgba(251, 191, 36, 0.2);
+        border-color: rgba(245, 158, 11, 0.3);
     }
     
-    .badge.member {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
+    .user-role-badge.manager:hover {
+        background: var(--warning);
+        color: white;
+        border-color: var(--warning);
+        transform: scale(1.05);
+    }
+    
+    .user-role-badge.member {
+        background: linear-gradient(135deg, 
+            rgba(99, 102, 241, 0.12) 0%, 
+            rgba(139, 92, 246, 0.08) 100%);
         color: var(--primary);
-        border: 2px solid rgba(99, 102, 241, 0.2);
+        border-color: rgba(99, 102, 241, 0.3);
     }
     
-    .badge.active {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.12));
+    .user-role-badge.member:hover {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        border-color: transparent;
+        transform: scale(1.05);
+    }
+    
+    /* Status Badges */
+    .user-status-badge.active {
+        background: linear-gradient(135deg, 
+            rgba(16, 185, 129, 0.12) 0%, 
+            rgba(5, 150, 105, 0.08) 100%);
         color: #059669;
-        border: 2px solid rgba(16, 185, 129, 0.2);
+        border-color: rgba(5, 150, 105, 0.3);
     }
     
-    .badge.inactive {
-        background: linear-gradient(135deg, rgba(107, 114, 128, 0.12), rgba(75, 85, 99, 0.12));
+    .user-status-badge.active:hover {
+        background: var(--success);
+        color: white;
+        border-color: var(--success);
+        transform: scale(1.05);
+    }
+    
+    .user-status-badge.inactive {
+        background: linear-gradient(135deg, 
+            rgba(107, 114, 128, 0.12) 0%, 
+            rgba(75, 85, 99, 0.08) 100%);
         color: #4b5563;
-        border: 2px solid rgba(107, 114, 128, 0.2);
+        border-color: rgba(75, 85, 99, 0.3);
+    }
+    
+    .user-status-badge.inactive:hover {
+        background: #6b7280;
+        color: white;
+        border-color: #6b7280;
+        transform: scale(1.05);
     }
     
     /* DATE */
-    .date-text {
+    .user-date {
         color: #64748b;
         font-weight: 600;
-        font-size: 13px;
         white-space: nowrap;
+        font-size: 13px;
     }
     
     /* ACTIONS */
-    .actions {
+    .user-actions {
         display: flex;
-        gap: 8px;
+        gap: 10px;
         flex-wrap: nowrap;
     }
     
     .btn-action {
-        padding: 8px 16px;
+        padding: 10px 18px;
         border-radius: 10px;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.6px;
+        letter-spacing: 0.8px;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         white-space: nowrap;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border: 2px solid;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-action::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.4s, height 0.4s;
+    }
+    
+    .btn-action:hover::before {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .btn-action i,
+    .btn-action span {
+        position: relative;
+        z-index: 1;
     }
     
     .btn-action.edit {
@@ -512,12 +595,15 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         border-color: var(--primary);
     }
     
-    .btn-action.edit:hover {
+    .btn-action.edit::before {
         background: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+    
+    .btn-action.edit:hover {
         color: white;
         border-color: transparent;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
     }
     
     .btn-action.delete {
@@ -526,76 +612,46 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         border-color: var(--danger);
     }
     
-    .btn-action.delete:hover {
+    .btn-action.delete::before {
         background: linear-gradient(135deg, var(--danger), #dc2626);
+    }
+    
+    .btn-action.delete:hover {
         color: white;
         border-color: transparent;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
     }
     
-    .btn-action i {
-        font-size: 12px;
+    .btn-action:hover i {
+        transform: scale(1.2);
     }
     
-    /* EMPTY STATE */
-    .empty-state {
-        padding: 80px 40px;
-        text-align: center;
-        color: #94a3b8;
-    }
-    
-    .empty-state i {
-        font-size: 64px;
-        margin-bottom: 20px;
-        opacity: 0.3;
-    }
-    
-    .empty-state h3 {
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 8px;
-    }
-    
-    .empty-state p {
-        font-size: 14px;
-        margin: 0;
-    }
-    
-    /* RESPONSIVE */
+    /* RESPONSIVE DESIGN */
     @media (max-width: 1200px) {
         .user-management-container {
-            padding: 20px;
+            padding: 24px;
         }
-        
-        .page-header {
-            padding: 32px;
+        .user-management-header {
+            padding: 32px 36px;
         }
-        
         .header-left h1 {
-            font-size: 32px;
+            font-size: 36px;
         }
     }
     
     @media (max-width: 992px) {
-        .stats-row {
+        .user-management-container {
+            padding: 20px;
+        }
+        .user-management-header {
+            padding: 28px 32px;
+        }
+        .header-left h1 {
+            font-size: 32px;
+        }
+        .user-stats-row {
             grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .user-table thead th,
-        .user-table tbody td {
-            padding: 16px 12px;
-        }
-        
-        .user-table thead th:first-child,
-        .user-table tbody td:first-child {
-            padding-left: 20px;
-        }
-        
-        .user-table thead th:last-child,
-        .user-table tbody td:last-child {
-            padding-right: 20px;
         }
     }
     
@@ -603,66 +659,42 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         .user-management-container {
             padding: 16px;
         }
-        
-        .page-header {
+        .user-management-header {
             padding: 24px;
-            margin-bottom: 24px;
         }
-        
-        .header-content {
+        .user-management-header-content {
             flex-direction: column;
             align-items: stretch;
         }
-        
         .header-left h1 {
             font-size: 28px;
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
         }
-        
-        .stats-row {
-            grid-template-columns: 1fr;
-        }
-        
         .btn-add-user {
             width: 100%;
             justify-content: center;
         }
-        
-        .user-table thead th {
-            font-size: 10px;
-            padding: 14px 8px;
+        .user-stats-row {
+            grid-template-columns: 1fr;
         }
-        
-        .user-table tbody td {
+        .user-management-table thead th {
+            padding: 18px 14px;
+            font-size: 11px;
+        }
+        .user-management-table tbody td {
+            padding: 16px 14px;
             font-size: 13px;
-            padding: 14px 8px;
         }
-        
-        .user-table thead th:first-child,
-        .user-table tbody td:first-child {
-            padding-left: 16px;
-        }
-        
-        .user-table thead th:last-child,
-        .user-table tbody td:last-child {
-            padding-right: 16px;
-        }
-        
         .user-avatar {
-            width: 40px;
-            height: 40px;
-            font-size: 16px;
+            width: 42px;
+            height: 42px;
+            font-size: 18px;
         }
-        
-        .actions {
+        .user-actions {
             flex-direction: column;
-        }
-        
-        .btn-action {
-            font-size: 10px;
-            padding: 6px 12px;
+            gap: 8px;
         }
     }
     
@@ -670,107 +702,76 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         .user-management-container {
             padding: 12px;
         }
-        
-        .page-header {
+        .user-management-header {
             padding: 20px;
         }
-        
         .header-left h1 {
             font-size: 24px;
         }
-        
-        .header-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 24px;
-        }
-        
-        .stat-card {
-            padding: 16px 20px;
-        }
-        
-        .stat-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-        }
-        
         .stat-number {
             font-size: 24px;
         }
-        
-        .stat-label {
-            font-size: 11px;
-        }
-        
-        .user-table thead th {
-            font-size: 9px;
-        }
-        
         .user-avatar {
-            width: 36px;
-            height: 36px;
-            font-size: 14px;
+            width: 38px;
+            height: 38px;
+            font-size: 16px;
         }
-        
-        .badge {
-            font-size: 10px;
-            padding: 5px 12px;
+        .btn-action {
+            padding: 8px 14px;
+            font-size: 11px;
         }
     }
 </style>
 
 <div class="user-management-container">
-    <!-- PAGE HEADER -->
-    <div class="page-header">
-        <div class="header-content">
+    <!-- HEADER -->
+    <div class="user-management-header">
+        <div class="user-management-header-content">
             <div class="header-left">
                 <h1>
-                    <div class="header-icon">
-                        <i class="fa fa-users"></i>
-                    </div>
+                    <i class="fa fa-users"></i>
                     <span>User Management</span>
                 </h1>
                 
                 <!-- STATS -->
-                <div class="stats-row">
-                    <div class="stat-card">
+                <div class="user-stats-row">
+                    <div class="user-stat-item">
                         <div class="stat-icon">
                             <i class="fa fa-users"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number counter" data-target="<?php echo $total_users; ?>">0</div>
                             <div class="stat-label">Total Users</div>
+                            <div class="stat-number counter" data-target="<?php echo $total_users; ?>">0</div>
                         </div>
                     </div>
                     
-                    <div class="stat-card">
+                    <div class="user-stat-item">
                         <div class="stat-icon">
                             <i class="fa fa-check-circle"></i>
                         </div>
                         <div class="stat-content">
+                            <div class="stat-label">Active</div>
                             <div class="stat-number counter" data-target="<?php echo $active_users; ?>">0</div>
-                            <div class="stat-label">Active Users</div>
                         </div>
                     </div>
                     
-                    <div class="stat-card">
+                    <div class="user-stat-item">
                         <div class="stat-icon">
                             <i class="fa fa-shield"></i>
                         </div>
                         <div class="stat-content">
+                            <div class="stat-label">Admins</div>
                             <div class="stat-number counter" data-target="<?php echo $admin_users; ?>">0</div>
-                            <div class="stat-label">Administrators</div>
                         </div>
                     </div>
                     
-                    <div class="stat-card">
+                    <div class="user-stat-item">
                         <div class="stat-icon">
                             <i class="fa fa-star"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number counter" data-target="<?php echo $manager_users; ?>">0</div>
                             <div class="stat-label">Managers</div>
+                            <div class="stat-number counter" data-target="<?php echo $manager_users; ?>">0</div>
                         </div>
                     </div>
                 </div>
@@ -778,16 +779,15 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
             
             <a href="user-create.php" class="btn-add-user">
                 <i class="fa fa-plus"></i>
-                <span>Add New User</span>
+                <span>Add User</span>
             </a>
         </div>
     </div>
     
-    <!-- TABLE CARD -->
-    <div class="table-card">
-        <div class="table-wrapper">
-            <?php if (count($users) > 0): ?>
-            <table class="user-table">
+    <!-- TABLE -->
+    <div class="user-table-card">
+        <div class="user-table-wrapper">
+            <table class="user-management-table">
                 <thead>
                     <tr>
                         <th><i class="fa fa-user"></i> Name</th>
@@ -801,13 +801,13 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                 </thead>
                 <tbody>
                     <?php foreach ($users as $u): ?>
-                    <tr data-user-id="<?php echo $u['id']; ?>">
+                    <tr>
                         <td>
-                            <div class="user-cell">
+                            <div class="user-cell-name">
                                 <div class="user-avatar">
                                     <?php echo strtoupper(substr($u['full_name'], 0, 1)); ?>
                                 </div>
-                                <span class="user-name">
+                                <span class="user-name-text">
                                     <?php echo htmlspecialchars($u['full_name']); ?>
                                 </span>
                             </div>
@@ -815,26 +815,26 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                         <td><?php echo htmlspecialchars($u['username']); ?></td>
                         <td><?php echo htmlspecialchars($u['email']); ?></td>
                         <td>
-                            <span class="badge <?php echo $u['role']; ?>">
+                            <span class="user-role-badge <?php echo $u['role']; ?>">
                                 <?php echo ucfirst($u['role']); ?>
                             </span>
                         </td>
                         <td>
-                            <span class="badge <?php echo $u['status']; ?>">
+                            <span class="user-status-badge <?php echo $u['status']; ?>">
                                 <?php echo ucfirst($u['status']); ?>
                             </span>
                         </td>
-                        <td class="date-text">
-                            <?php echo date('M d, Y', strtotime($u['created_at'])); ?>
-                        </td>
+                        <td class="user-date"><?php echo date('M d, Y', strtotime($u['created_at'])); ?></td>
                         <td>
-                            <div class="actions">
+                            <div class="user-actions">
                                 <a href="user-edit.php?id=<?php echo $u['id']; ?>" class="btn-action edit">
-                                    <i class="fa fa-edit"></i> Edit
+                                    <i class="fa fa-edit"></i>
+                                    <span>Edit</span>
                                 </a>
                                 <?php if ($u['id'] != $auth->getUserId()): ?>
-                                <a href="user-delete.php?id=<?php echo $u['id']; ?>" class="btn-action delete">
-                                    <i class="fa fa-trash"></i> Delete
+                                <a href="user-delete.php?id=<?php echo $u['id']; ?>" class="btn-action delete delete-confirm">
+                                    <i class="fa fa-trash"></i>
+                                    <span>Delete</span>
                                 </a>
                                 <?php endif; ?>
                             </div>
@@ -843,13 +843,6 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            <?php else: ?>
-            <div class="empty-state">
-                <i class="fa fa-users"></i>
-                <h3>No Users Found</h3>
-                <p>There are no users in the system yet.</p>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -864,7 +857,7 @@ $(document).ready(function() {
         $({ countNum: 0 }).animate({
             countNum: countTo
         }, {
-            duration: 1800,
+            duration: 2000,
             easing: 'easeOutCubic',
             step: function() {
                 $this.text(Math.floor(this.countNum));
@@ -875,96 +868,42 @@ $(document).ready(function() {
         });
     });
     
-    // STAGGERED ROW ANIMATION
-    $('.user-table tbody tr').each(function(index) {
+    // TABLE ROW STAGGER ANIMATION
+    $('.user-management-table tbody tr').each(function(index) {
         $(this).css({
-            'animation': `slideUp 0.4s ease ${index * 0.05}s both`
+            'animation': `tableSlideUp 0.4s ease ${index * 0.05}s both`
         });
     });
     
     // DELETE CONFIRMATION
-    $('.btn-action.delete').on('click', function(e) {
-        e.preventDefault();
-        const userName = $(this).closest('tr').find('.user-name').text().trim();
-        
-        if (confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
-            window.location.href = $(this).attr('href');
-        }
-    });
-    
-    // BUTTON HOVER EFFECTS
-    $('.btn-action').on('mouseenter', function() {
-        $(this).find('i').css({
-            'transform': 'scale(1.2)',
-            'transition': 'transform 0.3s ease'
-        });
-    }).on('mouseleave', function() {
-        $(this).find('i').css({
-            'transform': 'scale(1)'
-        });
-    });
-    
-    // ROW CLICK HIGHLIGHT
-    $('.user-table tbody tr').on('click', function(e) {
-        if (!$(e.target).closest('.actions').length) {
-            $(this).addClass('highlight');
-            setTimeout(() => {
-                $(this).removeClass('highlight');
-            }, 1000);
-        }
-    });
-    
-    // ADD RIPPLE EFFECT TO BUTTONS
-    $('.btn-add-user, .btn-action').on('click', function(e) {
-        let ripple = $('<span class="ripple"></span>');
-        $(this).append(ripple);
-        
-        let x = e.pageX - $(this).offset().left;
-        let y = e.pageY - $(this).offset().top;
-        
-        ripple.css({
-            left: x + 'px',
-            top: y + 'px',
-            position: 'absolute',
-            width: '0',
-            height: '0',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.5)',
-            transform: 'translate(-50%, -50%)',
-            animation: 'rippleEffect 0.6s ease-out'
-        });
-        
-        setTimeout(function() {
-            ripple.remove();
-        }, 600);
-    });
-    
-    // KEYBOARD NAVIGATION
-    $(document).on('keydown', function(e) {
-        // Ctrl/Cmd + K to focus search (if you add search later)
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    $('.delete-confirm').on('click', function(e) {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
             e.preventDefault();
-            // Focus search input
+            return false;
         }
     });
-});
-
-// CSS for ripple animation
-$('<style>')
-    .text(`
-        @keyframes rippleEffect {
-            to {
-                width: 500px;
-                height: 500px;
-                opacity: 0;
-            }
-        }
+    
+    // ENHANCED HOVER EFFECTS
+    $('.user-management-table tbody tr').each(function() {
+        const $row = $(this);
         
-        .user-table tbody tr.highlight {
-            background: linear-gradient(90deg, rgba(99, 102, 241, 0.08), transparent) !important;
-        }
-    `)
-    .appendTo('head');
+        $row.on('mouseenter', function() {
+            $(this).find('.btn-action i').css({
+                'transition': 'transform 0.3s ease'
+            });
+        });
+    });
+    
+    // SMOOTH SCROLL TO TOP ON PAGE LOAD
+    if (window.location.hash) {
+        setTimeout(function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }, 100);
+    }
+});
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

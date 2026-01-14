@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Create Pricing Item';
 require_once 'includes/header.php';
 require_once 'components/pricing.php';
@@ -20,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($pricing->create($data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $_POST['project_id'] . '&tab=pricing');
         exit;
     }

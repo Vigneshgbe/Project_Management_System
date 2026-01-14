@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Edit Requirement';
 require_once 'includes/header.php';
 require_once 'components/requirement.php';
@@ -10,6 +12,7 @@ $req_obj = new Requirement();
 $req = $req_obj->getById($req_id);
 
 if (!$req) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
@@ -24,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($req_obj->update($req_id, $data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $req['project_id'] . '&tab=requirements');
         exit;
     }

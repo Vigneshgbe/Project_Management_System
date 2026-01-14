@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Delete Requirement';
 require_once 'includes/header.php';
 require_once 'components/requirement.php';
@@ -9,6 +11,7 @@ $req_id = $_GET['id'] ?? 0;
 $confirm = $_GET['confirm'] ?? '';
 
 if (!$req_id) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
@@ -17,6 +20,7 @@ $req_obj = new Requirement();
 $req = $req_obj->getById($req_id);
 
 if (!$req) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
@@ -25,9 +29,11 @@ $project_id = $req['project_id'];
 
 // Handle deletion confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
-    $req_obj->delete($req_id);
-    header('Location: project-detail.php?id=' . $project_id . '&tab=requirements&deleted=1');
-    exit;
+    if ($req_obj->delete($req_id)) {
+        ob_end_clean(); // Clear buffer before redirect
+        header('Location: project-detail.php?id=' . $project_id . '&tab=requirements&deleted=1');
+        exit;
+    }
 }
 ?>
 

@@ -91,53 +91,57 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         font-size: 28px;
     }
     
-    /* STATS ROW */
+    /* STATS ROW - HORIZONTAL LAYOUT */
     .stats-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 16px;
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
     }
     
     .stat-card {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        padding: 16px 20px;
+        padding: 16px 24px;
         border-radius: 12px;
         border: 1px solid rgba(99, 102, 241, 0.15);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 14px;
         transition: all 0.3s ease;
+        flex: 1;
+        min-width: 180px;
     }
     
     .stat-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.25);
     }
     
     .stat-icon {
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 20px;
+        font-size: 22px;
         flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
     
     .stat-content {
-        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
     
     .stat-number {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 800;
         color: var(--primary);
         line-height: 1;
-        display: block;
-        margin-bottom: 4px;
     }
     
     .stat-label {
@@ -412,7 +416,19 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
     
     @media (max-width: 992px) {
         .stats-row {
-            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .stat-card {
+            min-width: 180px;
+            padding: 14px 20px;
+        }
+        .stat-icon {
+            width: 46px;
+            height: 46px;
+            font-size: 20px;
+        }
+        .stat-number {
+            font-size: 24px;
         }
         .user-table thead th,
         .user-table tbody td {
@@ -445,7 +461,20 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
             justify-content: center;
         }
         .stats-row {
-            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .stat-card {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 140px;
+            padding: 12px 16px;
+        }
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            font-size: 18px;
+        }
+        .stat-number {
+            font-size: 22px;
         }
         .user-table thead th,
         .user-table tbody td {
@@ -479,7 +508,13 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
             align-items: flex-start;
             gap: 8px;
         }
+        .stats-row {
+            flex-direction: column;
+            gap: 10px;
+        }
         .stat-card {
+            flex: 1 1 100%;
+            min-width: unset;
             padding: 12px 16px;
         }
         .stat-icon {

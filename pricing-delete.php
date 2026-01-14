@@ -800,10 +800,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 $(document).ready(function() {
     // CONFIRMATION ON DELETE
     $('#deleteForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        if (confirm('Are you absolutely sure you want to delete this pricing item? This action is permanent and cannot be undone.')) {
-            this.submit();
+        if (!confirm('Are you absolutely sure you want to delete this pricing item? This action is permanent and cannot be undone.')) {
+            e.preventDefault();
         }
     });
     

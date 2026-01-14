@@ -1,6 +1,9 @@
 <?php
+// START OUTPUT BUFFERING
+ob_start();
+
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    session_start(); 
 }
 
 // DETERMINE AUTH COMPONENT PATH DYNAMICALLY
@@ -98,7 +101,10 @@ function is_admin_active($check_file = null) {
     
     return '';
 }
+// FLUSH OUTPUT BUFFER
+ob_end_flush();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

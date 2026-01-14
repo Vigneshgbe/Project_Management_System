@@ -1,4 +1,7 @@
 <?php
+// START OUTPUT BUFFERING FIRST
+ob_start();
+
 $page_title = 'Create Task';
 require_once 'includes/header.php';
 require_once 'components/task.php';
@@ -11,22 +14,31 @@ $project_id = $_GET['project_id'] ?? 0;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $task = new Task();
     
+    // FIX: Properly handle empty phase_id
+    $phase_id = !empty($_POST['phase_id']) && is_numeric($_POST['phase_id']) ? intval($_POST['phase_id']) : null;
+    $assigned_to = !empty($_POST['assigned_to']) && is_numeric($_POST['assigned_to']) ? intval($_POST['assigned_to']) : null;
+    $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+    $estimated_hours = !empty($_POST['estimated_hours']) && is_numeric($_POST['estimated_hours']) ? floatval($_POST['estimated_hours']) : null;
+    
     $data = [
-        'project_id' => $_POST['project_id'],
-        'phase_id' => $_POST['phase_id'] ?: null,
-        'task_name' => $_POST['task_name'],
-        'description' => $_POST['description'],
-        'assigned_to' => $_POST['assigned_to'] ?: null,
+        'project_id' => intval($_POST['project_id']),
+        'phase_id' => $phase_id,
+        'task_name' => trim($_POST['task_name']),
+        'description' => trim($_POST['description']),
+        'assigned_to' => $assigned_to,
         'status' => $_POST['status'],
         'priority' => $_POST['priority'],
-        'due_date' => $_POST['due_date'] ?: null,
-        'estimated_hours' => $_POST['estimated_hours'] ?: null,
+        'due_date' => $due_date,
+        'estimated_hours' => $estimated_hours,
         'created_by' => $auth->getUserId()
     ];
     
     if ($task->create($data)) {
+        ob_end_clean(); // Clear output buffer before redirect
         header('Location: project-detail.php?id=' . $_POST['project_id'] . '&tab=tasks');
         exit;
+    } else {
+        $error_message = "Failed to create task. Please try again.";
     }
 }
 
@@ -62,6 +74,35 @@ $users = $user->getActiveUsers();
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* ERROR ALERT */
+    .alert-danger-modern {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: shake 0.5s ease;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+    
+    .alert-danger-modern i {
+        color: #ef4444;
+        font-size: 20px;
+    }
+    
+    .alert-danger-modern strong {
+        color: #991b1b;
+        font-weight: 700;
     }
     
     /* PAGE HEADER */
@@ -561,6 +602,13 @@ $users = $user->getActiveUsers();
     
     <div class="row">
         <div class="col-md-12">
+            <?php if (isset($error_message)): ?>
+            <div class="alert-danger-modern">
+                <i class="fa fa-exclamation-circle"></i>
+                <strong><?php echo htmlspecialchars($error_message); ?></strong>
+            </div>
+            <?php endif; ?>
+            
             <div class="form-card">
                 <form method="POST" action="" id="taskForm">
                     <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
@@ -600,7 +648,8 @@ $users = $user->getActiveUsers();
                                            class="form-control-modern" 
                                            id="phase_id" 
                                            name="phase_id" 
-                                           placeholder="Enter phase ID if applicable">
+                                           placeholder="Enter phase ID if applicable"
+                                           min="1">
                                 </div>
                             </div>
                         </div>
@@ -903,4 +952,7 @@ $(document).ready(function() {
 });
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php 
+ob_end_flush();
+require_once 'includes/footer.php'; 
+?>

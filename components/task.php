@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../config.php'; 
 
 class Task {
     private $db;
@@ -9,20 +9,30 @@ class Task {
     }
     
     public function create($data) {
+        // CRITICAL FIX: Handle NULL values properly for MySQL
         $stmt = $this->db->prepare("INSERT INTO tasks (project_id, phase_id, task_name, description, assigned_to, status, priority, due_date, estimated_hours, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        
+        // Bind with proper NULL handling
         $stmt->bind_param("iisssissdi", 
             $data['project_id'], 
-            $data['phase_id'], 
+            $data['phase_id'],           // Will be NULL if not set
             $data['task_name'], 
             $data['description'], 
-            $data['assigned_to'], 
+            $data['assigned_to'],        // Will be NULL if not set
             $data['status'], 
             $data['priority'], 
-            $data['due_date'], 
-            $data['estimated_hours'], 
+            $data['due_date'],           // Will be NULL if not set
+            $data['estimated_hours'],    // Will be NULL if not set
             $data['created_by']
         );
-        return $stmt->execute() ? $this->db->insert_id : false;
+        
+        try {
+            return $stmt->execute() ? $this->db->insert_id : false;
+        } catch (mysqli_sql_exception $e) {
+            // Log the error for debugging
+            error_log("Task creation error: " . $e->getMessage());
+            return false;
+        }
     }
     
     public function update($id, $data) {

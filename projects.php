@@ -20,7 +20,7 @@ if ($auth->isAdmin() || $auth->isManager()) {
 ?>
 
 <style>
-    /* MODERN PROJECTS PAGE DESIGN */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -32,27 +32,30 @@ if ($auth->isAdmin() || $auth->isManager()) {
         --dark: #1e293b;
         --light: #f8fafc;
         --border: #e2e8f0;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     }
     
     .projects-container {
         padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        animation: fadeInUp 0.4s ease;
+        animation: fadeIn 0.4s ease;
     }
     
-    @keyframes fadeInUp {
+    @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* MODERN PAGE HEADER */
+    /* PAGE HEADER */
     .page-header {
         background: white;
         padding: 32px;
         border-radius: 16px;
         margin-bottom: 28px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        box-shadow: var(--shadow-md);
         border: 1px solid var(--border);
         position: relative;
         overflow: hidden;
@@ -83,17 +86,13 @@ if ($auth->isAdmin() || $auth->isManager()) {
         font-size: 28px;
     }
     
-    .page-header .btn {
-        margin-top: 0;
-    }
-    
     /* FILTER BOX */
     .filter-box {
         background: white;
-        padding: 28px;
+        padding: 24px;
         border-radius: 16px;
         margin-bottom: 28px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        box-shadow: var(--shadow);
         border: 1px solid var(--border);
     }
     
@@ -118,27 +117,36 @@ if ($auth->isAdmin() || $auth->isManager()) {
         margin-bottom: 12px;
     }
     
-    .filter-box .btn {
+    /* BUTTONS */
+    .btn {
         padding: 10px 22px;
         border-radius: 10px;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
     }
     
-    /* BUTTONS */
+    .btn i {
+        font-size: 13px;
+    }
+    
     .btn-primary {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        border: none;
         color: white;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
         color: white;
     }
     
@@ -149,15 +157,13 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     .btn-default:hover {
-        background: var(--primary);
-        color: white;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
     
     .btn-sm {
         padding: 8px 16px;
-        font-size: 12px;
+        font-size: 11px;
         border-radius: 8px;
     }
     
@@ -168,15 +174,15 @@ if ($auth->isAdmin() || $auth->isManager()) {
         border-radius: 16px;
         padding: 28px;
         margin-bottom: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
         position: relative;
         height: 100%;
         display: flex;
         flex-direction: column;
     }
     
-    .project-card::after {
+    .project-card::before {
         content: '';
         position: absolute;
         top: 0;
@@ -184,26 +190,26 @@ if ($auth->isAdmin() || $auth->isManager()) {
         width: 4px;
         height: 100%;
         background: linear-gradient(180deg, var(--primary), var(--secondary));
-        transform: scaleY(0);
-        transition: transform 0.3s ease;
         border-radius: 16px 0 0 16px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
     
     .project-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-        border-color: var(--primary);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: rgba(99, 102, 241, 0.3);
     }
     
-    .project-card:hover::after {
-        transform: scaleY(1);
+    .project-card:hover::before {
+        opacity: 1;
     }
     
     .project-card h4 {
         margin-top: 0;
         color: var(--dark);
         font-weight: 700;
-        font-size: 19px;
+        font-size: 18px;
         margin-bottom: 12px;
         line-height: 1.4;
     }
@@ -220,7 +226,7 @@ if ($auth->isAdmin() || $auth->isManager()) {
     
     .project-meta {
         color: #64748b;
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.6;
         flex: 1;
     }
@@ -232,7 +238,12 @@ if ($auth->isAdmin() || $auth->isManager()) {
         line-height: 1.5;
     }
     
-    /* MODERN BADGES */
+    .project-meta small {
+        font-size: 12px;
+        line-height: 1.8;
+    }
+    
+    /* BADGES */
     .badge-status, .badge-priority {
         padding: 6px 14px;
         border-radius: 8px;
@@ -268,21 +279,20 @@ if ($auth->isAdmin() || $auth->isManager()) {
     
     /* PROGRESS BAR */
     .progress-custom {
-        height: 10px;
+        height: 8px;
         margin-top: 16px;
         margin-bottom: 0;
-        border-radius: 8px;
+        border-radius: 6px;
         background: #e5e7eb;
         overflow: hidden;
     }
     
     .progress-custom .progress-bar {
         background: linear-gradient(90deg, var(--primary), var(--secondary));
-        line-height: 10px;
-        font-size: 10px;
-        font-weight: 700;
-        transition: width 1s ease;
-        border-radius: 8px;
+        height: 8px;
+        border-radius: 6px;
+        transition: width 0.8s ease;
+        font-size: 0;
     }
     
     /* CARD FOOTER */
@@ -298,28 +308,51 @@ if ($auth->isAdmin() || $auth->isManager()) {
     /* ALERT */
     .alert {
         border-radius: 12px;
-        padding: 18px 24px;
+        padding: 16px 20px;
         border: 1px solid var(--border);
         margin-bottom: 24px;
-        animation: fadeInUp 0.4s ease;
         font-weight: 500;
         font-size: 14px;
+        animation: fadeIn 0.4s ease;
     }
     
     .alert-info {
-        background: #dbeafe;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
         color: #1e40af;
-        border-color: #93c5fd;
+        border-color: rgba(59, 130, 246, 0.2);
     }
     
     .alert i {
         margin-right: 8px;
     }
     
+    /* SMOOTH SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+    
     /* RESPONSIVE */
     @media (max-width: 1200px) {
-        .projects-container { padding: 20px; }
-        .page-header h1 { font-size: 28px; }
+        .projects-container {
+            padding: 20px;
+        }
+        .page-header h1 {
+            font-size: 28px;
+        }
     }
     
     @media (max-width: 992px) {
@@ -338,7 +371,9 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     @media (max-width: 768px) {
-        .projects-container { padding: 16px; }
+        .projects-container {
+            padding: 16px;
+        }
         .page-header {
             padding: 24px 20px;
             margin-bottom: 24px;
@@ -353,6 +388,7 @@ if ($auth->isAdmin() || $auth->isManager()) {
         .page-header .btn {
             margin-top: 12px;
             width: 100%;
+            justify-content: center;
         }
         .filter-box {
             padding: 20px;
@@ -360,6 +396,7 @@ if ($auth->isAdmin() || $auth->isManager()) {
         .filter-box .btn {
             width: 100%;
             margin-bottom: 8px;
+            justify-content: center;
         }
         .project-card {
             padding: 20px;
@@ -368,11 +405,24 @@ if ($auth->isAdmin() || $auth->isManager()) {
     }
     
     @media (max-width: 480px) {
-        .projects-container { padding: 12px; }
-        .page-header { padding: 20px 16px; }
-        .page-header h1 { font-size: 22px; }
-        .filter-box { padding: 16px; }
-        .project-card { padding: 18px; }
+        .projects-container {
+            padding: 12px;
+        }
+        .page-header {
+            padding: 20px 16px;
+        }
+        .page-header h1 {
+            font-size: 20px;
+        }
+        .filter-box {
+            padding: 16px;
+        }
+        .project-card {
+            padding: 18px;
+        }
+        .project-card h4 {
+            font-size: 16px;
+        }
     }
 </style>
 
@@ -437,7 +487,7 @@ if ($auth->isAdmin() || $auth->isManager()) {
     <div class="row" id="projectsGrid">
         <?php foreach ($projects as $index => $proj): ?>
         <div class="col-md-4 col-sm-6">
-            <div class="project-card" style="animation-delay: <?php echo $index * 0.05; ?>s;">
+            <div class="project-card">
                 <h4>
                     <a href="project-detail.php?id=<?php echo $proj['id']; ?>">
                         <?php echo htmlspecialchars($proj['project_name']); ?>
@@ -474,16 +524,14 @@ if ($auth->isAdmin() || $auth->isManager()) {
                     <?php if (isset($proj['task_count']) && $proj['task_count'] > 0): ?>
                     <div class="progress progress-custom">
                         <?php $progress = round(($proj['completed_tasks'] / $proj['task_count']) * 100); ?>
-                        <div class="progress-bar" role="progressbar" style="width: 0%" data-progress="<?php echo $progress; ?>">
-                            <?php echo $progress; ?>%
-                        </div>
+                        <div class="progress-bar" role="progressbar" style="width: 0%" data-progress="<?php echo $progress; ?>"></div>
                     </div>
                     <?php endif; ?>
                 </div>
                 
                 <div class="card-footer-actions">
                     <a href="project-detail.php?id=<?php echo $proj['id']; ?>" class="btn btn-sm btn-primary">
-                        <i class="fa fa-eye"></i> View Details
+                        <i class="fa fa-eye"></i> View
                     </a>
                     <?php if ($auth->isManager()): ?>
                     <a href="project-edit.php?id=<?php echo $proj['id']; ?>" class="btn btn-sm btn-default">
@@ -499,51 +547,21 @@ if ($auth->isAdmin() || $auth->isManager()) {
 </div>
 
 <script>
-    $(document).ready(function() {
-        // Animate progress bars
-        setTimeout(function() {
-            $('.progress-bar').each(function() {
-                const $bar = $(this);
-                const progress = $bar.attr('data-progress');
-                $bar.css('width', progress + '%');
-            });
-        }, 300);
-        
-        // Staggered card animation
-        $('.project-card').each(function(index) {
-            $(this).css({
-                'animation': `fadeInUp 0.4s ease ${index * 0.05}s both`
-            });
+$(document).ready(function() {
+    // Animate progress bars
+    setTimeout(function() {
+        $('.progress-bar').each(function() {
+            const $bar = $(this);
+            const progress = $bar.attr('data-progress');
+            $bar.css('width', progress + '%');
         });
-        
-        // Real-time search
-        let searchTimeout;
-        $('input[name="search"]').on('keyup', function() {
-            clearTimeout(searchTimeout);
-            const searchTerm = $(this).val().toLowerCase();
-            
-            if (searchTerm.length === 0) {
-                $('.project-card').parent().show();
-                return;
-            }
-            
-            searchTimeout = setTimeout(function() {
-                $('.project-card').each(function() {
-                    const cardText = $(this).text().toLowerCase();
-                    if (cardText.indexOf(searchTerm) > -1) {
-                        $(this).parent().fadeIn(200);
-                    } else {
-                        $(this).parent().fadeOut(200);
-                    }
-                });
-            }, 300);
-        });
-        
-        // Auto-submit on select change
-        $('select[name="status"], select[name="priority"]').on('change', function() {
-            $('#filterForm').submit();
-        });
+    }, 300);
+    
+    // Auto-submit on select change
+    $('select[name="status"], select[name="priority"]').on('change', function() {
+        $('#filterForm').submit();
     });
+});
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

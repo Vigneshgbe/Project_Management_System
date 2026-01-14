@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Edit Project';
 require_once 'includes/header.php';
 require_once 'components/project.php';
@@ -10,6 +12,7 @@ $project_obj = new Project();
 $project = $project_obj->getById($project_id);
 
 if (!$project) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
@@ -27,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($project_obj->update($project_id, $data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $project_id);
         exit;
     }
@@ -34,504 +38,497 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN */
-    
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --secondary: #8b5cf6;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    }
-    
     .project-edit-container {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-        animation: fadeIn 0.4s ease;
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    .project-edit-header {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        color: #1e293b !important;
+        padding: 30px 35px !important;
+        border-radius: 20px !important;
+        margin-bottom: 30px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     
-    /* PAGE HEADER */
-    .page-header {
-        background: white;
-        padding: 32px;
-        border-radius: 16px;
-        margin-bottom: 32px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border);
-        position: relative;
-        overflow: hidden;
+    .project-edit-header::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
     }
     
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--primary), var(--secondary));
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
-    .page-header h1 {
-        margin: 0;
-        font-weight: 700;
-        font-size: 32px;
-        color: var(--dark);
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .project-edit-header h1 {
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 32px !important;
+        position: relative !important;
+        z-index: 1 !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
     
-    .page-header h1 i {
-        color: var(--primary);
-        font-size: 28px;
+    .project-edit-header h1 i {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
     
-    /* PANELS */
-    .panel {
-        border: none;
-        box-shadow: var(--shadow);
-        border-radius: 16px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        background: white;
-        border: 1px solid var(--border);
-        margin-bottom: 24px;
-        animation: fadeInUp 0.4s ease;
+    .form-card {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 35px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        margin-bottom: 25px !important;
     }
     
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    .info-card {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 30px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        position: sticky !important;
+        top: 20px !important;
     }
     
-    .panel:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
+    .info-card-title {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 20px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
-    .panel-heading {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        padding: 20px 24px;
-        border: none;
+    .info-card-title i {
+        color: #667eea !important;
     }
     
-    .panel-title {
-        font-size: 17px;
-        font-weight: 700;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: white;
+    .info-item {
+        margin-bottom: 20px !important;
+        padding: 12px 16px !important;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.03)) !important;
+        border-radius: 12px !important;
+        border-left: 3px solid #667eea !important;
+        transition: all 0.3s ease !important;
     }
     
-    .panel-body {
-        padding: 32px;
-        background: white;
+    .info-item:hover {
+        transform: translateX(4px) !important;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05)) !important;
     }
     
-    /* INFO PANEL */
-    .panel-info > .panel-heading {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
+    .info-item:last-child {
+        margin-bottom: 0 !important;
     }
     
-    .panel-info .panel-body p {
-        margin-bottom: 16px;
-        padding: 12px 16px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border-radius: 8px;
-        border-left: 3px solid var(--primary);
-        transition: all 0.3s ease;
+    .info-item strong {
+        display: block !important;
+        color: #64748b !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+        margin-bottom: 6px !important;
     }
     
-    .panel-info .panel-body p:hover {
-        transform: translateX(4px);
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+    .info-item span {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
     }
     
-    .panel-info .panel-body p:last-child {
-        margin-bottom: 0;
+    .form-section-title {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
-    .panel-info .panel-body strong {
-        color: var(--dark);
-        font-weight: 700;
-        display: block;
-        margin-bottom: 4px;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #64748b;
+    .form-section-title i {
+        color: #667eea !important;
     }
     
-    /* FORM GROUPS */
-    .form-group {
-        margin-bottom: 24px;
+    .form-group-modern {
+        margin-bottom: 25px !important;
     }
     
-    .form-group label {
-        display: block;
-        font-weight: 700;
-        font-size: 11px;
-        color: #64748b;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
+    .form-group-modern label {
+        display: block !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        color: #1e293b !important;
+        margin-bottom: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     
-    .form-group label .text-danger {
-        color: var(--danger);
-        margin-left: 4px;
+    .form-group-modern label .required {
+        color: #ef4444 !important;
+        margin-left: 4px !important;
     }
     
-    /* FORM CONTROLS */
-    .form-control {
-        width: 100%;
-        padding: 14px 16px;
-        border: 2px solid var(--border);
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: 500;
-        color: var(--dark);
-        background: white;
-        transition: all 0.3s ease;
+    .form-control-modern {
+        width: 100% !important;
+        padding: 14px 18px !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #1e293b !important;
+        background: white !important;
+        transition: all 0.3s ease !important;
     }
     
-    .form-control:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    .form-control-modern:focus {
+        outline: none !important;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1) !important;
     }
     
-    .form-control::placeholder {
-        color: #94a3b8;
+    .form-control-modern:hover {
+        border-color: #cbd5e1 !important;
     }
     
-    .form-control:disabled {
-        background: #f1f5f9;
-        color: #64748b;
-        cursor: not-allowed;
-        opacity: 0.7;
+    .form-control-modern::placeholder {
+        color: #94a3b8 !important;
     }
     
-    textarea.form-control {
-        resize: vertical;
-        min-height: 120px;
-        font-family: inherit;
-        line-height: 1.6;
+    .form-control-modern:disabled {
+        background: #f1f5f9 !important;
+        color: #64748b !important;
+        cursor: not-allowed !important;
+        opacity: 0.7 !important;
     }
     
-    select.form-control {
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 16px center;
-        padding-right: 40px;
+    textarea.form-control-modern {
+        resize: vertical !important;
+        min-height: 120px !important;
     }
     
-    /* TEXT MUTED */
-    .text-muted {
-        color: #94a3b8;
-        font-size: 12px;
-        font-weight: 500;
-        margin-top: 6px;
-        display: block;
+    select.form-control-modern {
+        appearance: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 18px center !important;
+        padding-right: 45px !important;
     }
     
-    small.text-muted {
-        font-size: 11px;
+    .form-hint {
+        display: block !important;
+        margin-top: 8px !important;
+        font-size: 13px !important;
+        color: #64748b !important;
+        font-weight: 500 !important;
     }
     
-    /* BUTTONS */
-    .btn {
-        border-radius: 10px;
-        padding: 12px 28px;
-        font-weight: 700;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+    .form-hint i {
+        margin-right: 5px !important;
     }
     
-    .btn i {
-        font-size: 14px;
+    .form-actions {
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 35px !important;
+        padding-top: 30px !important;
+        border-top: 2px solid #e2e8f0 !important;
+        flex-wrap: wrap !important;
     }
     
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    .btn-modern {
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        text-decoration: none !important;
     }
     
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
-        color: white;
+    .btn-modern.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3) !important;
     }
     
-    .btn-primary:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+    .btn-modern.primary:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
     }
     
-    .btn-default {
-        background: white;
-        color: var(--primary);
-        border: 2px solid var(--primary);
+    .btn-modern.secondary {
+        background: white !important;
+        color: #667eea !important;
+        border: 2px solid #667eea !important;
     }
     
-    .btn-default:hover {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-        transform: translateY(-2px);
+    .btn-modern.secondary:hover {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+        transform: translateY(-2px) !important;
     }
     
-    .btn-default:active {
-        transform: translateY(0);
-    }
-    
-    .btn-lg {
-        padding: 14px 32px;
-        font-size: 13px;
-    }
-    
-    /* HORIZONTAL RULE */
-    hr {
-        border: none;
-        height: 2px;
-        background: var(--border);
-        margin: 32px 0;
-    }
-    
-    /* SMOOTH SCROLLBAR */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-dark);
-    }
-    
-    /* RESPONSIVE DESIGN */
     @media (max-width: 1200px) {
         .project-edit-container {
-            padding: 20px;
+            padding: 15px !important;
         }
-        .page-header {
-            padding: 28px;
-        }
-        .page-header h1 {
-            font-size: 28px;
-        }
-        .panel-body {
-            padding: 28px;
+        .project-edit-header, .form-card, .info-card {
+            padding: 25px 30px !important;
         }
     }
     
     @media (max-width: 992px) {
-        .panel-body {
-            padding: 24px;
+        .info-card {
+            position: static !important;
+            margin-top: 25px !important;
         }
     }
     
     @media (max-width: 768px) {
         .project-edit-container {
-            padding: 16px;
+            padding: 10px !important;
         }
-        .page-header {
-            padding: 24px 20px;
-            margin-bottom: 24px;
+        .project-edit-header {
+            padding: 20px !important;
+            margin-bottom: 20px !important;
         }
-        .page-header h1 {
-            font-size: 24px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
+        .project-edit-header h1 {
+            font-size: 24px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
         }
-        .panel-body {
-            padding: 20px;
+        .form-card, .info-card {
+            padding: 20px !important;
         }
-        .form-control {
-            padding: 12px 14px;
-            font-size: 14px;
+        .form-actions {
+            flex-direction: column !important;
         }
-        .btn {
-            padding: 12px 24px;
-        }
-        .btn-lg {
-            padding: 14px 28px;
-            width: 100%;
-            margin-bottom: 10px;
-            justify-content: center;
+        .btn-modern {
+            width: 100% !important;
+            justify-content: center !important;
         }
     }
     
     @media (max-width: 480px) {
         .project-edit-container {
-            padding: 12px;
+            padding: 8px !important;
         }
-        .page-header {
-            padding: 20px;
+        .project-edit-header h1 {
+            font-size: 20px !important;
         }
-        .page-header h1 {
-            font-size: 20px;
+        .form-card, .info-card {
+            padding: 15px !important;
         }
-        .panel-body {
-            padding: 16px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-control {
-            padding: 10px 14px;
-            font-size: 13px;
+        .form-control-modern {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
         }
     }
 </style>
 
 <div class="project-edit-container container-fluid">
-    <div class="page-header">
-        <h1><i class="fa fa-edit"></i> Edit Project</h1>
+    <div class="project-edit-header">
+        <h1>
+            <i class="fa fa-edit"></i> Edit Project
+        </h1>
     </div>
     
     <div class="row">
         <div class="col-md-8">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title"><i class="fa fa-folder"></i> Project Details</h3>
-                </div>
-                <div class="panel-body">
-                    <form method="POST" action="" id="projectForm">
-                        <div class="form-group">
-                            <label for="project_name">Project Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="project_name" name="project_name" value="<?php echo htmlspecialchars($project['project_name']); ?>" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Project Code</label>
-                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($project['project_code']); ?>" disabled>
-                            <small class="text-muted">Project code cannot be changed</small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="client_name">Client Name</label>
-                            <input type="text" class="form-control" id="client_name" name="client_name" value="<?php echo htmlspecialchars($project['client_name']); ?>" placeholder="Enter client name">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="description">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="4" placeholder="Enter project description"><?php echo htmlspecialchars($project['description']); ?></textarea>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="start_date">Start Date</label>
-                                    <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo $project['start_date']; ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="end_date">End Date</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo $project['end_date']; ?>">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="status">Status</label>
-                                    <select class="form-control" id="status" name="status">
-                                        <option value="planning" <?php echo $project['status'] === 'planning' ? 'selected' : ''; ?>>Planning</option>
-                                        <option value="in_progress" <?php echo $project['status'] === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
-                                        <option value="on_hold" <?php echo $project['status'] === 'on_hold' ? 'selected' : ''; ?>>On Hold</option>
-                                        <option value="completed" <?php echo $project['status'] === 'completed' ? 'selected' : ''; ?>>Completed</option>
-                                        <option value="cancelled" <?php echo $project['status'] === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="priority">Priority</label>
-                                    <select class="form-control" id="priority" name="priority">
-                                        <option value="low" <?php echo $project['priority'] === 'low' ? 'selected' : ''; ?>>Low</option>
-                                        <option value="medium" <?php echo $project['priority'] === 'medium' ? 'selected' : ''; ?>>Medium</option>
-                                        <option value="high" <?php echo $project['priority'] === 'high' ? 'selected' : ''; ?>>High</option>
-                                        <option value="critical" <?php echo $project['priority'] === 'critical' ? 'selected' : ''; ?>>Critical</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="budget">Budget ($)</label>
-                                    <input type="number" class="form-control" id="budget" name="budget" step="0.01" min="0" value="<?php echo $project['budget']; ?>" placeholder="0.00">
-                                </div>
+            <div class="form-card">
+                <form method="POST" action="" id="projectForm">
+                    <div class="form-section-title">
+                        <i class="fa fa-info-circle"></i> Basic Information
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label for="project_name">
+                            Project Name <span class="required">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control-modern" 
+                               id="project_name" 
+                               name="project_name" 
+                               value="<?php echo htmlspecialchars($project['project_name']); ?>" 
+                               required>
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label>Project Code</label>
+                        <input type="text" 
+                               class="form-control-modern" 
+                               value="<?php echo htmlspecialchars($project['project_code']); ?>" 
+                               disabled>
+                        <span class="form-hint">
+                            <i class="fa fa-info-circle"></i>
+                            Project code cannot be changed
+                        </span>
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label for="client_name">Client Name</label>
+                        <input type="text" 
+                               class="form-control-modern" 
+                               id="client_name" 
+                               name="client_name" 
+                               value="<?php echo htmlspecialchars($project['client_name']); ?>" 
+                               placeholder="Enter client name">
+                    </div>
+                    
+                    <div class="form-group-modern">
+                        <label for="description">Description</label>
+                        <textarea class="form-control-modern" 
+                                  id="description" 
+                                  name="description" 
+                                  placeholder="Enter project description"><?php echo htmlspecialchars($project['description']); ?></textarea>
+                    </div>
+                    
+                    <div class="form-section-title" style="margin-top: 35px;">
+                        <i class="fa fa-calendar"></i> Timeline
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="start_date">Start Date</label>
+                                <input type="date" 
+                                       class="form-control-modern" 
+                                       id="start_date" 
+                                       name="start_date" 
+                                       value="<?php echo $project['start_date']; ?>">
                             </div>
                         </div>
-                        
-                        <hr>
-                        
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="end_date">End Date</label>
+                                <input type="date" 
+                                       class="form-control-modern" 
+                                       id="end_date" 
+                                       name="end_date" 
+                                       value="<?php echo $project['end_date']; ?>">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section-title" style="margin-top: 35px;">
+                        <i class="fa fa-cog"></i> Project Settings
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="status">Status</label>
+                                <select class="form-control-modern" id="status" name="status">
+                                    <option value="planning" <?php echo $project['status'] === 'planning' ? 'selected' : ''; ?>>Planning</option>
+                                    <option value="in_progress" <?php echo $project['status'] === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
+                                    <option value="on_hold" <?php echo $project['status'] === 'on_hold' ? 'selected' : ''; ?>>On Hold</option>
+                                    <option value="completed" <?php echo $project['status'] === 'completed' ? 'selected' : ''; ?>>Completed</option>
+                                    <option value="cancelled" <?php echo $project['status'] === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="priority">Priority</label>
+                                <select class="form-control-modern" id="priority" name="priority">
+                                    <option value="low" <?php echo $project['priority'] === 'low' ? 'selected' : ''; ?>>Low</option>
+                                    <option value="medium" <?php echo $project['priority'] === 'medium' ? 'selected' : ''; ?>>Medium</option>
+                                    <option value="high" <?php echo $project['priority'] === 'high' ? 'selected' : ''; ?>>High</option>
+                                    <option value="critical" <?php echo $project['priority'] === 'critical' ? 'selected' : ''; ?>>Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-modern">
+                                <label for="budget">Budget ($)</label>
+                                <input type="number" 
+                                       class="form-control-modern" 
+                                       id="budget" 
+                                       name="budget" 
+                                       step="0.01" 
+                                       min="0" 
+                                       value="<?php echo $project['budget']; ?>" 
+                                       placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-modern primary">
                             <i class="fa fa-save"></i> Update Project
                         </button>
-                        <a href="project-detail.php?id=<?php echo $project_id; ?>" class="btn btn-default btn-lg">
+                        <a href="project-detail.php?id=<?php echo $project_id; ?>" class="btn-modern secondary">
                             <i class="fa fa-times"></i> Cancel
                         </a>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
         
         <div class="col-md-4">
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title"><i class="fa fa-info-circle"></i> Project Information</h3>
+            <div class="info-card">
+                <div class="info-card-title">
+                    <i class="fa fa-info-circle"></i> Project Information
                 </div>
-                <div class="panel-body">
-                    <p>
-                        <strong>Created By:</strong>
-                        <?php echo htmlspecialchars($project['creator_name']); ?>
-                    </p>
-                    <p>
-                        <strong>Created:</strong>
-                        <?php echo date('M d, Y H:i', strtotime($project['created_at'])); ?>
-                    </p>
-                    <p>
-                        <strong>Last Updated:</strong>
-                        <?php echo date('M d, Y H:i', strtotime($project['updated_at'])); ?>
-                    </p>
+                
+                <div class="info-item">
+                    <strong>Created By:</strong>
+                    <span><?php echo htmlspecialchars($project['creator_name']); ?></span>
+                </div>
+                
+                <div class="info-item">
+                    <strong>Created:</strong>
+                    <span><?php echo date('M d, Y H:i', strtotime($project['created_at'])); ?></span>
+                </div>
+                
+                <div class="info-item">
+                    <strong>Last Updated:</strong>
+                    <span><?php echo date('M d, Y H:i', strtotime($project['updated_at'])); ?></span>
                 </div>
             </div>
         </div>
@@ -540,11 +537,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script>
 $(document).ready(function() {
-    // Form validation
+    // FORM VALIDATION
     $('#projectForm').on('submit', function(e) {
         let isValid = true;
         
-        $('.form-control[required]').each(function() {
+        $('.form-control-modern[required]').each(function() {
             if (!$(this).val().trim()) {
                 isValid = false;
                 $(this).css('border-color', '#ef4444');
@@ -558,14 +555,14 @@ $(document).ready(function() {
             e.preventDefault();
             alert('Please fill in all required fields.');
             $('html, body').animate({
-                scrollTop: $('.form-control[required]').filter(function() {
+                scrollTop: $('.form-control-modern[required]').filter(function() {
                     return !$(this).val().trim();
                 }).first().offset().top - 100
             }, 300);
         }
     });
     
-    // Date validation
+    // DATE VALIDATION
     $('#end_date').on('change', function() {
         const startDate = new Date($('#start_date').val());
         const endDate = new Date($(this).val());
@@ -592,6 +589,18 @@ $(document).ready(function() {
                 $(this).css('border-color', '#e2e8f0');
             }, 2000);
         }
+    });
+    
+    // INPUT FOCUS EFFECTS
+    $('.form-control-modern').on('focus', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#667eea',
+            'transition': 'color 0.3s ease'
+        });
+    }).on('blur', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#1e293b'
+        });
     });
 });
 </script>

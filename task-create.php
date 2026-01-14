@@ -35,7 +35,7 @@ $users = $user->getActiveUsers();
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - MATCHING PROJECT DETAIL THEME */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -132,7 +132,7 @@ $users = $user->getActiveUsers();
     .form-card {
         background: white;
         border-radius: 16px;
-        padding: 80px;
+        padding: 40px;
         box-shadow: var(--shadow);
         border: 1px solid var(--border);
         animation: fadeInUp 0.4s ease;
@@ -145,7 +145,7 @@ $users = $user->getActiveUsers();
     
     /* SECTION TITLES */
     .form-section-title {
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--dark);
         margin-bottom: 24px;
@@ -155,8 +155,7 @@ $users = $user->getActiveUsers();
         align-items: center;
         gap: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 15px;
+        letter-spacing: 0.8px;
     }
     
     .form-section-title i {
@@ -176,11 +175,11 @@ $users = $user->getActiveUsers();
     .form-group-modern label {
         display: block;
         font-weight: 700;
-        font-size: 13px;
-        color: var(--dark);
+        font-size: 11px;
+        color: #64748b;
         margin-bottom: 8px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
     }
     
     .form-group-modern label .required {
@@ -191,7 +190,7 @@ $users = $user->getActiveUsers();
     /* FORM CONTROLS */
     .form-control-modern {
         width: 100%;
-        padding: 12px 16px;
+        padding: 14px 16px;
         border: 2px solid var(--border);
         border-radius: 10px;
         font-size: 15px;
@@ -205,10 +204,6 @@ $users = $user->getActiveUsers();
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    }
-    
-    .form-control-modern:hover {
-        border-color: #cbd5e1;
     }
     
     .form-control-modern::placeholder {
@@ -227,11 +222,6 @@ $users = $user->getActiveUsers();
         background-repeat: no-repeat;
         background-position: right 16px center;
         padding-right: 40px;
-    }
-    
-    input[type="number"].form-control-modern,
-    input[type="date"].form-control-modern {
-        cursor: pointer;
     }
     
     /* INPUT WITH ICONS */
@@ -264,7 +254,7 @@ $users = $user->getActiveUsers();
     
     /* CHARACTER COUNTER */
     .char-counter {
-        font-size: 12px;
+        font-size: 11px;
         color: #94a3b8;
         font-weight: 600;
         margin-top: 6px;
@@ -283,63 +273,32 @@ $users = $user->getActiveUsers();
     .preview-badge {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
+        gap: 6px;
+        padding: 6px 14px;
         border-radius: 8px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-top: 8px;
-        transition: all 0.3s ease;
     }
     
     /* Status Badges */
-    .status-todo {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .status-in_progress {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-    
-    .status-review {
-        background: #fed7aa;
-        color: #9a3412;
-    }
-    
-    .status-completed {
-        background: #d1fae5;
-        color: #065f46;
-    }
+    .status-todo { background: #fef3c7; color: #92400e; }
+    .status-in_progress { background: #dbeafe; color: #1e40af; }
+    .status-review { background: #fed7aa; color: #9a3412; }
+    .status-completed { background: #d1fae5; color: #065f46; }
     
     /* Priority Badges */
-    .priority-low {
-        background: #d1fae5;
-        color: #065f46;
-    }
-    
-    .priority-medium {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .priority-high {
-        background: #fed7aa;
-        color: #9a3412;
-    }
-    
-    .priority-critical {
-        background: #fee2e2;
-        color: #991b1b;
-    }
+    .priority-low { background: #d1fae5; color: #065f46; }
+    .priority-medium { background: #fef3c7; color: #92400e; }
+    .priority-high { background: #fed7aa; color: #9a3412; }
+    .priority-critical { background: #fee2e2; color: #991b1b; }
     
     /* ASSIGNEE PREVIEW */
     .assignee-preview {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-        border: 2px solid rgba(99, 102, 241, 0.2);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+        border: 1px solid rgba(99, 102, 241, 0.15);
         border-radius: 8px;
         padding: 10px 14px;
         margin-top: 8px;
@@ -349,12 +308,11 @@ $users = $user->getActiveUsers();
         font-size: 13px;
         font-weight: 600;
         color: var(--dark);
-        transition: all 0.3s ease;
     }
     
     .assignee-preview.unassigned {
-        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(100, 116, 139, 0.05));
-        border-color: rgba(148, 163, 184, 0.2);
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.05), rgba(100, 116, 139, 0.03));
+        border-color: rgba(148, 163, 184, 0.15);
         color: #64748b;
     }
     
@@ -374,8 +332,8 @@ $users = $user->getActiveUsers();
     /* DATE & HOURS PREVIEW */
     .date-preview,
     .hours-preview {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-        border: 2px solid rgba(99, 102, 241, 0.2);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+        border: 1px solid rgba(99, 102, 241, 0.15);
         border-radius: 8px;
         padding: 10px 14px;
         margin-top: 8px;
@@ -385,13 +343,12 @@ $users = $user->getActiveUsers();
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.3s ease;
     }
     
     .date-preview.no-date,
     .hours-preview.no-estimate {
-        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(100, 116, 139, 0.05));
-        border-color: rgba(148, 163, 184, 0.2);
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.05), rgba(100, 116, 139, 0.03));
+        border-color: rgba(148, 163, 184, 0.15);
         color: #64748b;
     }
     
@@ -407,10 +364,10 @@ $users = $user->getActiveUsers();
     
     /* INFO CARD */
     .info-card {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-        padding: 18px 20px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+        padding: 16px 20px;
         border-radius: 12px;
-        border: 2px solid rgba(99, 102, 241, 0.2);
+        border: 1px solid rgba(99, 102, 241, 0.15);
         margin-bottom: 24px;
         display: flex;
         align-items: flex-start;
@@ -418,10 +375,14 @@ $users = $user->getActiveUsers();
     }
     
     .info-card i {
-        font-size: 18px;
+        font-size: 16px;
         color: var(--primary);
         flex-shrink: 0;
         margin-top: 2px;
+    }
+    
+    .info-card .info-content {
+        flex: 1;
     }
     
     .info-card strong {
@@ -429,12 +390,14 @@ $users = $user->getActiveUsers();
         font-weight: 700;
         display: block;
         margin-bottom: 4px;
+        font-size: 13px;
     }
     
     .info-card .info-text {
         color: #64748b;
         font-weight: 500;
         line-height: 1.5;
+        font-size: 13px;
     }
     
     /* FORM ACTIONS */
@@ -452,9 +415,9 @@ $users = $user->getActiveUsers();
         padding: 12px 28px;
         border-radius: 10px;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border: none;
         cursor: pointer;
@@ -484,11 +447,6 @@ $users = $user->getActiveUsers();
     .btn-modern.secondary:hover {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
         transform: translateY(-2px);
-    }
-    
-    /* FOCUS STATES */
-    .form-control-modern:focus + .char-counter {
-        color: var(--primary);
     }
     
     /* SMOOTH SCROLLBAR */
@@ -522,13 +480,13 @@ $users = $user->getActiveUsers();
             font-size: 28px;
         }
         .form-card {
-            padding: 32px;
+            padding: 36px;
         }
     }
     
     @media (max-width: 992px) {
         .form-card {
-            padding: 28px;
+            padding: 32px;
         }
     }
     
@@ -575,14 +533,14 @@ $users = $user->getActiveUsers();
             padding: 20px;
         }
         .form-control-modern {
-            padding: 10px 14px;
+            padding: 12px 14px;
             font-size: 14px;
         }
         .input-icon-wrapper .form-control-modern {
             padding-left: 38px;
         }
         .form-section-title {
-            font-size: 14px;
+            font-size: 13px;
         }
     }
 </style>
@@ -602,7 +560,7 @@ $users = $user->getActiveUsers();
     </div>
     
     <div class="row">
-        <div class="col-md-8 col-md-offset-2">
+        <div class="col-md-12">
             <div class="form-card">
                 <form method="POST" action="" id="taskForm">
                     <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
@@ -612,21 +570,40 @@ $users = $user->getActiveUsers();
                         <i class="fa fa-file-text"></i> Basic Information
                     </div>
                     
-                    <div class="form-group-modern">
-                        <label for="task_name">
-                            Task Name <span class="required">*</span>
-                        </label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa fa-pencil"></i>
-                            <input type="text" 
-                                   class="form-control-modern" 
-                                   id="task_name" 
-                                   name="task_name" 
-                                   placeholder="Enter task name"
-                                   maxlength="200"
-                                   required>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="task_name">
+                                    Task Name <span class="required">*</span>
+                                </label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa fa-pencil"></i>
+                                    <input type="text" 
+                                           class="form-control-modern" 
+                                           id="task_name" 
+                                           name="task_name" 
+                                           placeholder="Enter task name"
+                                           maxlength="200"
+                                           required>
+                                </div>
+                                <div class="char-counter" id="taskNameCounter">0 / 200 characters</div>
+                            </div>
                         </div>
-                        <div class="char-counter" id="taskNameCounter">0 / 200 characters</div>
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="phase_id">
+                                    Phase ID (Optional)
+                                </label>
+                                <div class="input-icon-wrapper">
+                                    <i class="fa fa-layer-group"></i>
+                                    <input type="number" 
+                                           class="form-control-modern" 
+                                           id="phase_id" 
+                                           name="phase_id" 
+                                           placeholder="Enter phase ID if applicable">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="form-group-modern">
@@ -652,7 +629,7 @@ $users = $user->getActiveUsers();
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group-modern">
                                 <label for="assigned_to">
                                     Assign To
@@ -673,7 +650,7 @@ $users = $user->getActiveUsers();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group-modern">
                                 <label for="due_date">
                                     Due Date
@@ -687,52 +664,6 @@ $users = $user->getActiveUsers();
                                 </div>
                                 <div class="date-preview no-date" id="dueDatePreview">
                                     <i class="fa fa-calendar-times-o"></i> No due date set
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- CLASSIFICATION & DETAILS -->
-                    <div class="form-section-title">
-                        <i class="fa fa-cogs"></i> Classification & Details
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group-modern">
-                                <label for="status">
-                                    Status
-                                </label>
-                                <div class="input-icon-wrapper select-wrapper">
-                                    <i class="fa fa-circle"></i>
-                                    <select class="form-control-modern" id="status" name="status">
-                                        <option value="todo" selected>To Do</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="review">Review</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                </div>
-                                <div class="preview-badge status-todo" id="statusPreview">
-                                    <i class="fa fa-clock-o"></i> To Do
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group-modern">
-                                <label for="priority">
-                                    Priority
-                                </label>
-                                <div class="input-icon-wrapper select-wrapper">
-                                    <i class="fa fa-exclamation-circle"></i>
-                                    <select class="form-control-modern" id="priority" name="priority">
-                                        <option value="low">Low</option>
-                                        <option value="medium" selected>Medium</option>
-                                        <option value="high">High</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                </div>
-                                <div class="preview-badge priority-medium" id="priorityPreview">
-                                    <i class="fa fa-flag"></i> Medium
                                 </div>
                             </div>
                         </div>
@@ -758,29 +689,56 @@ $users = $user->getActiveUsers();
                         </div>
                     </div>
                     
-                    <!-- OPTIONAL DETAILS -->
+                    <!-- CLASSIFICATION & DETAILS -->
                     <div class="form-section-title">
-                        <i class="fa fa-plus"></i> Optional Details
+                        <i class="fa fa-cogs"></i> Classification & Details
                     </div>
                     
-                    <div class="form-group-modern">
-                        <label for="phase_id">
-                            Phase ID (Optional)
-                        </label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa fa-layer-group"></i>
-                            <input type="number" 
-                                   class="form-control-modern" 
-                                   id="phase_id" 
-                                   name="phase_id" 
-                                   placeholder="Enter phase ID if applicable">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="status">
+                                    Status
+                                </label>
+                                <div class="input-icon-wrapper select-wrapper">
+                                    <i class="fa fa-circle"></i>
+                                    <select class="form-control-modern" id="status" name="status">
+                                        <option value="todo" selected>To Do</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="review">Review</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+                                <div class="preview-badge status-todo" id="statusPreview">
+                                    <i class="fa fa-clock-o"></i> To Do
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-modern">
+                                <label for="priority">
+                                    Priority
+                                </label>
+                                <div class="input-icon-wrapper select-wrapper">
+                                    <i class="fa fa-exclamation-circle"></i>
+                                    <select class="form-control-modern" id="priority" name="priority">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                                <div class="preview-badge priority-medium" id="priorityPreview">
+                                    <i class="fa fa-flag"></i> Medium
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- INFO CARD -->
                     <div class="info-card">
                         <i class="fa fa-info-circle"></i>
-                        <div>
+                        <div class="info-content">
                             <strong>Task Guidelines</strong>
                             <span class="info-text">Be clear and actionable. Define what needs to be done, who should do it, and when it should be completed.</span>
                         </div>

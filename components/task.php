@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config.php'; 
+require_once __DIR__ . '/../config.php';
 
 class Task {
     private $db;
@@ -9,28 +9,27 @@ class Task {
     }
     
     public function create($data) {
-        // CRITICAL FIX: Handle NULL values properly for MySQL
         $stmt = $this->db->prepare("INSERT INTO tasks (project_id, phase_id, task_name, description, assigned_to, status, priority, due_date, estimated_hours, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         
-        // Bind with proper NULL handling
-        $stmt->bind_param("iisssissdi", 
+        // CRITICAL FIX: Correct type string - assigned_to is INT ('i'), status is ENUM/string ('s')
+        // Type string: i=project_id, i=phase_id, s=task_name, s=description, i=assigned_to, s=status, s=priority, s=due_date, d=estimated_hours, i=created_by
+        $stmt->bind_param("iissiissdi", 
             $data['project_id'], 
-            $data['phase_id'],           // Will be NULL if not set
+            $data['phase_id'], 
             $data['task_name'], 
             $data['description'], 
-            $data['assigned_to'],        // Will be NULL if not set
+            $data['assigned_to'], 
             $data['status'], 
             $data['priority'], 
-            $data['due_date'],           // Will be NULL if not set
-            $data['estimated_hours'],    // Will be NULL if not set
+            $data['due_date'], 
+            $data['estimated_hours'], 
             $data['created_by']
         );
         
         try {
             return $stmt->execute() ? $this->db->insert_id : false;
         } catch (mysqli_sql_exception $e) {
-            // Log the error for debugging
-            error_log("Task creation error: " . $e->getMessage());
+            error_log("Task creation failed: " . $e->getMessage());
             return false;
         }
     }

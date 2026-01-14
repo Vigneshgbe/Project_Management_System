@@ -28,12 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED FOR PERFORMANCE */
+    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED */
     
     :root {
-        --primary: #667eea;
-        --primary-dark: #5a67d8;
-        --secondary: #764ba2;
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #8b5cf6;
         --success: #10b981;
         --warning: #f59e0b;
         --danger: #ef4444;
@@ -49,11 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        animation: fadeIn 0.3s ease;
+        animation: fadeIn 0.4s ease;
     }
     
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); }
+        from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
@@ -123,27 +123,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     /* ALERT */
     .alert-modern {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.08));
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.03));
         border-left: 4px solid var(--danger);
         border-radius: 12px;
         padding: 16px 20px;
-        margin-bottom: 32px;
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
         gap: 12px;
-        color: #991b1b;
-        font-weight: 600;
-        animation: slideIn 0.3s ease;
+        animation: slideDown 0.3s ease;
     }
     
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateX(-20px); }
-        to { opacity: 1; transform: translateX(0); }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     .alert-modern i {
-        font-size: 20px;
+        font-size: 18px;
         color: var(--danger);
+        flex-shrink: 0;
+    }
+    
+    .alert-modern span {
+        color: #991b1b;
+        font-weight: 600;
+        font-size: 14px;
     }
     
     /* FORM CARD */
@@ -161,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* INFO CARD */
+    /* INFO SIDEBAR */
     .info-card {
         background: white;
         border-radius: 16px;
@@ -170,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         border: 1px solid var(--border);
         position: sticky;
         top: 20px;
-        animation: fadeInUp 0.5s ease;
+        animation: fadeInUp 0.4s ease 0.1s both;
     }
     
     .info-card-title {
@@ -203,18 +208,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .info-section-title {
         font-weight: 700;
         color: var(--dark);
-        font-size: 12px;
-        margin-bottom: 10px;
+        font-size: 13px;
+        margin-bottom: 8px;
         text-transform: uppercase;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
     }
     
     .info-section p {
         color: #64748b;
         font-weight: 500;
-        font-size: 14px;
+        font-size: 13px;
         line-height: 1.6;
-        margin: 0 0 8px 0;
+        margin: 0 0 6px 0;
     }
     
     .info-section ul {
@@ -225,8 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .info-section li {
         color: #64748b;
         font-weight: 500;
-        font-size: 14px;
-        margin-bottom: 8px;
+        font-size: 13px;
+        margin-bottom: 6px;
         line-height: 1.6;
     }
     
@@ -294,11 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .form-control-modern:focus {
         outline: none;
         border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-    }
-    
-    .form-control-modern:hover {
-        border-color: #cbd5e1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
     }
     
     .form-control-modern::placeholder {
@@ -308,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     select.form-control-modern {
         cursor: pointer;
         appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 16px center;
         padding-right: 40px;
@@ -326,6 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         transform: translateY(-50%);
         color: var(--primary);
         font-size: 14px;
+        pointer-events: none;
     }
     
     .input-icon-wrapper .form-control-modern {
@@ -335,14 +337,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* FORM HINTS */
     .form-hint {
         display: block;
-        margin-top: 8px;
+        margin-top: 6px;
         font-size: 12px;
         color: #64748b;
         font-weight: 500;
     }
     
     .form-hint i {
-        margin-right: 5px;
+        margin-right: 4px;
+        font-size: 11px;
     }
     
     /* PASSWORD STRENGTH */
@@ -357,7 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     .password-strength-bar {
         height: 100%;
-        width: 0%;
+        width: 0;
         transition: all 0.3s ease;
         border-radius: 4px;
     }
@@ -407,11 +410,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-top: 8px;
+        transition: all 0.3s ease;
     }
     
     .role-badge-preview.user {
-        background: #e0e7ff;
-        color: #3730a3;
+        background: #f1f5f9;
+        color: #475569;
     }
     
     .role-badge-preview.manager {
@@ -422,41 +426,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .role-badge-preview.admin {
         background: #fee2e2;
         color: #991b1b;
-    }
-    
-    /* EMAIL VALIDATION FEEDBACK */
-    .email-validation {
-        display: none;
-        align-items: center;
-        gap: 6px;
-        margin-top: 8px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-    
-    .email-validation.valid {
-        display: flex;
-        color: var(--success);
-    }
-    
-    .email-validation.invalid {
-        display: flex;
-        color: var(--danger);
-    }
-    
-    /* USERNAME VALIDATION FEEDBACK */
-    .username-hint {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #64748b;
-    }
-    
-    .username-hint.checking {
-        color: var(--primary);
     }
     
     /* FORM ACTIONS */
@@ -489,12 +458,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .btn-modern.primary {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
     .btn-modern.primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
     }
     
     .btn-modern.secondary {
@@ -504,7 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     .btn-modern.secondary:hover {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
         transform: translateY(-2px);
     }
     
@@ -546,9 +515,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     @media (max-width: 992px) {
         .info-card {
             position: static;
-            margin-top: 32px;
+            margin-top: 24px;
         }
-        .form-card, .info-card {
+        .form-card {
             padding: 32px;
         }
     }
@@ -633,8 +602,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-md-8">
             <div class="form-card">
                 <form method="POST" action="" id="createUserForm">
+                    <!-- PERSONAL INFORMATION -->
                     <div class="form-section-title">
-                        <i class="fa fa-user"></i> Personal Information
+                        <i class="fa fa-info-circle"></i> Personal Information
                     </div>
                     
                     <div class="form-group-modern">
@@ -648,10 +618,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    id="full_name" 
                                    name="full_name" 
                                    placeholder="Enter full name"
+                                   maxlength="100"
                                    required>
                         </div>
                     </div>
                     
+                    <!-- ACCOUNT DETAILS -->
                     <div class="form-section-title">
                         <i class="fa fa-lock"></i> Account Details
                     </div>
@@ -669,12 +641,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                            id="username" 
                                            name="username" 
                                            placeholder="Enter username"
+                                           maxlength="50"
                                            required>
                                 </div>
-                                <div class="username-hint">
+                                <span class="form-hint">
                                     <i class="fa fa-info-circle"></i>
-                                    <span>Must be unique</span>
-                                </div>
+                                    Must be unique
+                                </span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -689,9 +662,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                            id="email" 
                                            name="email" 
                                            placeholder="Enter email address"
+                                           maxlength="100"
                                            required>
                                 </div>
-                                <div class="email-validation" id="emailValidation"></div>
                             </div>
                         </div>
                     </div>
@@ -708,7 +681,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    name="password" 
                                    placeholder="Enter password"
                                    required 
-                                   minlength="6">
+                                   minlength="6"
+                                   maxlength="100">
                         </div>
                         <div class="password-strength" id="passwordStrength">
                             <div class="password-strength-bar" id="passwordStrengthBar"></div>
@@ -719,6 +693,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </span>
                     </div>
                     
+                    <!-- PERMISSIONS -->
                     <div class="form-section-title">
                         <i class="fa fa-shield-alt"></i> Permissions
                     </div>
@@ -732,11 +707,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="manager">Manager</option>
                             <option value="admin">Administrator</option>
                         </select>
-                        <div class="role-badge-preview user" id="rolePreview">
-                            <i class="fa fa-user"></i> Member
-                        </div>
+                        <span class="role-badge-preview user" id="rolePreview">Member</span>
                     </div>
                     
+                    <!-- ACTION BUTTONS -->
                     <div class="form-actions">
                         <button type="submit" class="btn-modern primary">
                             <i class="fa fa-save"></i> Create User
@@ -797,207 +771,123 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 $(document).ready(function() {
     // ROLE BADGE PREVIEW UPDATE
-    $('#role').on('change', function() {
-        const role = $(this).val();
-        const $preview = $('#rolePreview');
-        const roleData = {
-            'user': { icon: 'fa-user', text: 'Member' },
-            'manager': { icon: 'fa-users', text: 'Manager' },
-            'admin': { icon: 'fa-shield-alt', text: 'Administrator' }
-        };
+    const roleSelect = $('#role');
+    const rolePreview = $('#rolePreview');
+    
+    roleSelect.on('change', function() {
+        const role = this.value;
+        const roleText = this.options[this.selectedIndex].text;
         
-        const data = roleData[role];
-        $preview.removeClass('user manager admin').addClass(role);
-        $preview.html('<i class="fa ' + data.icon + '"></i> ' + data.text);
+        rolePreview[0].className = 'role-badge-preview ' + role;
+        rolePreview.text(roleText);
     });
     
     // PASSWORD STRENGTH INDICATOR
-    let passwordTimeout;
-    $('#password').on('input', function() {
-        clearTimeout(passwordTimeout);
-        passwordTimeout = setTimeout(() => {
-            const val = $(this).val();
-            const $strength = $('#passwordStrength');
-            const $bar = $('#passwordStrengthBar');
-            const $hint = $('#passwordHint');
-            
-            if (val.length === 0) {
-                $strength.hide();
-                $bar.removeClass('weak medium strong');
-                $hint.html('<i class="fa fa-info-circle"></i> Minimum 6 characters required');
-                $hint.removeClass('password-strength-text weak medium strong');
-                return;
-            }
-            
-            $strength.show();
-            
-            let strength = 0;
-            if (val.length >= 6) strength++;
-            if (val.length >= 10) strength++;
-            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
-            if (/[0-9]/.test(val)) strength++;
-            if (/[^A-Za-z0-9]/.test(val)) strength++;
-            
-            $bar.removeClass('weak medium strong');
-            $hint.removeClass('password-strength-text weak medium strong');
-            
-            if (strength <= 2) {
-                $bar.addClass('weak');
-                $hint.html('<i class="fa fa-exclamation-triangle"></i> Weak password').addClass('password-strength-text weak');
-            } else if (strength <= 4) {
-                $bar.addClass('medium');
-                $hint.html('<i class="fa fa-check-circle"></i> Medium strength').addClass('password-strength-text medium');
-            } else {
-                $bar.addClass('strong');
-                $hint.html('<i class="fa fa-check-circle"></i> Strong password').addClass('password-strength-text strong');
-            }
-        }, 150);
-    });
+    const passwordInput = $('#password');
+    const passwordStrength = $('#passwordStrength');
+    const passwordBar = $('#passwordStrengthBar');
+    const passwordHint = $('#passwordHint');
     
-    // EMAIL VALIDATION WITH FEEDBACK
-    let emailTimeout;
-    $('#email').on('input', function() {
-        clearTimeout(emailTimeout);
-        const $validation = $('#emailValidation');
+    passwordInput.on('input', function() {
+        const val = this.value;
         
-        emailTimeout = setTimeout(() => {
-            const email = $(this).val();
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            
-            if (email.length === 0) {
-                $validation.removeClass('valid invalid').hide();
-                return;
-            }
-            
-            if (emailRegex.test(email)) {
-                $validation.removeClass('invalid').addClass('valid').show();
-                $validation.html('<i class="fa fa-check-circle"></i> Valid email format');
-                $(this).css('border-color', var(--success));
-            } else {
-                $validation.removeClass('valid').addClass('invalid').show();
-                $validation.html('<i class="fa fa-exclamation-circle"></i> Invalid email format');
-            }
-        }, 300);
-    });
-    
-    $('#email').on('blur', function() {
-        const email = $(this).val();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        
-        if (email && !emailRegex.test(email)) {
-            $(this).css('border-color', var(--danger));
-        } else if (email) {
-            $(this).css('border-color', var(--success));
+        if (val.length === 0) {
+            passwordStrength.hide();
+            passwordBar[0].className = 'password-strength-bar';
+            passwordHint.html('<i class="fa fa-info-circle"></i> Minimum 6 characters required');
+            passwordHint[0].className = 'form-hint';
+            return;
         }
-    });
-    
-    // INPUT FOCUS EFFECTS (OPTIMIZED)
-    $('.form-control-modern').on('focus', function() {
-        $(this).closest('.form-group-modern').find('label').css('color', '#667eea');
-    }).on('blur', function() {
-        $(this).closest('.form-group-modern').find('label').css('color', '#64748b');
-    });
-    
-    // FORM VALIDATION WITH SCROLL TO ERROR
-    $('#createUserForm').on('submit', function(e) {
-        let isValid = true;
-        let firstInvalidField = null;
         
-        $('.form-control-modern[required]').each(function() {
-            if ($(this).val().trim() === '') {
+        passwordStrength.show();
+        
+        let strength = 0;
+        if (val.length >= 6) strength++;
+        if (val.length >= 10) strength++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
+        if (/[0-9]/.test(val)) strength++;
+        if (/[^A-Za-z0-9]/.test(val)) strength++;
+        
+        let strengthClass, strengthText, strengthIcon;
+        
+        if (strength <= 2) {
+            strengthClass = 'weak';
+            strengthText = 'Weak password';
+            strengthIcon = 'fa-exclamation-triangle';
+        } else if (strength <= 4) {
+            strengthClass = 'medium';
+            strengthText = 'Medium strength';
+            strengthIcon = 'fa-check-circle';
+        } else {
+            strengthClass = 'strong';
+            strengthText = 'Strong password';
+            strengthIcon = 'fa-check-circle';
+        }
+        
+        passwordBar[0].className = 'password-strength-bar ' + strengthClass;
+        passwordHint[0].className = 'form-hint password-strength-text ' + strengthClass;
+        passwordHint.html('<i class="fa ' + strengthIcon + '"></i> ' + strengthText);
+    });
+    
+    // FORM VALIDATION
+    const form = $('#createUserForm');
+    
+    form.on('submit', function(e) {
+        let isValid = true;
+        const requiredFields = $('.form-control-modern[required]');
+        
+        requiredFields.each(function() {
+            if (!this.value.trim()) {
                 isValid = false;
-                $(this).css('border-color', '#ef4444');
+                this.style.borderColor = '#ef4444';
                 
-                if (!firstInvalidField) {
-                    firstInvalidField = $(this);
-                }
-                
+                // Reset border on input
                 $(this).one('input', function() {
-                    $(this).css('border-color', '#e2e8f0');
+                    this.style.borderColor = '#e2e8f0';
                 });
             }
         });
         
-        // Validate email format
-        const email = $('#email').val();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (email && !emailRegex.test(email)) {
-            isValid = false;
-            $('#email').css('border-color', '#ef4444');
-            if (!firstInvalidField) {
-                firstInvalidField = $('#email');
-            }
-        }
-        
-        // Validate password length
-        const password = $('#password').val();
-        if (password && password.length < 6) {
-            isValid = false;
-            $('#password').css('border-color', '#ef4444');
-            if (!firstInvalidField) {
-                firstInvalidField = $('#password');
-            }
-        }
-        
         if (!isValid) {
             e.preventDefault();
+            alert('Please fill in all required fields.');
             
             // Scroll to first invalid field
-            if (firstInvalidField) {
-                $('html, body').animate({
-                    scrollTop: firstInvalidField.offset().top - 100
-                }, 300);
-                firstInvalidField.focus();
-            }
+            const firstInvalid = requiredFields.filter(function() {
+                return !this.value.trim();
+            }).first();
             
-            // Show alert
-            const errorMsg = 'Please fill in all required fields correctly.';
-            if (!$('.alert-modern').length) {
-                const alertHtml = '<div class="alert-modern" style="animation: slideIn 0.3s ease;">' +
-                    '<i class="fa fa-exclamation-circle"></i>' +
-                    '<span>' + errorMsg + '</span>' +
-                    '</div>';
-                $('.page-header').after(alertHtml);
-                
-                setTimeout(function() {
-                    $('.alert-modern').fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                }, 4000);
+            if (firstInvalid.length) {
+                $('html, body').animate({
+                    scrollTop: firstInvalid.offset().top - 100
+                }, 300);
             }
         }
     });
     
-    // USERNAME LOWERCASE CONVERSION (OPTIONAL)
-    $('#username').on('input', function() {
-        const val = $(this).val();
-        if (val !== val.toLowerCase()) {
-            $(this).val(val.toLowerCase());
-        }
-    });
+    // EMAIL VALIDATION
+    const emailInput = $('#email');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    // CLEAR ERROR STYLING ON INPUT
-    $('.form-control-modern').on('input', function() {
-        if ($(this).val().trim() !== '') {
-            $(this).css('border-color', '#e2e8f0');
-        }
-    });
-    
-    // PREVENT FORM RESUBMISSION
-    let formSubmitted = false;
-    $('#createUserForm').on('submit', function() {
-        if (formSubmitted) {
-            return false;
-        }
+    emailInput.on('blur', function() {
+        const email = this.value;
         
-        const isValid = $(this).find('.form-control-modern[required]').toArray().every(function(field) {
-            return $(field).val().trim() !== '';
+        if (email && !emailRegex.test(email)) {
+            this.style.borderColor = '#ef4444';
+            alert('Please enter a valid email address.');
+        }
+    });
+    
+    // INPUT FOCUS EFFECTS
+    $('.form-control-modern').on('focus', function() {
+        const label = $(this).closest('.form-group-modern').find('label');
+        label.css({
+            'color': '#6366f1',
+            'transition': 'color 0.3s ease'
         });
-        
-        if (isValid) {
-            formSubmitted = true;
-            $(this).find('.btn-modern.primary').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Creating...');
-        }
+    }).on('blur', function() {
+        const label = $(this).closest('.form-group-modern').find('label');
+        label.css('color', '#64748b');
     });
 });
 </script>

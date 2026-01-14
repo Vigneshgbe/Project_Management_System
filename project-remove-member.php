@@ -40,15 +40,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
 ?>
 
 <style>
+    /* MODERN PROFESSIONAL DESIGN */
+    
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #8b5cf6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+    
     .remove-container {
-        background: transparent !important;
-        min-height: calc(100vh - 100px) !important;
-        padding: 20px !important;
-        margin: 0 !important;
-        animation: fadeIn 0.5s ease !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        padding: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+        animation: fadeIn 0.4s ease;
+        min-height: calc(100vh - 100px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     @keyframes fadeIn {
@@ -56,417 +73,416 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         to { opacity: 1; transform: translateY(0); }
     }
     
+    /* REMOVE CARD */
     .remove-card {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(20px) !important;
-        border-radius: 24px !important;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        max-width: 550px !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-        position: relative !important;
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border);
+        max-width: 600px;
+        width: 100%;
+        overflow: hidden;
+        animation: fadeInUp 0.4s ease;
     }
     
-    @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.8) translateY(30px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     .remove-card::before {
-        content: '' !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 8px !important;
-        background: linear-gradient(90deg, #f97316 0%, #ea580c 100%) !important;
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
     
+    /* REMOVE HEADER */
     .remove-header {
-        background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%) !important;
-        padding: 40px 35px 35px !important;
-        text-align: center !important;
-        position: relative !important;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+        padding: 40px 32px;
+        text-align: center;
+        position: relative;
+        border-bottom: 2px solid var(--border);
     }
     
     .remove-icon {
-        width: 80px !important;
-        height: 80px !important;
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 auto 20px !important;
-        box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4) !important;
-        animation: pulse 2s infinite !important;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4); }
-        50% { transform: scale(1.05); box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6); }
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
     }
     
     .remove-icon i {
-        font-size: 40px !important;
-        color: white !important;
+        font-size: 36px;
+        color: white;
     }
     
     .remove-header h1 {
-        margin: 0 0 10px !important;
-        font-weight: 800 !important;
-        font-size: 28px !important;
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
+        margin: 0 0 8px;
+        font-weight: 700;
+        font-size: 32px;
+        color: var(--dark);
     }
     
     .remove-header p {
-        margin: 0 !important;
-        color: #64748b !important;
-        font-size: 15px !important;
-        font-weight: 500 !important;
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
     }
     
+    /* REMOVE BODY */
     .remove-body {
-        padding: 35px !important;
-        background: white !important;
+        padding: 32px;
+        background: white;
     }
     
+    /* WARNING BOX */
     .warning-box {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%) !important;
-        border-left: 5px solid #f59e0b !important;
-        padding: 18px !important;
-        border-radius: 12px !important;
-        margin-bottom: 25px !important;
-        animation: shake 0.5s ease 0.3s !important;
-    }
-    
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05));
+        border-left: 4px solid var(--warning);
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
     }
     
     .warning-box i {
-        color: #f59e0b !important;
-        font-size: 18px !important;
-        margin-right: 10px !important;
+        color: var(--warning);
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
     }
     
     .warning-box p {
-        margin: 0 !important;
-        color: #92400e !important;
-        font-weight: 600 !important;
-        display: inline !important;
-        font-size: 14px !important;
+        margin: 0;
+        color: #92400e;
+        font-weight: 600;
+        line-height: 1.5;
+        font-size: 13px;
     }
     
-    .member-card {
-        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
-        border-radius: 16px !important;
-        padding: 30px !important;
-        margin-bottom: 25px !important;
-        border: 2px solid #e2e8f0 !important;
-        transition: all 0.3s ease !important;
-        text-align: center !important;
-    }
-    
-    .member-card:hover {
-        border-color: #cbd5e1 !important;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1) !important;
-        transform: translateY(-3px) !important;
-    }
-    
-    .member-avatar-large {
-        width: 100px !important;
-        height: 100px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        font-weight: 800 !important;
-        font-size: 42px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 auto 20px !important;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3) !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    .member-card:hover .member-avatar-large {
-        transform: scale(1.1) rotate(5deg) !important;
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4) !important;
-    }
-    
-    .member-name {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-        color: #1e293b !important;
-        margin: 0 0 8px !important;
-    }
-    
-    .member-email {
-        color: #64748b !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        margin-bottom: 15px !important;
-    }
-    
-    .member-info {
-        display: flex !important;
-        justify-content: center !important;
-        gap: 15px !important;
-        flex-wrap: wrap !important;
-    }
-    
-    .info-badge {
-        padding: 8px 16px !important;
-        border-radius: 20px !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        box-shadow: 0 3px 12px rgba(102, 126, 234, 0.3) !important;
-    }
-    
-    .info-badge i {
-        font-size: 13px !important;
-    }
-    
+    /* PROJECT INFO */
     .project-info {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
-        border-radius: 12px !important;
-        padding: 20px !important;
-        margin-bottom: 25px !important;
-        border: 2px solid rgba(102, 126, 234, 0.2) !important;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(99, 102, 241, 0.15);
     }
     
     .project-info h3 {
-        margin: 0 0 10px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        font-size: 14px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
+        margin: 0 0 8px;
+        font-weight: 700;
+        color: var(--dark);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+    }
+    
+    .project-info h3 i {
+        color: var(--primary);
+        font-size: 12px;
     }
     
     .project-info p {
-        margin: 0 !important;
-        color: #64748b !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
+        margin: 0;
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 15px;
     }
     
+    /* MEMBER CARD */
+    .member-card {
+        background: white;
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 24px;
+        border: 2px solid var(--border);
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .member-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: var(--shadow-md);
+    }
+    
+    .member-avatar-large {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        font-weight: 800;
+        font-size: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    
+    .member-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0 0 6px;
+    }
+    
+    .member-email {
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 16px;
+    }
+    
+    .member-info {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .info-badge {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .info-badge:first-child {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .info-badge:last-child {
+        background: #f3e8ff;
+        color: #6b21a8;
+    }
+    
+    .info-badge i {
+        font-size: 11px;
+    }
+    
+    /* ACTION BUTTONS */
     .action-buttons {
-        display: flex !important;
-        gap: 15px !important;
-        margin-top: 30px !important;
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        flex-wrap: wrap;
     }
     
     .btn {
-        flex: 1 !important;
-        border-radius: 12px !important;
-        padding: 16px 28px !important;
-        font-weight: 700 !important;
-        transition: all 0.3s ease !important;
-        text-transform: uppercase !important;
-        font-size: 13px !important;
-        letter-spacing: 0.5px !important;
-        border: none !important;
-        position: relative !important;
-        overflow: hidden !important;
-        cursor: pointer !important;
-    }
-    
-    .btn::before {
-        content: '' !important;
-        position: absolute !important;
-        top: 50% !important;
-        left: 50% !important;
-        width: 0 !important;
-        height: 0 !important;
-        border-radius: 50% !important;
-        background: rgba(255, 255, 255, 0.3) !important;
-        transform: translate(-50%, -50%) !important;
-        transition: width 0.6s, height 0.6s !important;
-    }
-    
-    .btn:hover::before {
-        width: 300px !important;
-        height: 300px !important;
+        flex: 1;
+        border-radius: 10px;
+        padding: 14px 28px;
+        font-weight: 700;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.8px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
     }
     
     .btn i {
-        margin-right: 8px !important;
-        position: relative !important;
-        z-index: 1 !important;
+        font-size: 14px;
     }
     
     .btn-warning {
-        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
-        color: white !important;
-        box-shadow: 0 5px 20px rgba(249, 115, 22, 0.3) !important;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
     .btn-warning:hover {
-        background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 25px rgba(249, 115, 22, 0.5) !important;
-        animation: shake-btn 0.5s ease !important;
-    }
-    
-    @keyframes shake-btn {
-        0%, 100% { transform: translateY(-3px) translateX(0); }
-        25% { transform: translateY(-3px) translateX(-3px); }
-        75% { transform: translateY(-3px) translateX(3px); }
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
     }
     
     .btn-warning:active {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 3px 15px rgba(249, 115, 22, 0.3) !important;
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+    }
+    
+    .btn-warning:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
     }
     
     .btn-default {
-        background: white !important;
-        color: #64748b !important;
-        border: 2px solid #cbd5e1 !important;
-        box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1) !important;
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
     }
     
     .btn-default:hover {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
-        color: #1e293b !important;
-        border-color: #94a3b8 !important;
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+        transform: translateY(-2px);
     }
     
     .btn-default:active {
-        transform: translateY(-1px) !important;
+        transform: translateY(0);
     }
     
-    /* RESPONSIVE */
+    /* COUNTDOWN STATE */
+    .btn-countdown {
+        background: linear-gradient(135deg, #94a3b8, #64748b);
+        cursor: not-allowed;
+    }
+    
+    /* SMOOTH SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+    
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 1200px) {
+        .remove-container {
+            padding: 20px;
+        }
+    }
+    
     @media (max-width: 768px) {
         .remove-container {
-            padding: 15px !important;
-            align-items: flex-start !important;
+            padding: 16px;
+            align-items: flex-start;
         }
         
         .remove-card {
-            margin-top: 20px !important;
+            margin-top: 20px;
         }
         
         .remove-header {
-            padding: 30px 25px 25px !important;
+            padding: 32px 24px;
         }
         
         .remove-header h1 {
-            font-size: 24px !important;
+            font-size: 28px;
         }
         
         .remove-icon {
-            width: 70px !important;
-            height: 70px !important;
+            width: 70px;
+            height: 70px;
         }
         
         .remove-icon i {
-            font-size: 35px !important;
+            font-size: 32px;
         }
         
         .remove-body {
-            padding: 25px 20px !important;
+            padding: 24px;
         }
         
         .member-avatar-large {
-            width: 80px !important;
-            height: 80px !important;
-            font-size: 36px !important;
+            width: 80px;
+            height: 80px;
+            font-size: 34px;
         }
         
         .member-card {
-            padding: 25px 20px !important;
+            padding: 24px 20px;
         }
         
         .action-buttons {
-            flex-direction: column !important;
+            flex-direction: column;
         }
         
         .btn {
-            width: 100% !important;
+            width: 100%;
         }
     }
     
     @media (max-width: 480px) {
         .remove-container {
-            padding: 10px !important;
+            padding: 12px;
         }
         
         .remove-header {
-            padding: 25px 20px 20px !important;
+            padding: 28px 20px;
         }
         
         .remove-header h1 {
-            font-size: 22px !important;
+            font-size: 24px;
         }
         
         .remove-header p {
-            font-size: 14px !important;
+            font-size: 13px;
         }
         
         .remove-icon {
-            width: 60px !important;
-            height: 60px !important;
-            margin-bottom: 15px !important;
+            width: 60px;
+            height: 60px;
+            margin-bottom: 16px;
         }
         
         .remove-icon i {
-            font-size: 30px !important;
+            font-size: 28px;
         }
         
         .remove-body {
-            padding: 20px 15px !important;
+            padding: 20px;
         }
         
         .member-avatar-large {
-            width: 70px !important;
-            height: 70px !important;
-            font-size: 32px !important;
+            width: 70px;
+            height: 70px;
+            font-size: 30px;
         }
         
         .member-name {
-            font-size: 20px !important;
+            font-size: 20px;
         }
         
         .member-card {
-            padding: 20px 15px !important;
+            padding: 20px 16px;
         }
         
         .btn {
-            padding: 14px 20px !important;
-            font-size: 12px !important;
+            padding: 12px 24px;
+            font-size: 11px;
         }
-    }
-    
-    /* Smooth Transitions */
-    * {
-        transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
-    }
-    
-    /* Performance Optimization */
-    .remove-card,
-    .btn,
-    .remove-icon,
-    .member-avatar-large {
-        will-change: transform !important;
     }
 </style>
 
@@ -509,7 +525,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
             
             <form method="POST" action="" id="removeForm">
                 <div class="action-buttons">
-                    <button type="submit" name="confirm_remove" class="btn btn-warning">
+                    <button type="submit" name="confirm_remove" class="btn btn-warning" id="removeBtn">
                         <i class="fa fa-user-times"></i> Remove Member
                     </button>
                     <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team" class="btn btn-default">
@@ -522,79 +538,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
 </div>
 
 <script>
-    $(document).ready(function() {
-        // Remove confirmation with countdown
-        let confirmCount = 0;
-        
-        $('#removeForm').on('submit', function(e) {
-            if (confirmCount === 0) {
-                e.preventDefault();
-                confirmCount++;
-                
-                const $btn = $(this).find('.btn-warning');
-                const originalText = $btn.html();
-                
-                let countdown = 3;
-                $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
-                $btn.prop('disabled', true);
-                
-                const timer = setInterval(() => {
-                    countdown--;
-                    if (countdown > 0) {
-                        $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
-                    } else {
-                        clearInterval(timer);
-                        $btn.html('<i class="fa fa-user-times"></i> Confirm Removal');
-                        $btn.prop('disabled', false);
-                        $btn.css({
-                            'animation': 'shake-btn 0.5s ease infinite'
-                        });
-                    }
-                }, 1000);
-                
-                return false;
-            }
+$(document).ready(function() {
+    let confirmCount = 0;
+    
+    // Remove confirmation with countdown
+    $('#removeForm').on('submit', function(e) {
+        if (confirmCount === 0) {
+            e.preventDefault();
+            confirmCount++;
             
-            // Final confirmation
-            return confirm('Are you sure you want to remove <?php echo htmlspecialchars($member['full_name']); ?> from this project?');
-        });
-        
-        // Keyboard shortcut - ESC to cancel
-        $(document).on('keydown', function(e) {
-            if (e.key === 'Escape') {
-                window.location.href = 'project-detail.php?id=<?php echo $project_id; ?>&tab=team';
-            }
-        });
-        
-        // Add ripple effect to buttons
-        $('.btn').on('click', function(e) {
-            const $btn = $(this);
-            const x = e.pageX - $btn.offset().left;
-            const y = e.pageY - $btn.offset().top;
+            const $btn = $('#removeBtn');
+            const originalHtml = $btn.html();
             
-            $btn.css({
-                '--ripple-x': x + 'px',
-                '--ripple-y': y + 'px'
-            });
-        });
+            let countdown = 3;
+            $btn.removeClass('btn-warning').addClass('btn-countdown');
+            $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
+            $btn.prop('disabled', true);
+            
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
+                } else {
+                    clearInterval(timer);
+                    $btn.removeClass('btn-countdown').addClass('btn-warning');
+                    $btn.html('<i class="fa fa-user-times"></i> Confirm Removal');
+                    $btn.prop('disabled', false);
+                }
+            }, 1000);
+            
+            return false;
+        }
         
-        // Smooth scroll
-        $('html').css('scroll-behavior', 'smooth');
-        
-        // Warning animation on page load
-        setTimeout(() => {
-            $('.warning-box').css({
-                'animation': 'shake 0.5s ease'
-            });
-        }, 500);
-        
-        // Member card entrance animation
-        setTimeout(() => {
-            $('.member-card').css({
-                'animation': 'scaleIn 0.5s ease'
-            });
-        }, 200);
+        // Final confirmation
+        return confirm('Are you sure you want to remove <?php echo htmlspecialchars($member['full_name']); ?> from this project?');
     });
+    
+    // Keyboard shortcut - ESC to cancel
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.location.href = 'project-detail.php?id=<?php echo $project_id; ?>&tab=team';
+        }
+    });
+});
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

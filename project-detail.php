@@ -248,6 +248,7 @@ $stats = $project_obj->getStats($project_id);
         display: flex;
         align-items: center;
         gap: 10px;
+        color:white
     }
     
     .panel-body {

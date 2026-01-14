@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Edit Task';
 require_once 'includes/header.php';
 require_once 'components/task.php';
@@ -16,18 +18,25 @@ if (!$task) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Convert empty strings to NULL for database
+    $assigned_to = (!empty($_POST['assigned_to']) && $_POST['assigned_to'] !== '0') ? intval($_POST['assigned_to']) : null;
+    $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
+    $estimated_hours = (!empty($_POST['estimated_hours']) && $_POST['estimated_hours'] > 0) ? floatval($_POST['estimated_hours']) : null;
+    $actual_hours = (!empty($_POST['actual_hours']) && $_POST['actual_hours'] > 0) ? floatval($_POST['actual_hours']) : null;
+    
     $data = [
-        'task_name' => $_POST['task_name'],
-        'description' => $_POST['description'],
-        'assigned_to' => $_POST['assigned_to'] ?: null,
+        'task_name' => trim($_POST['task_name']),
+        'description' => trim($_POST['description']),
+        'assigned_to' => $assigned_to,
         'status' => $_POST['status'],
         'priority' => $_POST['priority'],
-        'due_date' => $_POST['due_date'] ?: null,
-        'estimated_hours' => $_POST['estimated_hours'] ?: null,
-        'actual_hours' => $_POST['actual_hours'] ?: null
+        'due_date' => $due_date,
+        'estimated_hours' => $estimated_hours,
+        'actual_hours' => $actual_hours
     ];
     
     if ($task_obj->update($task_id, $data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $task['project_id'] . '&tab=tasks');
         exit;
     }
@@ -38,28 +47,12 @@ $users = $user->getActiveUsers();
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN */
-    
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --secondary: #8b5cf6;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    }
-    
     .task-edit-container {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-        animation: fadeIn 0.4s ease;
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        animation: fadeIn 0.5s ease !important;
     }
     
     @keyframes fadeIn {
@@ -67,598 +60,600 @@ $users = $user->getActiveUsers();
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* PAGE HEADER */
-    .page-header {
-        background: white;
-        padding: 32px;
-        border-radius: 16px;
-        margin-bottom: 32px;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--border);
-        position: relative;
-        overflow: hidden;
+    .task-edit-header {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        color: #1e293b !important;
+        padding: 35px 40px !important;
+        border-radius: 20px !important;
+        margin-bottom: 35px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: slideDown 0.6s ease !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     
-    .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--primary), var(--secondary));
+    .task-edit-header::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(34, 197, 94, 0.1) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
     }
     
-    .page-header h1 {
-        margin: 0 0 8px 0;
-        font-weight: 700;
-        font-size: 32px;
-        color: var(--dark);
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
-    .page-header h1 i {
-        color: var(--primary);
-        font-size: 28px;
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .page-breadcrumb {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        margin-top: 12px;
+    .task-edit-header h1 {
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 32px !important;
+        position: relative !important;
+        z-index: 1 !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
     
-    .page-breadcrumb a {
-        color: var(--primary);
-        text-decoration: none;
-        transition: color 0.3s ease;
+    .task-edit-header h1 i {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
     
-    .page-breadcrumb a:hover {
-        color: var(--primary-dark);
+    .task-edit-breadcrumb {
+        margin-top: 15px !important;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
-    .page-breadcrumb span {
-        color: #94a3b8;
+    .task-edit-breadcrumb a {
+        color: #22c55e !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: color 0.3s ease !important;
     }
     
-    .page-breadcrumb .current {
-        color: #64748b;
+    .task-edit-breadcrumb a:hover {
+        color: #16a34a !important;
     }
     
-    /* FORM CARD */
+    .task-edit-breadcrumb span {
+        color: #64748b !important;
+        margin: 0 8px !important;
+    }
+    
     .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 40px;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
-        animation: fadeInUp 0.4s ease;
-        margin-bottom: 24px;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 40px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: slideUp 0.5s ease !important;
+        margin-bottom: 25px !important;
     }
     
-    @keyframes fadeInUp {
+    @keyframes slideUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* INFO SIDEBAR */
     .info-sidebar {
-        background: white;
-        border-radius: 16px;
-        padding: 28px;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
-        animation: fadeInUp 0.4s ease 0.1s both;
-        height: fit-content;
-        position: sticky;
-        top: 20px;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 30px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: slideUp 0.7s ease !important;
+        height: fit-content !important;
+        position: sticky !important;
+        top: 20px !important;
     }
     
     .info-sidebar-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 20px;
-        padding-bottom: 12px;
-        border-bottom: 2px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #22c55e 0%, #16a34a 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
     .info-sidebar-title i {
-        color: var(--primary);
-        font-size: 16px;
+        color: #22c55e !important;
     }
     
     .info-item {
-        margin-bottom: 16px;
-        padding: 12px 16px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        border-radius: 10px;
+        margin-bottom: 20px !important;
+        padding: 15px !important;
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(22, 163, 74, 0.02) 100%) !important;
+        border: 1px solid rgba(34, 197, 94, 0.1) !important;
+        border-radius: 12px !important;
     }
     
     .info-item:last-child {
-        margin-bottom: 0;
+        margin-bottom: 0 !important;
     }
     
     .info-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: #64748b !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
     }
     
     .info-label i {
-        color: var(--primary);
-        font-size: 11px;
+        color: #22c55e !important;
+        font-size: 10px !important;
     }
     
     .info-value {
-        color: var(--dark);
-        font-weight: 600;
-        font-size: 13px;
-        line-height: 1.4;
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        line-height: 1.4 !important;
     }
     
-    /* CURRENT VALUES INFO */
-    .task-current-values {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        padding: 16px 20px;
-        border-radius: 12px;
-        border: 1px solid rgba(99, 102, 241, 0.15);
-        margin-bottom: 24px;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-    }
-    
-    .task-current-values i {
-        font-size: 16px;
-        color: var(--primary);
-        flex-shrink: 0;
-        margin-top: 2px;
-    }
-    
-    .task-current-values strong {
-        color: var(--dark);
-        font-weight: 700;
-        font-size: 13px;
-    }
-    
-    .task-current-values .info-text {
-        color: #64748b;
-        font-weight: 500;
-        font-size: 13px;
-    }
-    
-    /* SECTION TITLES */
     .form-section-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 24px;
-        padding-bottom: 12px;
-        border-bottom: 2px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #22c55e 0%, #16a34a 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
     .form-section-title i {
-        color: var(--primary);
-        font-size: 16px;
+        color: #22c55e !important;
     }
     
-    .form-section-title:not(:first-child) {
-        margin-top: 40px;
-    }
-    
-    /* FORM GROUPS */
     .form-group-modern {
-        margin-bottom: 24px;
+        margin-bottom: 25px !important;
     }
     
     .form-group-modern label {
-        display: block;
-        font-weight: 700;
-        font-size: 11px;
-        color: #64748b;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
+        display: block !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        color: #1e293b !important;
+        margin-bottom: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     
     .form-group-modern label .required {
-        color: var(--danger);
-        margin-left: 4px;
+        color: #ef4444 !important;
+        margin-left: 4px !important;
     }
     
-    /* FORM CONTROLS */
     .form-control-modern {
-        width: 100%;
-        padding: 14px 16px;
-        border: 2px solid var(--border);
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: 500;
-        color: var(--dark);
-        background: white;
-        transition: all 0.3s ease;
+        width: 100% !important;
+        padding: 14px 18px !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #1e293b !important;
+        background: white !important;
+        transition: all 0.3s ease !important;
     }
     
     .form-control-modern:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none !important;
+        border-color: #22c55e !important;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1) !important;
+    }
+    
+    .form-control-modern:hover {
+        border-color: #cbd5e1 !important;
     }
     
     .form-control-modern::placeholder {
-        color: #94a3b8;
+        color: #94a3b8 !important;
     }
     
     textarea.form-control-modern {
-        resize: vertical;
-        min-height: 120px;
+        resize: vertical !important;
+        min-height: 120px !important;
     }
     
     select.form-control-modern {
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 16px center;
-        padding-right: 40px;
+        cursor: pointer !important;
+        appearance: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2322c55e' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 18px center !important;
+        padding-right: 45px !important;
     }
     
-    /* INPUT WITH ICONS */
+    input[type="number"].form-control-modern,
+    input[type="date"].form-control-modern {
+        cursor: pointer !important;
+    }
+    
     .input-icon-wrapper {
-        position: relative;
+        position: relative !important;
     }
     
     .input-icon-wrapper i {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--primary);
-        font-size: 14px;
+        position: absolute !important;
+        left: 18px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: #22c55e !important;
+        font-size: 16px !important;
     }
     
     .input-icon-wrapper .form-control-modern {
-        padding-left: 42px;
+        padding-left: 45px !important;
     }
     
     .input-icon-wrapper.textarea-wrapper i {
-        top: 18px;
-        transform: none;
+        top: 20px !important;
+        transform: none !important;
     }
     
     .input-icon-wrapper.select-wrapper i {
-        pointer-events: none;
-        z-index: 1;
+        pointer-events: none !important;
+        z-index: 1 !important;
     }
     
-    /* CHARACTER COUNTER */
-    .char-counter {
-        font-size: 11px;
-        color: #94a3b8;
-        font-weight: 600;
-        margin-top: 6px;
-        text-align: right;
+    .task-current-values {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%) !important;
+        padding: 20px !important;
+        border-radius: 12px !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+        margin-bottom: 25px !important;
     }
     
-    .char-counter.warning {
-        color: var(--warning);
+    .task-current-values i {
+        font-size: 18px !important;
+        color: #22c55e !important;
+        margin-right: 10px !important;
     }
     
-    .char-counter.danger {
-        color: var(--danger);
+    .task-current-values strong {
+        color: #1e293b !important;
+        font-weight: 700 !important;
     }
     
-    /* PREVIEW BADGES */
-    .preview-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 8px;
+    .task-current-values .info-text {
+        color: #64748b !important;
+        font-weight: 600 !important;
     }
     
-    /* Status Badges */
-    .status-todo { background: #fef3c7; color: #92400e; }
-    .status-in_progress { background: #dbeafe; color: #1e40af; }
-    .status-review { background: #fed7aa; color: #9a3412; }
-    .status-completed { background: #d1fae5; color: #065f46; }
-    
-    /* Priority Badges */
-    .priority-low { background: #d1fae5; color: #065f46; }
-    .priority-medium { background: #fef3c7; color: #92400e; }
-    .priority-high { background: #fed7aa; color: #9a3412; }
-    .priority-critical { background: #fee2e2; color: #991b1b; }
-    
-    /* ASSIGNEE PREVIEW */
-    .assignee-preview {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border: 1px solid rgba(99, 102, 241, 0.15);
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-top: 8px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--dark);
+    .badge-preview {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 16px !important;
+        border-radius: 20px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-top: 8px !important;
+        color: white !important;
     }
     
-    .assignee-preview.unassigned {
-        background: linear-gradient(135deg, rgba(148, 163, 184, 0.05), rgba(100, 116, 139, 0.03));
-        border-color: rgba(148, 163, 184, 0.15);
-        color: #64748b;
+    .badge-preview.status-todo {
+        background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+    }
+    
+    .badge-preview.status-in_progress {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    }
+    
+    .badge-preview.status-review {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    }
+    
+    .badge-preview.status-completed {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    
+    .badge-preview.priority-low {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    
+    .badge-preview.priority-medium {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    }
+    
+    .badge-preview.priority-high {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    }
+    
+    .badge-preview.priority-critical {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        animation: pulse 2s ease-in-out infinite !important;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.85; transform: scale(1.05); }
     }
     
     .user-avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        font-size: 11px;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-right: 8px !important;
     }
     
-    /* DATE & HOURS PREVIEW */
-    .date-preview,
+    .assignee-preview {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%) !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+        border-radius: 20px !important;
+        padding: 8px 16px !important;
+        margin-top: 8px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+    }
+    
+    .assignee-preview.unassigned {
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(100, 116, 139, 0.05) 100%) !important;
+        border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    
+    .due-date-preview {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%) !important;
+        border: 2px solid rgba(59, 130, 246, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px 16px !important;
+        margin-top: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    
+    .due-date-preview.no-date {
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(100, 116, 139, 0.05) 100%) !important;
+        border-color: rgba(148, 163, 184, 0.2) !important;
+    }
+    
+    .due-date-preview i {
+        color: #3b82f6 !important;
+    }
+    
+    .due-date-preview.no-date i {
+        color: #94a3b8 !important;
+    }
+    
     .hours-preview {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border: 1px solid rgba(99, 102, 241, 0.15);
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-top: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--dark);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .date-preview.no-date {
-        background: linear-gradient(135deg, rgba(148, 163, 184, 0.05), rgba(100, 116, 139, 0.03));
-        border-color: rgba(148, 163, 184, 0.15);
-        color: #64748b;
-    }
-    
-    .date-preview i {
-        color: var(--primary);
-    }
-    
-    .date-preview.no-date i {
-        color: #94a3b8;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%) !important;
+        border: 2px solid rgba(139, 92, 246, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 10px 16px !important;
+        margin-top: 8px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
     }
     
     .hours-preview i {
-        color: var(--primary);
+        color: #8b5cf6 !important;
     }
     
-    /* HOURS COMPARISON */
     .hours-comparison {
-        display: flex;
-        gap: 12px;
-        margin-top: 16px;
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 15px !important;
     }
     
     .hours-comparison .hours-preview {
-        flex: 1;
-        margin-top: 0;
-        text-align: center;
-        justify-content: center;
+        flex: 1 !important;
+        margin-top: 0 !important;
+        text-align: center !important;
+        justify-content: center !important;
     }
     
     .hours-comparison .actual-hours {
-        background: linear-gradient(135deg, rgba(249, 115, 22, 0.05), rgba(234, 88, 12, 0.03));
-        border-color: rgba(249, 115, 22, 0.15);
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%) !important;
+        border-color: rgba(249, 115, 22, 0.2) !important;
     }
     
     .hours-comparison .actual-hours i {
-        color: #f97316;
+        color: #f97316 !important;
     }
     
-    /* FORM ACTIONS */
     .form-actions {
-        display: flex;
-        gap: 12px;
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 2px solid var(--border);
-        flex-wrap: wrap;
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 35px !important;
+        padding-top: 30px !important;
+        border-top: 2px solid #e2e8f0 !important;
+        flex-wrap: wrap !important;
     }
     
-    /* BUTTONS */
     .btn-modern {
-        padding: 12px 28px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        text-decoration: none !important;
     }
     
     .btn-modern.primary {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(34, 197, 94, 0.3) !important;
     }
     
     .btn-modern.primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+        background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4) !important;
     }
     
     .btn-modern.secondary {
-        background: white;
-        color: var(--primary);
-        border: 2px solid var(--primary);
+        background: white !important;
+        color: #22c55e !important;
+        border: 2px solid #22c55e !important;
     }
     
     .btn-modern.secondary:hover {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-        transform: translateY(-2px);
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%) !important;
+        transform: translateY(-2px) !important;
     }
     
-    /* SMOOTH SCROLLBAR */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+    .char-counter {
+        font-size: 12px !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        margin-top: 5px !important;
+        text-align: right !important;
     }
     
-    ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+    .char-counter.warning {
+        color: #f97316 !important;
     }
     
-    ::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 5px;
+    .char-counter.danger {
+        color: #ef4444 !important;
     }
     
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-dark);
-    }
-    
-    /* RESPONSIVE DESIGN */
+    /* RESPONSIVE */
     @media (max-width: 1200px) {
         .task-edit-container {
-            padding: 20px;
+            padding: 15px !important;
         }
-        .page-header {
-            padding: 28px;
-        }
-        .page-header h1 {
-            font-size: 28px;
+        .task-edit-header {
+            padding: 25px 30px !important;
         }
         .form-card {
-            padding: 32px;
+            padding: 30px !important;
         }
         .info-sidebar {
-            padding: 24px;
-        }
-    }
-    
-    @media (max-width: 992px) {
-        .form-card {
-            padding: 28px;
+            padding: 25px !important;
         }
     }
     
     @media (max-width: 768px) {
         .task-edit-container {
-            padding: 16px;
+            padding: 10px !important;
         }
-        .page-header {
-            padding: 24px 20px;
-            margin-bottom: 24px;
+        .task-edit-header {
+            padding: 20px !important;
+            margin-bottom: 20px !important;
         }
-        .page-header h1 {
-            font-size: 24px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-        }
-        .page-breadcrumb {
-            flex-wrap: wrap;
+        .task-edit-header h1 {
+            font-size: 24px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
         }
         .form-card {
-            padding: 24px;
+            padding: 20px !important;
         }
         .info-sidebar {
-            padding: 24px;
-            margin-top: 24px;
-            position: static;
+            padding: 20px !important;
+            margin-top: 20px !important;
         }
         .form-actions {
-            flex-direction: column;
+            flex-direction: column !important;
         }
         .btn-modern {
-            width: 100%;
-            justify-content: center;
+            width: 100% !important;
+            justify-content: center !important;
         }
         .hours-comparison {
-            flex-direction: column;
+            flex-direction: column !important;
         }
     }
     
     @media (max-width: 480px) {
         .task-edit-container {
-            padding: 12px;
+            padding: 8px !important;
         }
-        .page-header {
-            padding: 20px;
-        }
-        .page-header h1 {
-            font-size: 20px;
+        .task-edit-header h1 {
+            font-size: 20px !important;
         }
         .form-card {
-            padding: 20px;
+            padding: 15px !important;
         }
         .info-sidebar {
-            padding: 20px;
+            padding: 15px !important;
         }
         .form-control-modern {
-            padding: 12px 14px;
-            font-size: 14px;
+            padding: 12px 16px !important;
+            font-size: 14px !important;
         }
         .input-icon-wrapper .form-control-modern {
-            padding-left: 38px;
-        }
-        .form-section-title {
-            font-size: 13px;
+            padding-left: 40px !important;
         }
     }
 </style>
 
 <div class="task-edit-container container-fluid">
-    <div class="page-header">
+    <div class="task-edit-header">
         <h1>
             <i class="fa fa-edit"></i> Edit Task
         </h1>
-        <div class="page-breadcrumb">
+        <div class="task-edit-breadcrumb">
             <a href="project-detail.php?id=<?php echo $task['project_id']; ?>&tab=tasks">
                 <i class="fa fa-tasks"></i> Project Tasks
             </a>
             <span>/</span>
-            <span class="current">Edit Task</span>
+            <span style="color: #1e293b; font-weight: 600;">Edit Task</span>
         </div>
     </div>
     
@@ -668,10 +663,8 @@ $users = $user->getActiveUsers();
                 <!-- CURRENT VALUES INFO -->
                 <div class="task-current-values">
                     <i class="fa fa-info-circle"></i>
-                    <div>
-                        <strong>Editing:</strong>
-                        <span class="info-text"><?php echo htmlspecialchars($task['task_name']); ?></span>
-                    </div>
+                    <strong>Editing:</strong>
+                    <span class="info-text"><?php echo htmlspecialchars($task['task_name']); ?></span>
                 </div>
                 
                 <form method="POST" action="" id="taskForm">
@@ -710,13 +703,13 @@ $users = $user->getActiveUsers();
                                       rows="4"
                                       placeholder="Describe the task in detail"
                                       maxlength="1000"
-                                      style="padding-left: 42px;"><?php echo htmlspecialchars($task['description']); ?></textarea>
+                                      style="padding-left: 45px;"><?php echo htmlspecialchars($task['description']); ?></textarea>
                         </div>
                         <div class="char-counter" id="descCounter"><?php echo strlen($task['description']); ?> / 1000 characters</div>
                     </div>
                     
                     <!-- ASSIGNMENT & SCHEDULING -->
-                    <div class="form-section-title">
+                    <div class="form-section-title" style="margin-top: 40px;">
                         <i class="fa fa-users"></i> Assignment & Scheduling
                     </div>
                     
@@ -751,11 +744,12 @@ $users = $user->getActiveUsers();
                                             }
                                         }
                                         if ($assigned_user): 
-                                            $initials = strtoupper(substr($assigned_user['full_name'], 0, 1));
+                                            $initials = '';
                                             $name_parts = explode(' ', $assigned_user['full_name']);
-                                            if (count($name_parts) > 1) {
-                                                $initials .= strtoupper(substr($name_parts[1], 0, 1));
+                                            foreach ($name_parts as $part) {
+                                                $initials .= strtoupper(substr($part, 0, 1));
                                             }
+                                            $initials = substr($initials, 0, 2);
                                         ?>
                                         <div class="user-avatar"><?php echo $initials; ?></div>
                                         <?php echo htmlspecialchars($assigned_user['full_name']); ?> (<?php echo ucfirst($assigned_user['role']); ?>)
@@ -779,7 +773,7 @@ $users = $user->getActiveUsers();
                                            name="due_date"
                                            value="<?php echo $task['due_date']; ?>">
                                 </div>
-                                <div class="date-preview <?php echo !$task['due_date'] ? 'no-date' : ''; ?>" id="dueDatePreview">
+                                <div class="due-date-preview <?php echo !$task['due_date'] ? 'no-date' : ''; ?>" id="dueDatePreview">
                                     <?php if ($task['due_date']): ?>
                                         <i class="fa fa-calendar"></i> Due: <?php echo date('M d, Y', strtotime($task['due_date'])); ?>
                                     <?php else: ?>
@@ -791,7 +785,7 @@ $users = $user->getActiveUsers();
                     </div>
                     
                     <!-- CLASSIFICATION -->
-                    <div class="form-section-title">
+                    <div class="form-section-title" style="margin-top: 40px;">
                         <i class="fa fa-cogs"></i> Classification
                     </div>
                     
@@ -810,7 +804,7 @@ $users = $user->getActiveUsers();
                                         <option value="completed" <?php echo $task['status'] === 'completed' ? 'selected' : ''; ?>>Completed</option>
                                     </select>
                                 </div>
-                                <div class="preview-badge status-<?php echo $task['status']; ?>" id="statusPreview">
+                                <div class="badge-preview status-<?php echo $task['status']; ?>" id="statusPreview">
                                     <i class="fa fa-<?php 
                                         echo $task['status'] === 'todo' ? 'clock-o' : 
                                             ($task['status'] === 'in_progress' ? 'spinner' : 
@@ -834,7 +828,7 @@ $users = $user->getActiveUsers();
                                         <option value="critical" <?php echo $task['priority'] === 'critical' ? 'selected' : ''; ?>>Critical</option>
                                     </select>
                                 </div>
-                                <div class="preview-badge priority-<?php echo $task['priority']; ?>" id="priorityPreview">
+                                <div class="badge-preview priority-<?php echo $task['priority']; ?>" id="priorityPreview">
                                     <i class="fa fa-flag"></i>
                                     <?php echo ucfirst($task['priority']); ?>
                                 </div>
@@ -843,7 +837,7 @@ $users = $user->getActiveUsers();
                     </div>
                     
                     <!-- TIME TRACKING -->
-                    <div class="form-section-title">
+                    <div class="form-section-title" style="margin-top: 40px;">
                         <i class="fa fa-clock-o"></i> Time Tracking
                     </div>
                     
@@ -944,6 +938,11 @@ $users = $user->getActiveUsers();
 
 <script>
 $(document).ready(function() {
+    // FORM ANIMATION
+    $('.form-card').css({
+        'animation': 'slideUp 0.5s ease both'
+    });
+    
     // CHARACTER COUNTER FOR TASK NAME
     $('#task_name').on('input', function() {
         const length = $(this).val().length;
@@ -953,7 +952,7 @@ $(document).ready(function() {
         $counter.text(length + ' / ' + max + ' characters');
         
         if (length > max * 0.9) {
-            $counter.addClass('danger').removeClass('warning');
+            $counter.addClass('danger');
         } else if (length > max * 0.75) {
             $counter.addClass('warning').removeClass('danger');
         } else {
@@ -970,7 +969,7 @@ $(document).ready(function() {
         $counter.text(length + ' / ' + max + ' characters');
         
         if (length > max * 0.9) {
-            $counter.addClass('danger').removeClass('warning');
+            $counter.addClass('danger');
         } else if (length > max * 0.75) {
             $counter.addClass('warning').removeClass('danger');
         } else {
@@ -984,16 +983,22 @@ $(document).ready(function() {
         const $preview = $('#assigneePreview');
         
         if ($(this).val() === '') {
-            $preview.removeClass().addClass('assignee-preview unassigned');
+            $preview.attr('class', 'assignee-preview unassigned');
             $preview.html('<i class="fa fa-user-times"></i> Unassigned');
         } else {
             const name = $selected.data('name');
             const role = $selected.data('role');
-            const initials = name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase();
+            const initials = name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2);
             
-            $preview.removeClass().addClass('assignee-preview');
+            $preview.attr('class', 'assignee-preview');
             $preview.html('<div class="user-avatar">' + initials + '</div>' + name + ' (' + role + ')');
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
     // DUE DATE PREVIEW
@@ -1002,16 +1007,22 @@ $(document).ready(function() {
         const value = $(this).val();
         
         if (value === '') {
-            $preview.removeClass().addClass('date-preview no-date');
+            $preview.attr('class', 'due-date-preview no-date');
             $preview.html('<i class="fa fa-calendar-times-o"></i> No due date set');
         } else {
             const date = new Date(value);
             const options = { year: 'numeric', month: 'short', day: 'numeric' };
             const formattedDate = date.toLocaleDateString('en-US', options);
             
-            $preview.removeClass().addClass('date-preview');
+            $preview.attr('class', 'due-date-preview');
             $preview.html('<i class="fa fa-calendar"></i> Due: ' + formattedDate);
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
     // ESTIMATED HOURS PREVIEW
@@ -1025,6 +1036,12 @@ $(document).ready(function() {
             const unit = value === 1 ? 'hour' : 'hours';
             $preview.html('<i class="fa fa-hourglass-start"></i> Estimated: ' + value + ' ' + unit);
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
     // ACTUAL HOURS PREVIEW
@@ -1038,6 +1055,12 @@ $(document).ready(function() {
             const unit = value === 1 ? 'hour' : 'hours';
             $preview.html('<i class="fa fa-hourglass-end"></i> Actual: ' + value + ' ' + unit);
         }
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.05)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
     // STATUS BADGE PREVIEW
@@ -1051,8 +1074,14 @@ $(document).ready(function() {
             'completed': '<i class="fa fa-check-circle"></i> Completed'
         };
         
-        $preview.removeClass().addClass('preview-badge status-' + value);
+        $preview.attr('class', 'badge-preview status-' + value);
         $preview.html(labels[value]);
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.1)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
     // PRIORITY BADGE PREVIEW
@@ -1066,11 +1095,31 @@ $(document).ready(function() {
             'critical': '<i class="fa fa-exclamation-triangle"></i> Critical'
         };
         
-        $preview.removeClass().addClass('preview-badge priority-' + value);
+        $preview.attr('class', 'badge-preview priority-' + value);
         $preview.html(labels[value]);
+        
+        // Animate change
+        $preview.css('transform', 'scale(1.1)');
+        setTimeout(function() {
+            $preview.css('transform', 'scale(1)');
+        }, 200);
     });
     
-    // FORM VALIDATION
+    // INPUT FOCUS EFFECTS
+    $('.form-control-modern').on('focus', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#22c55e',
+            'transform': 'scale(1.05)',
+            'transition': 'all 0.3s ease'
+        });
+    }).on('blur', function() {
+        $(this).closest('.form-group-modern').find('label').css({
+            'color': '#1e293b',
+            'transform': 'scale(1)'
+        });
+    });
+    
+    // FORM VALIDATION ENHANCEMENT
     $('#taskForm').on('submit', function(e) {
         let isValid = true;
         
@@ -1078,7 +1127,7 @@ $(document).ready(function() {
             if ($(this).val().trim() === '') {
                 isValid = false;
                 $(this).css('border-color', '#ef4444');
-                $(this).one('input', function() {
+                $(this).on('input', function() {
                     $(this).css('border-color', '#e2e8f0');
                 });
             }
@@ -1091,10 +1140,13 @@ $(document).ready(function() {
                 scrollTop: $('.form-control-modern[required]').filter(function() {
                     return $(this).val().trim() === '';
                 }).first().offset().top - 100
-            }, 300);
+            }, 500);
         }
     });
 });
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php 
+ob_end_flush(); // Flush output buffer
+require_once 'includes/footer.php'; 
+?>

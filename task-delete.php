@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Delete Task';
 require_once 'includes/header.php';
 require_once 'components/task.php';
@@ -34,38 +36,22 @@ if ($task['assigned_to']) {
 // Handle deletion confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     $task_obj->delete($task_id);
+    ob_end_clean(); // Clear buffer before redirect
     header('Location: project-detail.php?id=' . $project_id . '&tab=tasks&deleted=1');
     exit;
 }
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN */
-    
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --secondary: #8b5cf6;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    }
-    
     .task-delete-container {
-        padding: 24px;
-        max-width: 1400px;
-        margin: 0 auto;
-        min-height: calc(100vh - 100px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.4s ease;
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
+        animation: fadeIn 0.5s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     @keyframes fadeIn {
@@ -73,429 +59,420 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* DELETE MODAL CARD */
     .delete-modal-card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--shadow-lg);
-        border: 1px solid var(--border);
-        max-width: 700px;
-        width: 100%;
-        overflow: hidden;
-        animation: fadeInUp 0.4s ease;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 24px !important;
+        padding: 0 !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        max-width: 700px !important;
+        width: 100% !important;
+        overflow: hidden !important;
+        margin: 20px !important;
     }
     
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
     }
     
-    .delete-modal-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--danger), #dc2626);
-    }
-    
-    /* DELETE MODAL HEADER */
     .delete-modal-header {
-        background: linear-gradient(135deg, var(--danger), #dc2626);
-        color: white;
-        padding: 32px;
-        position: relative;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: white !important;
+        padding: 30px 35px !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    
+    .delete-modal-header::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
     .delete-modal-header h1 {
-        margin: 0;
-        font-weight: 700;
-        font-size: 28px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 28px !important;
+        position: relative !important;
+        z-index: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
     
     .delete-icon-wrapper {
-        width: 48px;
-        height: 48px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
+        width: 50px !important;
+        height: 50px !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 24px !important;
+        animation: pulse 2s ease-in-out infinite !important;
     }
     
-    /* DELETE MODAL BODY */
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
     .delete-modal-body {
-        padding: 32px;
+        padding: 40px 35px !important;
     }
     
-    /* BREADCRUMB */
-    .breadcrumb-wrapper {
-        text-align: center;
-        margin-bottom: 24px;
-    }
-    
-    .breadcrumb-link {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 600;
-        transition: color 0.3s ease;
-        font-size: 14px;
-    }
-    
-    .breadcrumb-link:hover {
-        color: var(--primary-dark);
-    }
-    
-    .breadcrumb-link i {
-        margin-right: 6px;
-    }
-    
-    /* WARNING MESSAGE */
     .warning-message {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
-        border-left: 4px solid var(--danger);
-        padding: 16px 20px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%) !important;
+        border-left: 5px solid #ef4444 !important;
+        padding: 20px !important;
+        border-radius: 12px !important;
+        margin-bottom: 30px !important;
     }
     
     .warning-message i {
-        color: var(--danger);
-        font-size: 18px;
-        flex-shrink: 0;
-        margin-top: 2px;
+        color: #ef4444 !important;
+        font-size: 20px !important;
+        margin-right: 12px !important;
+        vertical-align: middle !important;
     }
     
-    .warning-message .warning-content strong {
-        color: var(--danger);
-        font-weight: 700;
-        display: block;
-        margin-bottom: 6px;
-        font-size: 14px;
+    .warning-message strong {
+        color: #dc2626 !important;
+        font-weight: 700 !important;
+        display: block !important;
+        margin-bottom: 8px !important;
+        font-size: 16px !important;
     }
     
-    .warning-message .warning-content p {
-        color: #64748b;
-        margin: 0;
-        font-weight: 500;
-        line-height: 1.5;
-        font-size: 13px;
+    .warning-message p {
+        color: #64748b !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.6 !important;
     }
     
-    /* TASK DETAILS BOX */
     .task-details-box {
-        background: white;
-        border: 2px solid var(--border);
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 24px;
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 25px !important;
+        margin-bottom: 30px !important;
     }
     
     .task-details-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 20px;
-        padding-bottom: 12px;
-        border-bottom: 2px solid var(--border);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 20px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
     .task-details-title i {
-        color: var(--primary);
-        font-size: 16px;
+        color: #22c55e !important;
     }
     
     .detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border);
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        padding: 12px 0 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
     
     .detail-row:last-child {
-        border-bottom: none;
+        border-bottom: none !important;
     }
     
     .detail-label {
-        color: #64748b;
-        font-weight: 600;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 150px;
+        color: #64748b !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        min-width: 150px !important;
     }
     
     .detail-label i {
-        color: var(--primary);
-        width: 16px;
-        text-align: center;
-        font-size: 14px;
+        color: #22c55e !important;
+        width: 18px !important;
+        text-align: center !important;
     }
     
     .detail-value {
-        color: var(--dark);
-        font-weight: 600;
-        font-size: 14px;
-        text-align: right;
-        flex: 1;
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+        text-align: right !important;
+        flex: 1 !important;
     }
     
     .detail-value.title-value {
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--primary);
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
     
     .detail-value.description-value {
-        text-align: left;
-        margin-top: 8px;
-        line-height: 1.6;
-        color: #64748b;
-        font-size: 13px;
+        text-align: left !important;
+        margin-top: 8px !important;
+        line-height: 1.6 !important;
+        color: #64748b !important;
     }
     
-    /* BADGES */
     .badge-display {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 6px 14px !important;
+        border-radius: 20px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: white !important;
     }
     
-    .status-todo { background: #fef3c7; color: #92400e; }
-    .status-in_progress { background: #dbeafe; color: #1e40af; }
-    .status-review { background: #fed7aa; color: #9a3412; }
-    .status-completed { background: #d1fae5; color: #065f46; }
+    .badge-display.status-todo {
+        background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%) !important;
+    }
     
-    .priority-low { background: #d1fae5; color: #065f46; }
-    .priority-medium { background: #fef3c7; color: #92400e; }
-    .priority-high { background: #fed7aa; color: #9a3412; }
-    .priority-critical { background: #fee2e2; color: #991b1b; }
+    .badge-display.status-in_progress {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    }
     
-    /* USER INFO */
+    .badge-display.status-review {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    }
+    
+    .badge-display.status-completed {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    
+    .badge-display.priority-low {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    
+    .badge-display.priority-medium {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    }
+    
+    .badge-display.priority-high {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+    }
+    
+    .badge-display.priority-critical {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        animation: pulseGlow 2s ease-in-out infinite !important;
+    }
+    
+    @keyframes pulseGlow {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    }
+    
     .user-info {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
-        border: 1px solid rgba(99, 102, 241, 0.15);
-        border-radius: 8px;
-        padding: 6px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--dark);
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%) !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+        border-radius: 20px !important;
+        padding: 6px 14px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
     }
     
     .user-avatar {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        font-size: 10px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        color: white !important;
+        font-size: 10px !important;
+        font-weight: 700 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    /* ACTION BUTTONS */
     .action-buttons {
-        display: flex;
-        gap: 12px;
-        margin-top: 24px;
-        flex-wrap: wrap;
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 30px !important;
+        flex-wrap: wrap !important;
     }
     
     .btn-modern {
-        padding: 12px 28px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: none;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        text-decoration: none;
-        flex: 1;
-        min-width: 150px;
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        text-decoration: none !important;
+        flex: 1 !important;
+        min-width: 150px !important;
     }
     
     .btn-modern.danger {
-        background: linear-gradient(135deg, var(--danger), #dc2626);
-        color: white;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(239, 68, 68, 0.3) !important;
     }
     
     .btn-modern.danger:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
-    }
-    
-    .btn-modern.danger:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
-    }
-    
-    .btn-modern.danger:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4) !important;
     }
     
     .btn-modern.secondary {
-        background: white;
-        color: var(--primary);
-        border: 2px solid var(--primary);
+        background: white !important;
+        color: #64748b !important;
+        border: 2px solid #e2e8f0 !important;
     }
     
     .btn-modern.secondary:hover {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-        transform: translateY(-2px);
+        background: #f8fafc !important;
+        border-color: #cbd5e1 !important;
+        transform: translateY(-2px) !important;
     }
     
-    .btn-modern.secondary:active {
-        transform: translateY(0);
+    .breadcrumb-wrapper {
+        text-align: center !important;
+        margin-bottom: 20px !important;
     }
     
-    /* COUNTDOWN STATE */
-    .btn-countdown {
-        background: linear-gradient(135deg, #94a3b8, #64748b);
-        cursor: not-allowed;
+    .breadcrumb-link {
+        color: #22c55e !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: color 0.3s ease !important;
+        font-size: 14px !important;
     }
     
-    /* SMOOTH SCROLLBAR */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+    .breadcrumb-link:hover {
+        color: #16a34a !important;
     }
     
-    ::-webkit-scrollbar-track {
-        background: #f1f5f9;
+    .breadcrumb-link i {
+        margin-right: 6px !important;
     }
     
-    ::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--primary-dark);
-    }
-    
-    /* RESPONSIVE DESIGN */
-    @media (max-width: 1200px) {
-        .task-delete-container {
-            padding: 20px;
-        }
-    }
-    
+    /* RESPONSIVE */
     @media (max-width: 768px) {
         .task-delete-container {
-            padding: 16px;
-            align-items: flex-start;
+            padding: 15px !important;
         }
         
         .delete-modal-card {
-            margin-top: 20px;
+            margin: 15px !important;
         }
         
         .delete-modal-header {
-            padding: 28px 24px;
+            padding: 25px !important;
         }
         
         .delete-modal-header h1 {
-            font-size: 24px;
-            flex-direction: column;
-            text-align: center;
+            font-size: 24px !important;
+            flex-direction: column !important;
+            text-align: center !important;
         }
         
         .delete-modal-body {
-            padding: 24px;
+            padding: 30px 25px !important;
         }
         
         .task-details-box {
-            padding: 20px;
+            padding: 20px !important;
         }
         
         .detail-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
         }
         
         .detail-label {
-            min-width: auto;
+            min-width: auto !important;
         }
         
         .detail-value {
-            text-align: left;
+            text-align: left !important;
         }
         
         .action-buttons {
-            flex-direction: column-reverse;
+            flex-direction: column-reverse !important;
         }
         
         .btn-modern {
-            width: 100%;
+            width: 100% !important;
         }
     }
     
     @media (max-width: 480px) {
         .task-delete-container {
-            padding: 12px;
+            padding: 10px !important;
+        }
+        
+        .delete-modal-card {
+            margin: 10px !important;
         }
         
         .delete-modal-header {
-            padding: 24px 20px;
+            padding: 20px !important;
         }
         
         .delete-modal-header h1 {
-            font-size: 20px;
+            font-size: 20px !important;
         }
         
         .delete-icon-wrapper {
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
+            width: 40px !important;
+            height: 40px !important;
+            font-size: 20px !important;
         }
         
         .delete-modal-body {
-            padding: 20px;
+            padding: 25px 20px !important;
         }
         
         .task-details-box {
-            padding: 16px;
+            padding: 15px !important;
         }
         
         .btn-modern {
-            padding: 12px 24px;
-            font-size: 11px;
+            padding: 12px 24px !important;
+            font-size: 13px !important;
         }
     }
 </style>
@@ -523,10 +500,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             <!-- WARNING MESSAGE -->
             <div class="warning-message">
                 <i class="fa fa-exclamation-triangle"></i>
-                <div class="warning-content">
-                    <strong>Warning: This action cannot be undone!</strong>
-                    <p>You are about to permanently delete this task. This will remove all task details, time logs, and progress information.</p>
-                </div>
+                <strong>Warning: This action cannot be undone!</strong>
+                <p>You are about to permanently delete this task. This will remove all task details, time logs, and progress information. This action cannot be recovered.</p>
             </div>
             
             <!-- TASK DETAILS -->
@@ -560,12 +535,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                             <div class="user-info">
                                 <div class="user-avatar">
                                     <?php 
-                                    $initials = strtoupper(substr($assigned_user['full_name'], 0, 1));
+                                    $initials = '';
                                     $name_parts = explode(' ', $assigned_user['full_name']);
-                                    if (count($name_parts) > 1) {
-                                        $initials .= strtoupper(substr($name_parts[1], 0, 1));
+                                    foreach ($name_parts as $part) {
+                                        $initials .= strtoupper(substr($part, 0, 1));
                                     }
-                                    echo $initials;
+                                    echo substr($initials, 0, 2);
                                     ?>
                                 </div>
                                 <?php echo htmlspecialchars($assigned_user['full_name']); ?> (<?php echo ucfirst($assigned_user['role']); ?>)
@@ -625,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 <?php if (isset($task['created_at'])): ?>
                 <div class="detail-row">
                     <span class="detail-label">
-                        <i class="fa fa-calendar-plus-o"></i> Created
+                        <i class="fa fa-calendar"></i> Created
                     </span>
                     <span class="detail-value"><?php echo date('M d, Y', strtotime($task['created_at'])); ?></span>
                 </div>
@@ -649,39 +624,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
 <script>
 $(document).ready(function() {
-    let confirmCount = 0;
-    
-    // DELETE CONFIRMATION WITH COUNTDOWN
+    // CONFIRMATION ON DELETE
     $('#deleteForm').on('submit', function(e) {
-        if (confirmCount === 0) {
-            e.preventDefault();
-            confirmCount++;
-            
-            const $btn = $('#deleteBtn');
-            const originalHtml = $btn.html();
-            
-            let countdown = 3;
-            $btn.removeClass('danger').addClass('btn-countdown');
-            $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
-            $btn.prop('disabled', true);
-            
-            const timer = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
-                } else {
-                    clearInterval(timer);
-                    $btn.removeClass('btn-countdown').addClass('danger');
-                    $btn.html('<i class="fa fa-trash"></i> Confirm Deletion');
-                    $btn.prop('disabled', false);
-                }
-            }, 1000);
-            
-            return false;
-        }
+        e.preventDefault();
         
-        // Final confirmation
-        return confirm('Are you absolutely sure you want to delete this task? This action is permanent and cannot be undone.');
+        if (confirm('Are you absolutely sure you want to delete this task? This action is permanent and cannot be undone.')) {
+            this.submit();
+        }
+    });
+    
+    // ADD ENTRANCE ANIMATION
+    $('.delete-modal-card').css({
+        'animation': 'scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both'
     });
     
     // ESCAPE KEY TO CANCEL
@@ -690,7 +644,27 @@ $(document).ready(function() {
             window.location.href = 'project-detail.php?id=<?php echo $project_id; ?>&tab=tasks';
         }
     });
+    
+    // FOCUS DELETE BUTTON
+    setTimeout(function() {
+        $('#deleteBtn').focus();
+    }, 600);
+    
+    // BUTTON HOVER EFFECTS
+    $('.btn-modern').on('mouseenter', function() {
+        $(this).find('i').css({
+            'transform': 'scale(1.2) rotate(5deg)',
+            'transition': 'transform 0.3s ease'
+        });
+    }).on('mouseleave', function() {
+        $(this).find('i').css({
+            'transform': 'scale(1) rotate(0deg)'
+        });
+    });
 });
 </script>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php 
+ob_end_flush(); // Flush output buffer
+require_once 'includes/footer.php'; 
+?>

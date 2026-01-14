@@ -513,10 +513,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     
-    <div class="row">
-        <div class="col-md-8 col-md-offset-2">
-            <div class="form-card">
-                <!-- CURRENT VALUES INFO -->
+    <div class="form-card">
+        <!-- CURRENT VALUES INFO -->
                 <div class="requirement-current-values">
                     <i class="fa fa-info-circle"></i>
                     <div>
@@ -664,9 +662,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </form>
             </div>
-        </div>
     </div>
-</div>
 
 <script>
 $(document).ready(function() {

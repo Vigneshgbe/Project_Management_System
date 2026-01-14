@@ -28,471 +28,618 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
-    /* OPTIMIZED CSS - REDUCED REDUNDANCY & IMPROVED PERFORMANCE */
-    
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --secondary: #8b5cf6;
-        --danger: #ef4444;
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --text-muted: #64748b;
-        --shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
-        --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* PERFORMANCE OPTIMIZATIONS */
-    * {
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* CONTAINER */
     .user-create-container {
-        min-height: calc(100vh - 100px);
-        padding: 24px;
-        max-width: 1200px;
-        margin: 0 auto;
-        animation: fadeIn 0.3s ease;
+        background: transparent !important;
+        min-height: calc(100vh - 100px) !important;
+        padding: 20px !important;
+        margin: 0 !important;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .user-create-header {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        color: #1e293b !important;
+        padding: 30px 35px !important;
+        border-radius: 20px !important;
+        margin-bottom: 30px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        position: relative !important;
+        overflow: hidden !important;
     }
     
-    /* PAGE HEADER */
-    .page-header-create {
-        background: white;
-        padding: 32px;
-        border-radius: 16px;
-        margin-bottom: 32px;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
-        position: relative;
-        overflow: hidden;
+    .user-create-header::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -50% !important;
+        right: -50% !important;
+        width: 200% !important;
+        height: 200% !important;
+        background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%) !important;
+        animation: rotate 20s linear infinite !important;
+        will-change: transform !important;
     }
     
-    .page-header-create::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--primary), var(--secondary));
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
-    .page-header-create h1 {
-        margin: 0 0 12px 0;
-        font-weight: 700;
-        font-size: 32px;
-        color: var(--dark);
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .user-create-header h1 {
+        margin: 0 !important;
+        font-weight: 800 !important;
+        font-size: 32px !important;
+        position: relative !important;
+        z-index: 1 !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
     
-    .page-header-create h1 i {
-        color: var(--primary);
-        font-size: 28px;
+    .user-create-header h1 i {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
     
-    .breadcrumb-nav {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 600;
+    .user-create-breadcrumb {
+        margin-top: 12px !important;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
-    .breadcrumb-nav a {
-        color: var(--primary);
-        text-decoration: none;
-        transition: color 0.2s;
+    .user-create-breadcrumb a {
+        color: #667eea !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: color 0.3s ease !important;
     }
     
-    .breadcrumb-nav a:hover {
-        color: var(--primary-dark);
+    .user-create-breadcrumb a:hover {
+        color: #764ba2 !important;
     }
     
-    .breadcrumb-nav span {
-        color: var(--text-muted);
+    .user-create-breadcrumb span {
+        color: #64748b !important;
+        margin: 0 8px !important;
     }
     
-    .breadcrumb-nav .current {
-        color: var(--dark);
+    .alert-modern {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%) !important;
+        border-left: 4px solid #ef4444 !important;
+        border-radius: 12px !important;
+        padding: 15px 20px !important;
+        margin-bottom: 25px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        color: #991b1b !important;
+        font-weight: 600 !important;
+        animation: slideIn 0.3s ease !important;
     }
     
-    /* ALERT */
-    .alert-error {
-        background: rgba(239, 68, 68, 0.1);
-        border-left: 4px solid var(--danger);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: #991b1b;
-        font-weight: 600;
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
-    .alert-error i {
-        font-size: 20px;
-        color: var(--danger);
+    .alert-modern i {
+        font-size: 20px !important;
+        color: #ef4444 !important;
     }
     
-    /* FORM CARD */
     .form-card {
-        background: white;
-        border-radius: 16px;
-        padding: 32px;
-        box-shadow: var(--shadow);
-        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 35px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        margin-bottom: 25px !important;
     }
     
-    /* SECTION TITLE */
-    .section-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--dark);
-        margin: 0 0 24px 0;
-        padding-bottom: 12px;
-        border-bottom: 3px solid;
-        border-image: linear-gradient(90deg, var(--primary), var(--secondary)) 1;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .info-card {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(20px) !important;
+        border-radius: 20px !important;
+        padding: 30px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        position: sticky !important;
+        top: 20px !important;
     }
     
-    .section-title:not(:first-child) {
-        margin-top: 32px;
+    .info-card-title {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 20px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
     }
     
-    .section-title i {
-        color: var(--primary);
+    .info-card-title i {
+        color: #667eea !important;
     }
     
-    /* FORM GROUP */
-    .form-group {
-        margin-bottom: 24px;
+    .info-section {
+        margin-bottom: 25px !important;
     }
     
-    .form-group label {
-        display: block;
-        font-weight: 700;
-        font-size: 13px;
-        color: var(--dark);
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: color 0.2s;
+    .info-section:last-child {
+        margin-bottom: 0 !important;
     }
     
-    .form-group label .required {
-        color: var(--danger);
-        margin-left: 4px;
+    .info-section-title {
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        font-size: 14px !important;
+        margin-bottom: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
     }
     
-    /* INPUT WRAPPER */
-    .input-wrapper {
-        position: relative;
+    .info-section-title i {
+        color: #667eea !important;
+        font-size: 16px !important;
     }
     
-    .input-wrapper i {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--primary);
-        font-size: 16px;
-        pointer-events: none;
+    .info-section p {
+        color: #64748b !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        line-height: 1.7 !important;
+        margin: 0 0 8px 0 !important;
     }
     
-    .input-wrapper .form-control {
-        padding-left: 44px;
+    .info-section ul {
+        margin: 0 !important;
+        padding-left: 20px !important;
     }
     
-    /* FORM CONTROLS */
-    .form-control {
-        width: 100%;
-        padding: 14px 16px;
-        border: 2px solid var(--border);
-        border-radius: 10px;
-        font-size: 15px;
-        font-weight: 500;
-        color: var(--dark);
-        background: white;
-        transition: all 0.2s;
+    .info-section li {
+        color: #64748b !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        margin-bottom: 10px !important;
+        line-height: 1.6 !important;
+        position: relative !important;
+        padding-left: 8px !important;
     }
     
-    .form-control:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    .info-section li::marker {
+        color: #667eea !important;
     }
     
-    .form-control:hover {
-        border-color: #cbd5e1;
+    .info-section li strong {
+        color: #1e293b !important;
+        font-weight: 700 !important;
     }
     
-    .form-control::placeholder {
-        color: #94a3b8;
+    .role-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 4px 12px !important;
+        border-radius: 16px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-left: 8px !important;
     }
     
-    select.form-control {
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 16px center;
-        padding-right: 40px;
-        cursor: pointer;
+    .role-badge.user {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
+        color: #2563eb !important;
     }
     
-    /* FORM HINT */
+    .role-badge.manager {
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%) !important;
+        color: #f59e0b !important;
+    }
+    
+    .role-badge.admin {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%) !important;
+        color: #dc2626 !important;
+    }
+    
+    .form-section-title {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 15px !important;
+        border-bottom: 3px solid transparent !important;
+        border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+        border-image-slice: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+    
+    .form-section-title i {
+        color: #667eea !important;
+    }
+    
+    .form-group-modern {
+        margin-bottom: 25px !important;
+    }
+    
+    .form-group-modern label {
+        display: block !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        color: #1e293b !important;
+        margin-bottom: 10px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: color 0.3s ease !important;
+    }
+    
+    .form-group-modern label .required {
+        color: #ef4444 !important;
+        margin-left: 4px !important;
+    }
+    
+    .form-control-modern {
+        width: 100% !important;
+        padding: 14px 18px !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: #1e293b !important;
+        background: white !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .form-control-modern:focus {
+        outline: none !important;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1) !important;
+    }
+    
+    .form-control-modern:hover {
+        border-color: #cbd5e1 !important;
+    }
+    
+    .form-control-modern::placeholder {
+        color: #94a3b8 !important;
+    }
+    
+    select.form-control-modern {
+        appearance: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 18px center !important;
+        padding-right: 45px !important;
+        cursor: pointer !important;
+    }
+    
+    .input-icon-wrapper {
+        position: relative !important;
+    }
+    
+    .input-icon-wrapper i {
+        position: absolute !important;
+        left: 18px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: #667eea !important;
+        font-size: 16px !important;
+        pointer-events: none !important;
+    }
+    
+    .input-icon-wrapper .form-control-modern {
+        padding-left: 45px !important;
+    }
+    
     .form-hint {
-        display: block;
-        margin-top: 6px;
-        font-size: 13px;
-        color: var(--text-muted);
-        font-weight: 500;
+        display: block !important;
+        margin-top: 8px !important;
+        font-size: 13px !important;
+        color: #64748b !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
     }
     
     .form-hint i {
-        margin-right: 4px;
-        font-size: 12px;
+        margin-right: 5px !important;
     }
     
-    /* PASSWORD STRENGTH */
     .password-strength {
-        height: 4px;
-        background: var(--border);
-        border-radius: 4px;
-        margin-top: 8px;
-        overflow: hidden;
-        display: none;
+        height: 4px !important;
+        background: #e2e8f0 !important;
+        border-radius: 4px !important;
+        margin-top: 8px !important;
+        overflow: hidden !important;
+        display: none !important;
     }
     
     .password-strength-bar {
-        height: 100%;
-        width: 0;
-        transition: all 0.3s;
-        border-radius: 4px;
+        height: 100% !important;
+        width: 0% !important;
+        transition: width 0.3s ease, background-color 0.3s ease !important;
+        border-radius: 4px !important;
     }
     
-    .password-strength-bar.weak { background: var(--danger); width: 33%; }
-    .password-strength-bar.medium { background: #f59e0b; width: 66%; }
-    .password-strength-bar.strong { background: #10b981; width: 100%; }
+    .password-strength-bar.weak {
+        background: #ef4444 !important;
+        width: 33% !important;
+    }
     
-    .form-hint.weak { color: var(--danger); }
-    .form-hint.medium { color: #f59e0b; }
-    .form-hint.strong { color: #10b981; }
+    .password-strength-bar.medium {
+        background: #f59e0b !important;
+        width: 66% !important;
+    }
     
-    /* FORM ACTIONS */
+    .password-strength-bar.strong {
+        background: #10b981 !important;
+        width: 100% !important;
+    }
+    
+    .form-hint.password-strength-text {
+        font-weight: 600 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+    
+    .form-hint.password-strength-text.weak {
+        color: #ef4444 !important;
+    }
+    
+    .form-hint.password-strength-text.medium {
+        color: #f59e0b !important;
+    }
+    
+    .form-hint.password-strength-text.strong {
+        color: #10b981 !important;
+    }
+    
     .form-actions {
-        display: flex;
-        gap: 12px;
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 2px solid var(--border);
+        display: flex !important;
+        gap: 15px !important;
+        margin-top: 35px !important;
+        padding-top: 30px !important;
+        border-top: 2px solid #e2e8f0 !important;
+        flex-wrap: wrap !important;
     }
     
-    /* BUTTONS */
-    .btn {
-        padding: 14px 28px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+    .btn-modern {
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        text-decoration: none !important;
     }
     
-    .btn i {
-        font-size: 14px;
+    .btn-modern.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3) !important;
     }
     
-    .btn-primary {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    .btn-modern.primary:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
     }
     
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+    .btn-modern.primary:active {
+        transform: translateY(0) !important;
+        box-shadow: 0 3px 15px rgba(102, 126, 234, 0.3) !important;
     }
     
-    .btn-secondary {
-        background: white;
-        color: var(--primary);
-        border: 2px solid var(--primary);
+    .btn-modern.secondary {
+        background: white !important;
+        color: #667eea !important;
+        border: 2px solid #667eea !important;
     }
     
-    .btn-secondary:hover {
-        background: rgba(99, 102, 241, 0.05);
-        transform: translateY(-2px);
+    .btn-modern.secondary:hover {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+        transform: translateY(-2px) !important;
     }
     
-    /* RESPONSIVE */
+    .btn-modern.secondary:active {
+        transform: translateY(0) !important;
+    }
+    
     @media (max-width: 1200px) {
-        .user-create-container { padding: 20px; }
-        .page-header-create { padding: 28px; }
-        .form-card { padding: 28px; }
+        .user-create-container {
+            padding: 15px !important;
+        }
+        .user-create-header, .form-card, .info-card {
+            padding: 25px 30px !important;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .info-card {
+            position: static !important;
+            margin-top: 25px !important;
+        }
     }
     
     @media (max-width: 768px) {
-        .user-create-container { padding: 16px; }
-        .page-header-create {
-            padding: 24px;
-            margin-bottom: 24px;
+        .user-create-container {
+            padding: 10px !important;
         }
-        .page-header-create h1 {
-            font-size: 26px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
+        .user-create-header {
+            padding: 20px !important;
+            margin-bottom: 20px !important;
         }
-        .form-card { padding: 24px; }
+        .user-create-header h1 {
+            font-size: 24px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+        }
+        .form-card, .info-card {
+            padding: 20px !important;
+        }
         .form-actions {
-            flex-direction: column;
+            flex-direction: column !important;
         }
-        .btn {
-            width: 100%;
-            justify-content: center;
+        .btn-modern {
+            width: 100% !important;
+            justify-content: center !important;
         }
     }
     
     @media (max-width: 480px) {
-        .user-create-container { padding: 12px; }
-        .page-header-create {
-            padding: 20px;
+        .user-create-container {
+            padding: 8px !important;
         }
-        .page-header-create h1 {
-            font-size: 22px;
+        .user-create-header h1 {
+            font-size: 20px !important;
         }
-        .form-card { padding: 20px; }
-        .form-control {
-            padding: 12px 14px;
-            font-size: 14px;
+        .form-card, .info-card {
+            padding: 15px !important;
         }
-        .input-wrapper .form-control {
-            padding-left: 40px;
+        .form-control-modern {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+        }
+        .input-icon-wrapper .form-control-modern {
+            padding-left: 40px !important;
         }
     }
 </style>
 
-<div class="user-create-container">
-    <!-- PAGE HEADER -->
-    <div class="page-header-create">
+<div class="user-create-container container-fluid">
+    <div class="user-create-header">
         <h1>
-            <i class="fa fa-plus-circle"></i> Create User
+            <i class="fa fa-user-plus"></i> Create New User
         </h1>
-        <div class="breadcrumb-nav">
+        <div class="user-create-breadcrumb">
             <a href="users.php"><i class="fa fa-users"></i> Users</a>
             <span>/</span>
-            <span class="current">Create New User</span>
+            <span style="color: #1e293b; font-weight: 600;">Create User</span>
         </div>
     </div>
     
-    <!-- ERROR ALERT -->
     <?php if ($error): ?>
-    <div class="alert-error">
+    <div class="alert-modern">
         <i class="fa fa-exclamation-circle"></i>
         <span><?php echo htmlspecialchars($error); ?></span>
     </div>
     <?php endif; ?>
     
-    <!-- FORM CARD -->
     <div class="row">
-        <div class="col-md-8 col-md-offset-2">
+        <div class="col-md-8">
             <div class="form-card">
                 <form method="POST" action="" id="createUserForm">
-                    <!-- PERSONAL INFORMATION -->
-                    <div class="section-title">
+                    <div class="form-section-title">
                         <i class="fa fa-user"></i> Personal Information
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group-modern">
                         <label for="full_name">
                             Full Name <span class="required">*</span>
                         </label>
-                        <div class="input-wrapper">
-                            <i class="fa fa-user"></i>
+                        <div class="input-icon-wrapper">
+                            <i class="fa fa-id-card"></i>
                             <input type="text" 
-                                   class="form-control" 
+                                   class="form-control-modern" 
                                    id="full_name" 
                                    name="full_name" 
                                    placeholder="Enter full name"
-                                   required>
+                                   required
+                                   autocomplete="name">
                         </div>
                     </div>
                     
-                    <!-- ACCOUNT DETAILS -->
-                    <div class="section-title">
+                    <div class="form-section-title" style="margin-top: 35px;">
                         <i class="fa fa-lock"></i> Account Details
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="form-group-modern">
                                 <label for="username">
                                     Username <span class="required">*</span>
                                 </label>
-                                <div class="input-wrapper">
+                                <div class="input-icon-wrapper">
                                     <i class="fa fa-at"></i>
                                     <input type="text" 
-                                           class="form-control" 
+                                           class="form-control-modern" 
                                            id="username" 
                                            name="username" 
                                            placeholder="Enter username"
-                                           required>
+                                           required
+                                           autocomplete="username">
                                 </div>
+                                <span class="form-hint">
+                                    <i class="fa fa-info-circle"></i>
+                                    Lowercase letters, numbers, and underscores only
+                                </span>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
+                            <div class="form-group-modern">
                                 <label for="email">
                                     Email Address <span class="required">*</span>
                                 </label>
-                                <div class="input-wrapper">
+                                <div class="input-icon-wrapper">
                                     <i class="fa fa-envelope"></i>
                                     <input type="email" 
-                                           class="form-control" 
+                                           class="form-control-modern" 
                                            id="email" 
                                            name="email" 
-                                           placeholder="Enter email address"
-                                           required>
+                                           placeholder="user@example.com"
+                                           required
+                                           autocomplete="email">
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group-modern">
                         <label for="password">
                             Password <span class="required">*</span>
                         </label>
-                        <div class="input-wrapper">
+                        <div class="input-icon-wrapper">
                             <i class="fa fa-key"></i>
                             <input type="password" 
-                                   class="form-control" 
+                                   class="form-control-modern" 
                                    id="password" 
                                    name="password" 
-                                   placeholder="Enter password"
+                                   placeholder="Enter secure password"
                                    required 
-                                   minlength="6">
+                                   minlength="6"
+                                   autocomplete="new-password">
                         </div>
                         <div class="password-strength" id="passwordStrength">
-                            <div class="password-strength-bar" id="strengthBar"></div>
+                            <div class="password-strength-bar" id="passwordStrengthBar"></div>
                         </div>
                         <span class="form-hint" id="passwordHint">
                             <i class="fa fa-info-circle"></i>
@@ -500,128 +647,274 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </span>
                     </div>
                     
-                    <!-- PERMISSIONS -->
-                    <div class="section-title">
-                        <i class="fa fa-shield"></i> Permissions
+                    <div class="form-section-title" style="margin-top: 35px;">
+                        <i class="fa fa-shield-alt"></i> Permissions & Access
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group-modern">
                         <label for="role">
-                            Role <span class="required">*</span>
+                            User Role <span class="required">*</span>
                         </label>
-                        <select class="form-control" id="role" name="role" required>
+                        <select class="form-control-modern" id="role" name="role" required>
                             <option value="user">Member</option>
                             <option value="manager">Manager</option>
                             <option value="admin">Administrator</option>
                         </select>
-                        <span class="form-hint">
+                        <span class="form-hint" id="roleDescription">
                             <i class="fa fa-info-circle"></i>
-                            Select the appropriate access level for this user
+                            Members have basic access to view and edit their own content
                         </span>
                     </div>
                     
-                    <!-- ACTIONS -->
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa fa-save"></i> Create User
+                        <button type="submit" class="btn-modern primary">
+                            <i class="fa fa-user-plus"></i> Create User
                         </button>
-                        <a href="users.php" class="btn btn-secondary">
+                        <a href="users.php" class="btn-modern secondary">
                             <i class="fa fa-times"></i> Cancel
                         </a>
                     </div>
                 </form>
             </div>
         </div>
+        
+        <div class="col-md-4">
+            <div class="info-card">
+                <div class="info-card-title">
+                    <i class="fa fa-lightbulb"></i> User Creation Guide
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-section-title">
+                        <i class="fa fa-user-shield"></i> Role Permissions
+                    </div>
+                    <ul>
+                        <li>
+                            <strong>Member</strong>
+                            <span class="role-badge user">User</span><br>
+                            Basic access to view and manage personal tasks
+                        </li>
+                        <li>
+                            <strong>Manager</strong>
+                            <span class="role-badge manager">Manager</span><br>
+                            Can create projects and manage team members
+                        </li>
+                        <li>
+                            <strong>Administrator</strong>
+                            <span class="role-badge admin">Admin</span><br>
+                            Full system access including user management
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-section-title">
+                        <i class="fa fa-lock"></i> Password Requirements
+                    </div>
+                    <p>Create a strong password with:</p>
+                    <ul>
+                        <li>Minimum <strong>6 characters</strong></li>
+                        <li>Mix of <strong>uppercase & lowercase</strong></li>
+                        <li>Include <strong>numbers</strong></li>
+                        <li>Add <strong>special characters</strong> (!@#$%)</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-section-title">
+                        <i class="fa fa-envelope"></i> Email Notification
+                    </div>
+                    <p>After creation, the user will receive:</p>
+                    <ul>
+                        <li>Welcome email with login credentials</li>
+                        <li>Account activation instructions</li>
+                        <li>System access guidelines</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-section-title">
+                        <i class="fa fa-shield-alt"></i> Security Best Practices
+                    </div>
+                    <ul>
+                        <li>Use unique usernames for each user</li>
+                        <li>Assign minimum required permissions</li>
+                        <li>Review user access regularly</li>
+                        <li>Disable accounts when no longer needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-// OPTIMIZED JAVASCRIPT - MINIMAL DOM MANIPULATION
+// Optimized JavaScript with debouncing and efficient DOM manipulation
 (function() {
     'use strict';
     
-    const pwd = document.getElementById('password');
-    const strength = document.getElementById('passwordStrength');
-    const bar = document.getElementById('strengthBar');
-    const hint = document.getElementById('passwordHint');
+    // Cache DOM elements for better performance
+    const $password = $('#password');
+    const $passwordStrength = $('#passwordStrength');
+    const $passwordStrengthBar = $('#passwordStrengthBar');
+    const $passwordHint = $('#passwordHint');
+    const $role = $('#role');
+    const $roleDescription = $('#roleDescription');
+    const $createUserForm = $('#createUserForm');
+    const $username = $('#username');
     
-    // PASSWORD STRENGTH (DEBOUNCED)
-    let timeout;
-    pwd.addEventListener('input', function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(function() {
-            const val = pwd.value;
+    // Role descriptions map
+    const roleDescriptions = {
+        user: 'Members have basic access to view and edit their own content',
+        manager: 'Managers can create projects, assign tasks, and manage team members',
+        admin: 'Administrators have full system access including user and system management'
+    };
+    
+    // Debounce function for performance optimization
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    // Password strength calculation (optimized)
+    function calculatePasswordStrength(val) {
+        if (!val.length) return { strength: 0, label: '', class: '' };
+        
+        let strength = 0;
+        
+        // Length checks
+        if (val.length >= 6) strength++;
+        if (val.length >= 10) strength++;
+        
+        // Character type checks (combined for efficiency)
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
+        if (/[0-9]/.test(val)) strength++;
+        if (/[^A-Za-z0-9]/.test(val)) strength++;
+        
+        // Determine strength level
+        if (strength <= 2) {
+            return {
+                strength: 'weak',
+                label: '<i class="fa fa-exclamation-triangle"></i> Weak password',
+                class: 'weak'
+            };
+        } else if (strength <= 4) {
+            return {
+                strength: 'medium',
+                label: '<i class="fa fa-check-circle"></i> Medium strength',
+                class: 'medium'
+            };
+        } else {
+            return {
+                strength: 'strong',
+                label: '<i class="fa fa-check-circle"></i> Strong password',
+                class: 'strong'
+            };
+        }
+    }
+    
+    // Password strength indicator (debounced for performance)
+    const updatePasswordStrength = debounce(function() {
+        const val = $password.val();
+        
+        if (!val.length) {
+            $passwordStrength.hide();
+            $passwordStrengthBar.removeClass('weak medium strong');
+            $passwordHint.html('<i class="fa fa-info-circle"></i> Minimum 6 characters required')
+                .removeClass('password-strength-text weak medium strong');
+            return;
+        }
+        
+        const result = calculatePasswordStrength(val);
+        
+        $passwordStrength.show();
+        $passwordStrengthBar.removeClass('weak medium strong').addClass(result.strength);
+        $passwordHint.html(result.label)
+            .removeClass('password-strength-text weak medium strong')
+            .addClass('password-strength-text ' + result.class);
+    }, 150);
+    
+    // Role description updater
+    function updateRoleDescription() {
+        const selectedRole = $role.val();
+        $roleDescription.html('<i class="fa fa-info-circle"></i> ' + roleDescriptions[selectedRole]);
+    }
+    
+    // Username formatter (lowercase, remove spaces)
+    const formatUsername = debounce(function() {
+        let val = $username.val();
+        val = val.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        $username.val(val);
+    }, 200);
+    
+    // Form validation with visual feedback
+    function validateForm(e) {
+        let isValid = true;
+        const requiredFields = $createUserForm.find('.form-control-modern[required]');
+        
+        requiredFields.each(function() {
+            const $field = $(this);
+            const val = $field.val().trim();
             
             if (!val) {
-                strength.style.display = 'none';
-                bar.className = 'password-strength-bar';
-                hint.className = 'form-hint';
-                hint.innerHTML = '<i class="fa fa-info-circle"></i> Minimum 6 characters required';
-                return;
-            }
-            
-            strength.style.display = 'block';
-            
-            let score = 0;
-            if (val.length >= 6) score++;
-            if (val.length >= 10) score++;
-            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
-            if (/[0-9]/.test(val)) score++;
-            if (/[^A-Za-z0-9]/.test(val)) score++;
-            
-            bar.className = 'password-strength-bar';
-            hint.className = 'form-hint';
-            
-            if (score <= 2) {
-                bar.classList.add('weak');
-                hint.classList.add('weak');
-                hint.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Weak password';
-            } else if (score <= 4) {
-                bar.classList.add('medium');
-                hint.classList.add('medium');
-                hint.innerHTML = '<i class="fa fa-check-circle"></i> Medium strength';
-            } else {
-                bar.classList.add('strong');
-                hint.classList.add('strong');
-                hint.innerHTML = '<i class="fa fa-check-circle"></i> Strong password';
-            }
-        }, 100);
-    });
-    
-    // LABEL FOCUS EFFECT
-    const inputs = document.querySelectorAll('.form-control');
-    inputs.forEach(function(input) {
-        input.addEventListener('focus', function() {
-            const label = this.closest('.form-group').querySelector('label');
-            if (label) label.style.color = '#6366f1';
-        });
-        
-        input.addEventListener('blur', function() {
-            const label = this.closest('.form-group').querySelector('label');
-            if (label) label.style.color = '#1e293b';
-        });
-    });
-    
-    // FORM VALIDATION
-    document.getElementById('createUserForm').addEventListener('submit', function(e) {
-        const required = this.querySelectorAll('[required]');
-        let valid = true;
-        
-        required.forEach(function(field) {
-            if (!field.value.trim()) {
-                valid = false;
-                field.style.borderColor = '#ef4444';
-                field.addEventListener('input', function() {
-                    this.style.borderColor = '#e2e8f0';
-                }, { once: true });
+                isValid = false;
+                $field.css('border-color', '#ef4444');
+                
+                // Remove error styling on input
+                $field.one('input', function() {
+                    $(this).css('border-color', '#e2e8f0');
+                });
             }
         });
         
-        if (!valid) {
-            e.preventDefault();
-            alert('Please fill in all required fields.');
+        // Email validation
+        const emailVal = $('#email').val();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailVal && !emailRegex.test(emailVal)) {
+            isValid = false;
+            $('#email').css('border-color', '#ef4444');
+            alert('Please enter a valid email address.');
         }
-    });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields correctly.');
+        }
+    }
+    
+    // Label focus animation
+    function handleInputFocus() {
+        $(this).closest('.form-group-modern').find('label').css('color', '#667eea');
+    }
+    
+    function handleInputBlur() {
+        $(this).closest('.form-group-modern').find('label').css('color', '#1e293b');
+    }
+    
+    // Event listeners (using event delegation where possible)
+    $password.on('input', updatePasswordStrength);
+    $role.on('change', updateRoleDescription);
+    $username.on('input', formatUsername);
+    $createUserForm.on('submit', validateForm);
+    
+    // Focus/blur events
+    $('.form-control-modern').on('focus', handleInputFocus).on('blur', handleInputBlur);
+    
+    // Initialize role description
+    updateRoleDescription();
+    
+    // Prevent form resubmission on refresh
+    if (window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+    }
+    
 })();
 </script>
 

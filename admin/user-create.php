@@ -28,403 +28,408 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
+    /* OPTIMIZED CSS - REDUCED REDUNDANCY & IMPROVED PERFORMANCE */
+    
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #8b5cf6;
+        --danger: #ef4444;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --text-muted: #64748b;
+        --shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+        --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* PERFORMANCE OPTIMIZATIONS */
+    * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* CONTAINER */
     .user-create-container {
-        background: transparent !important;
-        min-height: calc(100vh - 100px) !important;
-        padding: 20px !important;
-        margin: 0 !important;
+        min-height: calc(100vh - 100px);
+        padding: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+        animation: fadeIn 0.3s ease;
     }
     
-    .user-create-header {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(20px) !important;
-        color: #1e293b !important;
-        padding: 30px 35px !important;
-        border-radius: 20px !important;
-        margin-bottom: 30px !important;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-        position: relative !important;
-        overflow: hidden !important;
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .user-create-header::before {
-        content: '' !important;
-        position: absolute !important;
-        top: -50% !important;
-        right: -50% !important;
-        width: 200% !important;
-        height: 200% !important;
-        background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%) !important;
-        animation: rotate 20s linear infinite !important;
+    /* PAGE HEADER */
+    .page-header-create {
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
     }
     
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+    .page-header-create::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
     
-    .user-create-header h1 {
-        margin: 0 !important;
-        font-weight: 800 !important;
-        font-size: 32px !important;
-        position: relative !important;
-        z-index: 1 !important;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 15px !important;
+    .page-header-create h1 {
+        margin: 0 0 12px 0;
+        font-weight: 700;
+        font-size: 32px;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
     
-    .user-create-header h1 i {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        -webkit-background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        background-clip: text !important;
+    .page-header-create h1 i {
+        color: var(--primary);
+        font-size: 28px;
     }
     
-    .user-create-breadcrumb {
-        margin-top: 12px !important;
-        position: relative !important;
-        z-index: 1 !important;
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
     }
     
-    .user-create-breadcrumb a {
-        color: #667eea !important;
-        text-decoration: none !important;
-        font-weight: 600 !important;
-        transition: color 0.3s ease !important;
+    .breadcrumb-nav a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: color 0.2s;
     }
     
-    .user-create-breadcrumb a:hover {
-        color: #764ba2 !important;
+    .breadcrumb-nav a:hover {
+        color: var(--primary-dark);
     }
     
-    .user-create-breadcrumb span {
-        color: #64748b !important;
-        margin: 0 8px !important;
+    .breadcrumb-nav span {
+        color: var(--text-muted);
     }
     
+    .breadcrumb-nav .current {
+        color: var(--dark);
+    }
+    
+    /* ALERT */
+    .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border-left: 4px solid var(--danger);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #991b1b;
+        font-weight: 600;
+    }
+    
+    .alert-error i {
+        font-size: 20px;
+        color: var(--danger);
+    }
+    
+    /* FORM CARD */
     .form-card {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(20px) !important;
-        border-radius: 20px !important;
-        padding: 35px !important;
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
     }
     
-    .alert-modern {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%) !important;
-        border-left: 4px solid #ef4444 !important;
-        border-radius: 12px !important;
-        padding: 15px 20px !important;
-        margin-bottom: 25px !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        color: #991b1b !important;
-        font-weight: 600 !important;
+    /* SECTION TITLE */
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--dark);
+        margin: 0 0 24px 0;
+        padding-bottom: 12px;
+        border-bottom: 3px solid;
+        border-image: linear-gradient(90deg, var(--primary), var(--secondary)) 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     
-    .alert-modern i {
-        font-size: 20px !important;
-        color: #ef4444 !important;
+    .section-title:not(:first-child) {
+        margin-top: 32px;
     }
     
-    .form-section-title {
-        font-size: 18px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        margin-bottom: 25px !important;
-        padding-bottom: 15px !important;
-        border-bottom: 3px solid transparent !important;
-        border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
-        border-image-slice: 1 !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
+    .section-title i {
+        color: var(--primary);
     }
     
-    .form-section-title i {
-        color: #667eea !important;
+    /* FORM GROUP */
+    .form-group {
+        margin-bottom: 24px;
     }
     
-    .form-group-modern {
-        margin-bottom: 25px !important;
+    .form-group label {
+        display: block;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--dark);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: color 0.2s;
     }
     
-    .form-group-modern label {
-        display: block !important;
-        font-weight: 700 !important;
-        font-size: 14px !important;
-        color: #1e293b !important;
-        margin-bottom: 10px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
+    .form-group label .required {
+        color: var(--danger);
+        margin-left: 4px;
     }
     
-    .form-group-modern label .required {
-        color: #ef4444 !important;
-        margin-left: 4px !important;
+    /* INPUT WRAPPER */
+    .input-wrapper {
+        position: relative;
     }
     
-    .form-control-modern {
-        width: 100% !important;
-        padding: 14px 18px !important;
-        border: 2px solid #e2e8f0 !important;
-        border-radius: 12px !important;
-        font-size: 15px !important;
-        font-weight: 500 !important;
-        color: #1e293b !important;
-        background: white !important;
-        transition: all 0.3s ease !important;
+    .input-wrapper i {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--primary);
+        font-size: 16px;
+        pointer-events: none;
     }
     
-    .form-control-modern:focus {
-        outline: none !important;
-        border-color: #667eea !important;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1) !important;
+    .input-wrapper .form-control {
+        padding-left: 44px;
     }
     
-    .form-control-modern:hover {
-        border-color: #cbd5e1 !important;
+    /* FORM CONTROLS */
+    .form-control {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--dark);
+        background: white;
+        transition: all 0.2s;
     }
     
-    .form-control-modern::placeholder {
-        color: #94a3b8 !important;
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
     
+    .form-control:hover {
+        border-color: #cbd5e1;
+    }
+    
+    .form-control::placeholder {
+        color: #94a3b8;
+    }
+    
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+    
+    /* FORM HINT */
     .form-hint {
-        display: block !important;
-        margin-top: 8px !important;
-        font-size: 13px !important;
-        color: #64748b !important;
-        font-weight: 500 !important;
+        display: block;
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 500;
     }
     
     .form-hint i {
-        margin-right: 5px !important;
+        margin-right: 4px;
+        font-size: 12px;
     }
     
-    select.form-control-modern {
-        appearance: none !important;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23667eea' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
-        background-repeat: no-repeat !important;
-        background-position: right 18px center !important;
-        padding-right: 45px !important;
-    }
-    
-    .input-icon-wrapper {
-        position: relative !important;
-    }
-    
-    .input-icon-wrapper i {
-        position: absolute !important;
-        left: 18px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        color: #667eea !important;
-        font-size: 16px !important;
-    }
-    
-    .input-icon-wrapper .form-control-modern {
-        padding-left: 45px !important;
-    }
-    
-    .form-actions {
-        display: flex !important;
-        gap: 15px !important;
-        margin-top: 35px !important;
-        padding-top: 30px !important;
-        border-top: 2px solid #e2e8f0 !important;
-        flex-wrap: wrap !important;
-    }
-    
-    .btn-modern {
-        padding: 14px 32px !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        font-size: 14px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.3s ease !important;
-        border: none !important;
-        cursor: pointer !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 10px !important;
-        text-decoration: none !important;
-    }
-    
-    .btn-modern.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3) !important;
-    }
-    
-    .btn-modern.primary:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
-    }
-    
-    .btn-modern.secondary {
-        background: white !important;
-        color: #667eea !important;
-        border: 2px solid #667eea !important;
-    }
-    
-    .btn-modern.secondary:hover {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
-        transform: translateY(-2px) !important;
-    }
-    
+    /* PASSWORD STRENGTH */
     .password-strength {
-        height: 4px !important;
-        background: #e2e8f0 !important;
-        border-radius: 4px !important;
-        margin-top: 8px !important;
-        overflow: hidden !important;
-        display: none !important;
+        height: 4px;
+        background: var(--border);
+        border-radius: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+        display: none;
     }
     
     .password-strength-bar {
-        height: 100% !important;
-        width: 0% !important;
-        transition: all 0.3s ease !important;
-        border-radius: 4px !important;
+        height: 100%;
+        width: 0;
+        transition: all 0.3s;
+        border-radius: 4px;
     }
     
-    .password-strength-bar.weak {
-        background: #ef4444 !important;
-        width: 33% !important;
+    .password-strength-bar.weak { background: var(--danger); width: 33%; }
+    .password-strength-bar.medium { background: #f59e0b; width: 66%; }
+    .password-strength-bar.strong { background: #10b981; width: 100%; }
+    
+    .form-hint.weak { color: var(--danger); }
+    .form-hint.medium { color: #f59e0b; }
+    .form-hint.strong { color: #10b981; }
+    
+    /* FORM ACTIONS */
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 2px solid var(--border);
     }
     
-    .password-strength-bar.medium {
-        background: #f59e0b !important;
-        width: 66% !important;
+    /* BUTTONS */
+    .btn {
+        padding: 14px 28px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
     }
     
-    .password-strength-bar.strong {
-        background: #10b981 !important;
-        width: 100% !important;
+    .btn i {
+        font-size: 14px;
     }
     
-    .password-strength-text {
-        font-size: 12px !important;
-        margin-top: 6px !important;
-        font-weight: 600 !important;
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
-    .password-strength-text.weak {
-        color: #ef4444 !important;
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
     }
     
-    .password-strength-text.medium {
-        color: #f59e0b !important;
+    .btn-secondary {
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
     }
     
-    .password-strength-text.strong {
-        color: #10b981 !important;
+    .btn-secondary:hover {
+        background: rgba(99, 102, 241, 0.05);
+        transform: translateY(-2px);
     }
     
+    /* RESPONSIVE */
     @media (max-width: 1200px) {
-        .user-create-container {
-            padding: 15px !important;
-        }
-        .user-create-header {
-            padding: 25px 30px !important;
-        }
-        .form-card {
-            padding: 30px !important;
-        }
+        .user-create-container { padding: 20px; }
+        .page-header-create { padding: 28px; }
+        .form-card { padding: 28px; }
     }
     
     @media (max-width: 768px) {
-        .user-create-container {
-            padding: 10px !important;
+        .user-create-container { padding: 16px; }
+        .page-header-create {
+            padding: 24px;
+            margin-bottom: 24px;
         }
-        .user-create-header {
-            padding: 20px !important;
-            margin-bottom: 20px !important;
+        .page-header-create h1 {
+            font-size: 26px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
         }
-        .user-create-header h1 {
-            font-size: 24px !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 10px !important;
-        }
-        .form-card {
-            padding: 20px !important;
-        }
+        .form-card { padding: 24px; }
         .form-actions {
-            flex-direction: column !important;
+            flex-direction: column;
         }
-        .btn-modern {
-            width: 100% !important;
-            justify-content: center !important;
+        .btn {
+            width: 100%;
+            justify-content: center;
         }
     }
     
     @media (max-width: 480px) {
-        .user-create-container {
-            padding: 8px !important;
+        .user-create-container { padding: 12px; }
+        .page-header-create {
+            padding: 20px;
         }
-        .user-create-header h1 {
-            font-size: 20px !important;
+        .page-header-create h1 {
+            font-size: 22px;
         }
-        .form-card {
-            padding: 15px !important;
+        .form-card { padding: 20px; }
+        .form-control {
+            padding: 12px 14px;
+            font-size: 14px;
         }
-        .form-control-modern {
-            padding: 12px 16px !important;
-            font-size: 14px !important;
-        }
-        .input-icon-wrapper .form-control-modern {
-            padding-left: 40px !important;
+        .input-wrapper .form-control {
+            padding-left: 40px;
         }
     }
 </style>
 
-<div class="user-create-container container-fluid">
-    <div class="user-create-header">
+<div class="user-create-container">
+    <!-- PAGE HEADER -->
+    <div class="page-header-create">
         <h1>
             <i class="fa fa-plus-circle"></i> Create User
         </h1>
-        <div class="user-create-breadcrumb">
+        <div class="breadcrumb-nav">
             <a href="users.php"><i class="fa fa-users"></i> Users</a>
             <span>/</span>
-            <span style="color: #1e293b; font-weight: 600;">Create New User</span>
+            <span class="current">Create New User</span>
         </div>
     </div>
     
+    <!-- ERROR ALERT -->
     <?php if ($error): ?>
-    <div class="alert-modern">
+    <div class="alert-error">
         <i class="fa fa-exclamation-circle"></i>
         <span><?php echo htmlspecialchars($error); ?></span>
     </div>
     <?php endif; ?>
     
+    <!-- FORM CARD -->
     <div class="row">
         <div class="col-md-8 col-md-offset-2">
             <div class="form-card">
                 <form method="POST" action="" id="createUserForm">
-                    <div class="form-section-title">
+                    <!-- PERSONAL INFORMATION -->
+                    <div class="section-title">
                         <i class="fa fa-user"></i> Personal Information
                     </div>
                     
-                    <div class="form-group-modern">
+                    <div class="form-group">
                         <label for="full_name">
                             Full Name <span class="required">*</span>
                         </label>
-                        <div class="input-icon-wrapper">
+                        <div class="input-wrapper">
                             <i class="fa fa-user"></i>
                             <input type="text" 
-                                   class="form-control-modern" 
+                                   class="form-control" 
                                    id="full_name" 
                                    name="full_name" 
                                    placeholder="Enter full name"
@@ -432,20 +437,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="form-section-title" style="margin-top: 35px;">
+                    <!-- ACCOUNT DETAILS -->
+                    <div class="section-title">
                         <i class="fa fa-lock"></i> Account Details
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group-modern">
+                            <div class="form-group">
                                 <label for="username">
                                     Username <span class="required">*</span>
                                 </label>
-                                <div class="input-icon-wrapper">
+                                <div class="input-wrapper">
                                     <i class="fa fa-at"></i>
                                     <input type="text" 
-                                           class="form-control-modern" 
+                                           class="form-control" 
                                            id="username" 
                                            name="username" 
                                            placeholder="Enter username"
@@ -454,14 +460,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group-modern">
+                            <div class="form-group">
                                 <label for="email">
                                     Email Address <span class="required">*</span>
                                 </label>
-                                <div class="input-icon-wrapper">
+                                <div class="input-wrapper">
                                     <i class="fa fa-envelope"></i>
                                     <input type="email" 
-                                           class="form-control-modern" 
+                                           class="form-control" 
                                            id="email" 
                                            name="email" 
                                            placeholder="Enter email address"
@@ -471,14 +477,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="form-group-modern">
+                    <div class="form-group">
                         <label for="password">
                             Password <span class="required">*</span>
                         </label>
-                        <div class="input-icon-wrapper">
+                        <div class="input-wrapper">
                             <i class="fa fa-key"></i>
                             <input type="password" 
-                                   class="form-control-modern" 
+                                   class="form-control" 
                                    id="password" 
                                    name="password" 
                                    placeholder="Enter password"
@@ -486,7 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    minlength="6">
                         </div>
                         <div class="password-strength" id="passwordStrength">
-                            <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                            <div class="password-strength-bar" id="strengthBar"></div>
                         </div>
                         <span class="form-hint" id="passwordHint">
                             <i class="fa fa-info-circle"></i>
@@ -494,15 +500,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </span>
                     </div>
                     
-                    <div class="form-section-title" style="margin-top: 35px;">
+                    <!-- PERMISSIONS -->
+                    <div class="section-title">
                         <i class="fa fa-shield"></i> Permissions
                     </div>
                     
-                    <div class="form-group-modern">
+                    <div class="form-group">
                         <label for="role">
                             Role <span class="required">*</span>
                         </label>
-                        <select class="form-control-modern" id="role" name="role" required>
+                        <select class="form-control" id="role" name="role" required>
                             <option value="user">Member</option>
                             <option value="manager">Manager</option>
                             <option value="admin">Administrator</option>
@@ -513,11 +520,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </span>
                     </div>
                     
+                    <!-- ACTIONS -->
                     <div class="form-actions">
-                        <button type="submit" class="btn-modern primary">
+                        <button type="submit" class="btn btn-primary">
                             <i class="fa fa-save"></i> Create User
                         </button>
-                        <a href="users.php" class="btn-modern secondary">
+                        <a href="users.php" class="btn btn-secondary">
                             <i class="fa fa-times"></i> Cancel
                         </a>
                     </div>
@@ -528,78 +536,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-$(document).ready(function() {
-    // PASSWORD STRENGTH INDICATOR
-    $('#password').on('input', function() {
-        const val = $(this).val();
-        const $strength = $('#passwordStrength');
-        const $bar = $('#passwordStrengthBar');
-        const $hint = $('#passwordHint');
-        
-        if (val.length === 0) {
-            $strength.hide();
-            $bar.removeClass('weak medium strong');
-            $hint.html('<i class="fa fa-info-circle"></i> Minimum 6 characters required');
-            $hint.removeClass('password-strength-text weak medium strong');
-            return;
-        }
-        
-        $strength.show();
-        
-        let strength = 0;
-        if (val.length >= 6) strength++;
-        if (val.length >= 10) strength++;
-        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength++;
-        if (/[0-9]/.test(val)) strength++;
-        if (/[^A-Za-z0-9]/.test(val)) strength++;
-        
-        $bar.removeClass('weak medium strong');
-        $hint.removeClass('password-strength-text weak medium strong');
-        
-        if (strength <= 2) {
-            $bar.addClass('weak');
-            $hint.html('<i class="fa fa-exclamation-triangle"></i> Weak password').addClass('password-strength-text weak');
-        } else if (strength <= 4) {
-            $bar.addClass('medium');
-            $hint.html('<i class="fa fa-check-circle"></i> Medium strength').addClass('password-strength-text medium');
-        } else {
-            $bar.addClass('strong');
-            $hint.html('<i class="fa fa-check-circle"></i> Strong password').addClass('password-strength-text strong');
-        }
+// OPTIMIZED JAVASCRIPT - MINIMAL DOM MANIPULATION
+(function() {
+    'use strict';
+    
+    const pwd = document.getElementById('password');
+    const strength = document.getElementById('passwordStrength');
+    const bar = document.getElementById('strengthBar');
+    const hint = document.getElementById('passwordHint');
+    
+    // PASSWORD STRENGTH (DEBOUNCED)
+    let timeout;
+    pwd.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+            const val = pwd.value;
+            
+            if (!val) {
+                strength.style.display = 'none';
+                bar.className = 'password-strength-bar';
+                hint.className = 'form-hint';
+                hint.innerHTML = '<i class="fa fa-info-circle"></i> Minimum 6 characters required';
+                return;
+            }
+            
+            strength.style.display = 'block';
+            
+            let score = 0;
+            if (val.length >= 6) score++;
+            if (val.length >= 10) score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+            if (/[0-9]/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+            
+            bar.className = 'password-strength-bar';
+            hint.className = 'form-hint';
+            
+            if (score <= 2) {
+                bar.classList.add('weak');
+                hint.classList.add('weak');
+                hint.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Weak password';
+            } else if (score <= 4) {
+                bar.classList.add('medium');
+                hint.classList.add('medium');
+                hint.innerHTML = '<i class="fa fa-check-circle"></i> Medium strength';
+            } else {
+                bar.classList.add('strong');
+                hint.classList.add('strong');
+                hint.innerHTML = '<i class="fa fa-check-circle"></i> Strong password';
+            }
+        }, 100);
     });
     
-    // INPUT FOCUS EFFECTS
-    $('.form-control-modern').on('focus', function() {
-        $(this).closest('.form-group-modern').find('label').css({
-            'color': '#667eea',
-            'transition': 'color 0.3s ease'
+    // LABEL FOCUS EFFECT
+    const inputs = document.querySelectorAll('.form-control');
+    inputs.forEach(function(input) {
+        input.addEventListener('focus', function() {
+            const label = this.closest('.form-group').querySelector('label');
+            if (label) label.style.color = '#6366f1';
         });
-    }).on('blur', function() {
-        $(this).closest('.form-group-modern').find('label').css({
-            'color': '#1e293b'
+        
+        input.addEventListener('blur', function() {
+            const label = this.closest('.form-group').querySelector('label');
+            if (label) label.style.color = '#1e293b';
         });
     });
     
     // FORM VALIDATION
-    $('#createUserForm').on('submit', function(e) {
-        let isValid = true;
+    document.getElementById('createUserForm').addEventListener('submit', function(e) {
+        const required = this.querySelectorAll('[required]');
+        let valid = true;
         
-        $('.form-control-modern[required]').each(function() {
-            if ($(this).val().trim() === '') {
-                isValid = false;
-                $(this).css('border-color', '#ef4444');
-                $(this).on('input', function() {
-                    $(this).css('border-color', '#e2e8f0');
-                });
+        required.forEach(function(field) {
+            if (!field.value.trim()) {
+                valid = false;
+                field.style.borderColor = '#ef4444';
+                field.addEventListener('input', function() {
+                    this.style.borderColor = '#e2e8f0';
+                }, { once: true });
             }
         });
         
-        if (!isValid) {
+        if (!valid) {
             e.preventDefault();
             alert('Please fill in all required fields.');
         }
     });
-});
+})();
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

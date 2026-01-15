@@ -605,7 +605,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <div class="footer-text">
-                <p>Protected by advanced security</p>
+                <p>Protected by Advanced security</p>
             </div>
         </div>
     </div>

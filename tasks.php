@@ -201,6 +201,7 @@ if ($filter_status) {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        color: white;
     }
     
     .panel-title .badge {

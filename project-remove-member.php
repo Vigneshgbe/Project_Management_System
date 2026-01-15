@@ -144,8 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         border-radius: 16px;
         box-shadow: var(--shadow);
         border: 1px solid var(--border);
-        max-width: 800px;
-        margin: 0 auto;
         overflow: hidden;
         animation: fadeInUp 0.4s ease;
     }
@@ -235,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
     .member-removal-card {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
         border-radius: 12px;
-        padding: 32px;
+        padding: 40px 32px;
         margin-bottom: 32px;
         border: 2px solid rgba(99, 102, 241, 0.15);
         text-align: center;
@@ -488,7 +486,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         }
         
         .member-removal-card {
-            padding: 28px 24px;
+            padding: 32px 24px;
         }
         
         .action-buttons {
@@ -532,7 +530,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         }
         
         .member-removal-card {
-            padding: 24px 20px;
+            padding: 28px 20px;
         }
         
         .btn-modern {
@@ -565,54 +563,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         </div>
     </div>
     
-    <div class="remove-card">
-        <div class="remove-body">
-            <div class="warning-box">
-                <i class="fa fa-exclamation-triangle"></i>
-                <div class="warning-box-content">
-                    <h4>Warning: This action cannot be undone</h4>
-                    <p>This member will immediately lose access to all project data, tasks, and resources. Any work assigned to them will need to be reassigned.</p>
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            <div class="remove-card">
+                <div class="remove-body">
+                    <div class="warning-box">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <div class="warning-box-content">
+                            <h4>Warning: This action cannot be undone</h4>
+                            <p>This member will immediately lose access to all project data, tasks, and resources. Any work assigned to them will need to be reassigned.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="project-info-box">
+                        <i class="fa fa-folder"></i>
+                        <div class="project-info-content">
+                            <h3>Removing From Project</h3>
+                            <p><?php echo htmlspecialchars($project['project_name']); ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">
+                        <i class="fa fa-user"></i> Member to Remove
+                    </div>
+                    
+                    <div class="member-removal-card">
+                        <div class="member-avatar-large">
+                            <?php echo strtoupper(substr($member['full_name'], 0, 1)); ?>
+                        </div>
+                        <h2 class="member-name"><?php echo htmlspecialchars($member['full_name']); ?></h2>
+                        <span class="member-email"><?php echo htmlspecialchars($member['email']); ?></span>
+                        <div class="member-info-badges">
+                            <span class="info-badge user-role">
+                                <i class="fa fa-briefcase"></i> <?php echo ucfirst($member['user_role']); ?>
+                            </span>
+                            <span class="info-badge project-role">
+                                <i class="fa fa-tag"></i> <?php echo ucfirst($member['role']); ?>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="" id="removeForm">
+                        <div class="action-buttons">
+                            <button type="submit" name="confirm_remove" class="btn-modern danger" id="removeBtn">
+                                <i class="fa fa-user-times"></i> Remove Member
+                            </button>
+                            <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team" class="btn-modern secondary">
+                                <i class="fa fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
-            
-            <div class="project-info-box">
-                <i class="fa fa-folder"></i>
-                <div class="project-info-content">
-                    <h3>Removing From Project</h3>
-                    <p><?php echo htmlspecialchars($project['project_name']); ?></p>
-                </div>
-            </div>
-            
-            <div class="section-title">
-                <i class="fa fa-user"></i> Member to Remove
-            </div>
-            
-            <div class="member-removal-card">
-                <div class="member-avatar-large">
-                    <?php echo strtoupper(substr($member['full_name'], 0, 1)); ?>
-                </div>
-                <h2 class="member-name"><?php echo htmlspecialchars($member['full_name']); ?></h2>
-                <span class="member-email"><?php echo htmlspecialchars($member['email']); ?></span>
-                <div class="member-info-badges">
-                    <span class="info-badge user-role">
-                        <i class="fa fa-briefcase"></i> <?php echo ucfirst($member['user_role']); ?>
-                    </span>
-                    <span class="info-badge project-role">
-                        <i class="fa fa-tag"></i> <?php echo ucfirst($member['role']); ?>
-                    </span>
-                </div>
-            </div>
-            
-            <form method="POST" action="" id="removeForm">
-                <div class="action-buttons">
-                    <button type="submit" name="confirm_remove" class="btn-modern danger" id="removeBtn">
-                        <i class="fa fa-user-times"></i> Remove Member
-                    </button>
-                    <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team" class="btn-modern secondary">
-                        <i class="fa fa-times"></i> Cancel
-                    </a>
-                </div>
-            </form>
         </div>
     </div>
 </div>

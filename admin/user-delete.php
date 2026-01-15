@@ -18,6 +18,8 @@ if (!$user || $user_id == $auth->getUserId()) {
     exit;
 }
 
+$error_message = '';
+
 // Handle deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     if ($user_obj->delete($user_id)) {
@@ -598,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             </div>
             
             <div class="delete-modal-body">
-                <?php if (isset($error_message)): ?>
+                <?php if ($error_message): ?>
                 <div class="error-message">
                     <i class="fa fa-exclamation-circle"></i>
                     <span><?php echo htmlspecialchars($error_message); ?></span>
@@ -653,11 +655,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                 </div>
                 
                 <form method="POST" action="" id="deleteForm">
+                    <input type="hidden" name="confirm_delete" value="1">
                     <div class="delete-actions">
                         <a href="users.php" class="btn-delete-action cancel">
                             <i class="fa fa-arrow-left"></i> Cancel
                         </a>
-                        <button type="submit" name="confirm_delete" class="btn-delete-action danger" id="confirmDeleteBtn">
+                        <button type="button" class="btn-delete-action danger" id="confirmDeleteBtn">
                             <i class="fa fa-trash"></i> Delete User
                         </button>
                     </div>
@@ -669,17 +672,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
 <script>
 $(document).ready(function() {
-    const deleteForm = $('#deleteForm');
+    const deleteForm = $('#deleteForm')[0]; // Get native form element
     const confirmBtn = $('#confirmDeleteBtn');
     
     // DOUBLE CONFIRMATION FOR CRITICAL ACTION
-    deleteForm.on('submit', function(e) {
+    confirmBtn.on('click', function(e) {
         e.preventDefault();
         
         const confirmed = confirm(
             '⚠️ FINAL CONFIRMATION ⚠️\n\n' +
             'You are about to permanently delete:\n' +
-            '<?php echo htmlspecialchars($user['full_name']); ?>\n\n' +
+            '<?php echo addslashes(htmlspecialchars($user['full_name'])); ?>\n\n' +
             'This action CANNOT be reversed.\n\n' +
             'Click OK to proceed with deletion or Cancel to abort.'
         );
@@ -687,7 +690,9 @@ $(document).ready(function() {
         if (confirmed) {
             // Add loading state to button
             confirmBtn.html('<i class="fa fa-spinner fa-spin"></i> Deleting...').prop('disabled', true);
-            this.submit();
+            
+            // Submit the form using native submit
+            deleteForm.submit();
         }
     });
     

@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'User Management';
 require_once '../includes/header.php';
 require_once '../components/user.php';
@@ -16,7 +18,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED FOR PERFORMANCE */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -175,9 +177,40 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
         color: white;
+        text-decoration: none;
     }
     
     .btn-add-user i {
+        font-size: 14px;
+    }
+    
+    /* SUCCESS MESSAGE */
+    .success-message {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+        border-left: 4px solid var(--success);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .success-message i {
+        font-size: 18px;
+        color: var(--success);
+        flex-shrink: 0;
+    }
+    
+    .success-message span {
+        color: #065f46;
+        font-weight: 600;
         font-size: 14px;
     }
     
@@ -247,7 +280,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
     }
     
     .user-table tbody tr:hover {
-        background: linear-gradient(90deg, rgba(99, 102, 241, 0.03), transparent);
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), transparent);
     }
     
     .user-table tbody td {
@@ -289,6 +322,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
     .badge {
         display: inline-flex;
         align-items: center;
+        gap: 4px;
         padding: 5px 12px;
         border-radius: 6px;
         font-size: 11px;
@@ -298,29 +332,33 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         white-space: nowrap;
     }
     
+    .badge i {
+        font-size: 10px;
+    }
+    
     .badge.role-admin {
-        background: rgba(239, 68, 68, 0.1);
-        color: #dc2626;
+        background: #fee2e2;
+        color: #991b1b;
     }
     
     .badge.role-manager {
-        background: rgba(251, 191, 36, 0.1);
-        color: #f59e0b;
+        background: #dbeafe;
+        color: #1e40af;
     }
     
-    .badge.role-member {
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--primary);
+    .badge.role-user {
+        background: #f1f5f9;
+        color: #475569;
     }
     
     .badge.status-active {
-        background: rgba(16, 185, 129, 0.1);
-        color: #059669;
+        background: #d1fae5;
+        color: #065f46;
     }
     
     .badge.status-inactive {
-        background: rgba(107, 114, 128, 0.1);
-        color: #6b7280;
+        background: #f1f5f9;
+        color: #475569;
     }
     
     /* DATE */
@@ -355,6 +393,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
     
     .btn-action i {
         font-size: 12px;
+        transition: transform 0.3s ease;
     }
     
     .btn-action.edit {
@@ -368,6 +407,11 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         color: white;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        text-decoration: none;
+    }
+    
+    .btn-action.edit:hover i {
+        transform: scale(1.2);
     }
     
     .btn-action.delete {
@@ -381,6 +425,11 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         color: white;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        text-decoration: none;
+    }
+    
+    .btn-action.delete:hover i {
+        transform: scale(1.2);
     }
     
     /* EMPTY STATE */
@@ -401,6 +450,25 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         font-weight: 600;
     }
     
+    /* SMOOTH SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+    
     /* RESPONSIVE DESIGN */
     @media (max-width: 1200px) {
         .user-management-container {
@@ -419,7 +487,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
             gap: 16px;
         }
         .stat-card {
-            min-width: 180px;
+            min-width: 160px;
             padding: 14px 20px;
         }
         .stat-icon {
@@ -533,16 +601,6 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
             font-size: 10px;
         }
     }
-    
-    /* PERFORMANCE OPTIMIZATION */
-    * {
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    
-    .user-table tbody tr {
-        will-change: transform;
-    }
 </style>
 
 <div class="user-management-container">
@@ -604,6 +662,15 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
         </div>
     </div>
     
+    <!-- SUCCESS MESSAGE -->
+    <?php if (isset($_SESSION['success_message'])): ?>
+    <div class="success-message">
+        <i class="fa fa-check-circle"></i>
+        <span><?php echo htmlspecialchars($_SESSION['success_message']); ?></span>
+    </div>
+    <?php unset($_SESSION['success_message']); ?>
+    <?php endif; ?>
+    
     <!-- TABLE CARD -->
     <div class="table-card">
         <div class="table-wrapper">
@@ -626,7 +693,16 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($users as $u): ?>
+                        <?php 
+                        $roleIcons = [
+                            'user' => 'fa-user',
+                            'manager' => 'fa-users',
+                            'admin' => 'fa-shield'
+                        ];
+                        
+                        foreach ($users as $u): 
+                            $roleIcon = $roleIcons[$u['role']] ?? 'fa-user';
+                        ?>
                         <tr>
                             <td>
                                 <div class="user-cell">
@@ -642,6 +718,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                             <td><?php echo htmlspecialchars($u['email']); ?></td>
                             <td>
                                 <span class="badge role-<?php echo $u['role']; ?>">
+                                    <i class="fa <?php echo $roleIcon; ?>"></i>
                                     <?php echo ucfirst($u['role']); ?>
                                 </span>
                             </td>
@@ -657,7 +734,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
                                         <i class="fa fa-edit"></i> Edit
                                     </a>
                                     <?php if ($u['id'] != $auth->getUserId()): ?>
-                                    <a href="user-delete.php?id=<?php echo $u['id']; ?>" class="btn-action delete delete-confirm">
+                                    <a href="user-delete.php?id=<?php echo $u['id']; ?>" class="btn-action delete">
                                         <i class="fa fa-trash"></i> Delete
                                     </a>
                                     <?php endif; ?>
@@ -674,7 +751,7 @@ $manager_users = count(array_filter($users, function($u) { return $u['role'] ===
 
 <script>
 $(document).ready(function() {
-    // OPTIMIZED ANIMATED COUNTERS
+    // ANIMATED COUNTERS
     $('.counter').each(function() {
         const $this = $(this);
         const countTo = parseInt($this.attr('data-target'));
@@ -699,28 +776,21 @@ $(document).ready(function() {
         });
     });
     
-    // OPTIMIZED TABLE ROW ANIMATION - Only first 10 rows for performance
+    // TABLE ROW ANIMATION - First 10 rows for performance
     $('.user-table tbody tr').slice(0, 10).each(function(index) {
         $(this).css({
             'animation': `fadeIn 0.3s ease ${index * 0.05}s both`
         });
     });
     
-    // DELETE CONFIRMATION
-    $('.delete-confirm').on('click', function(e) {
-        const userName = $(this).closest('tr').find('.user-name').text().trim();
-        if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
-            e.preventDefault();
-            return false;
-        }
-    });
-    
-    // BUTTON HOVER EFFECTS
-    $('.btn-action').on('mouseenter', function() {
-        $(this).find('i').css('transform', 'scale(1.2)');
-    }).on('mouseleave', function() {
-        $(this).find('i').css('transform', 'scale(1)');
-    });
+    // AUTO-HIDE SUCCESS MESSAGE AFTER 5 SECONDS
+    if ($('.success-message').length) {
+        setTimeout(function() {
+            $('.success-message').fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 5000);
+    }
 });
 </script>
 

@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Remove Team Member';
 require_once 'includes/header.php';
 require_once 'components/project.php';
@@ -12,6 +14,7 @@ $project_obj = new Project();
 $project = $project_obj->getById($project_id);
 
 if (!$project || !$user_id) {
+    ob_end_clean();
     header('Location: projects.php');
     exit;
 }
@@ -27,12 +30,14 @@ foreach ($members as $m) {
 }
 
 if (!$member) {
+    ob_end_clean();
     header('Location: project-detail.php?id=' . $project_id . '&tab=team');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
     if ($project_obj->removeMember($project_id, $user_id)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: project-detail.php?id=' . $project_id . '&tab=team&removed=1');
         exit;
     }
@@ -57,15 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     }
     
-    .remove-container {
+    .remove-member-container {
         padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
         animation: fadeIn 0.4s ease;
-        min-height: calc(100vh - 100px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }
     
     @keyframes fadeIn {
@@ -73,24 +74,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* REMOVE CARD */
-    .remove-card {
+    /* PAGE HEADER */
+    .page-header {
         background: white;
+        padding: 32px;
         border-radius: 16px;
-        box-shadow: var(--shadow-lg);
+        margin-bottom: 32px;
+        box-shadow: var(--shadow-md);
         border: 1px solid var(--border);
-        max-width: 600px;
-        width: 100%;
+        position: relative;
         overflow: hidden;
-        animation: fadeInUp 0.4s ease;
     }
     
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .remove-card::before {
+    .page-header::before {
         content: '';
         position: absolute;
         top: 0;
@@ -100,167 +96,196 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
     
-    /* REMOVE HEADER */
-    .remove-header {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
-        padding: 40px 32px;
-        text-align: center;
-        position: relative;
-        border-bottom: 2px solid var(--border);
-    }
-    
-    .remove-icon {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 20px;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    }
-    
-    .remove-icon i {
-        font-size: 36px;
-        color: white;
-    }
-    
-    .remove-header h1 {
-        margin: 0 0 8px;
+    .page-header h1 {
+        margin: 0 0 8px 0;
         font-weight: 700;
         font-size: 32px;
         color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
     
-    .remove-header p {
-        margin: 0;
-        color: #64748b;
+    .page-header h1 i {
+        color: var(--primary);
+        font-size: 28px;
+    }
+    
+    .page-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-size: 14px;
         font-weight: 600;
+        margin-top: 12px;
+    }
+    
+    .page-breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .page-breadcrumb a:hover {
+        color: var(--primary-dark);
+    }
+    
+    .page-breadcrumb span {
+        color: #94a3b8;
+    }
+    
+    .page-breadcrumb .current {
+        color: #64748b;
+    }
+    
+    /* REMOVE CARD */
+    .remove-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        max-width: 800px;
+        margin: 0 auto;
+        overflow: hidden;
+        animation: fadeInUp 0.4s ease;
+    }
+    
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     /* REMOVE BODY */
     .remove-body {
-        padding: 32px;
+        padding: 40px;
         background: white;
     }
     
     /* WARNING BOX */
     .warning-box {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05));
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08));
         border-left: 4px solid var(--warning);
-        padding: 16px 20px;
+        padding: 18px 22px;
         border-radius: 12px;
-        margin-bottom: 24px;
+        margin-bottom: 32px;
         display: flex;
         align-items: flex-start;
-        gap: 12px;
+        gap: 14px;
     }
     
     .warning-box i {
         color: var(--warning);
-        font-size: 18px;
+        font-size: 20px;
         flex-shrink: 0;
         margin-top: 2px;
     }
     
-    .warning-box p {
+    .warning-box-content h4 {
+        margin: 0 0 6px;
+        font-weight: 700;
+        color: #92400e;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .warning-box-content p {
         margin: 0;
         color: #92400e;
         font-weight: 600;
-        line-height: 1.5;
+        line-height: 1.6;
         font-size: 13px;
     }
     
     /* PROJECT INFO */
-    .project-info {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
+    .project-info-box {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+        border-left: 4px solid var(--primary);
+        padding: 18px 22px;
         border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
-        border: 1px solid rgba(99, 102, 241, 0.15);
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
     }
     
-    .project-info h3 {
-        margin: 0 0 8px;
+    .project-info-box i {
+        color: var(--primary);
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    
+    .project-info-content h3 {
+        margin: 0 0 6px;
         font-weight: 700;
-        color: var(--dark);
+        color: #64748b;
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: #64748b;
     }
     
-    .project-info h3 i {
-        color: var(--primary);
-        font-size: 12px;
-    }
-    
-    .project-info p {
+    .project-info-content p {
         margin: 0;
         color: var(--dark);
-        font-weight: 600;
-        font-size: 15px;
+        font-weight: 700;
+        font-size: 17px;
     }
     
     /* MEMBER CARD */
-    .member-card {
-        background: white;
+    .member-removal-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
         border-radius: 12px;
-        padding: 28px;
-        margin-bottom: 24px;
-        border: 2px solid var(--border);
+        padding: 32px;
+        margin-bottom: 32px;
+        border: 2px solid rgba(99, 102, 241, 0.15);
         text-align: center;
         transition: all 0.3s ease;
     }
     
-    .member-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: var(--shadow-md);
+    .member-removal-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
     }
     
     .member-avatar-large {
-        width: 90px;
-        height: 90px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         color: white;
         font-weight: 800;
-        font-size: 38px;
+        font-size: 42px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 16px;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        margin: 0 auto 20px;
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
     }
     
     .member-name {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 700;
         color: var(--dark);
-        margin: 0 0 6px;
+        margin: 0 0 8px;
     }
     
     .member-email {
         color: #64748b;
-        font-size: 14px;
-        font-weight: 500;
-        margin-bottom: 16px;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: block;
     }
     
-    .member-info {
+    .member-info-badges {
         display: flex;
         justify-content: center;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
     }
     
     .info-badge {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         font-size: 11px;
         font-weight: 700;
@@ -269,31 +294,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
-    .info-badge:first-child {
+    .info-badge.user-role {
         background: #dbeafe;
         color: #1e40af;
     }
     
-    .info-badge:last-child {
+    .info-badge.project-role {
         background: #f3e8ff;
         color: #6b21a8;
     }
     
     .info-badge i {
-        font-size: 11px;
+        font-size: 12px;
+    }
+    
+    /* SECTION TITLE */
+    .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    
+    .section-title i {
+        color: var(--primary);
+        font-size: 16px;
     }
     
     /* ACTION BUTTONS */
     .action-buttons {
         display: flex;
         gap: 12px;
-        margin-top: 24px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 2px solid var(--border);
         flex-wrap: wrap;
     }
     
-    .btn {
+    .btn-modern {
         flex: 1;
         border-radius: 10px;
         padding: 14px 28px;
@@ -311,51 +359,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         text-decoration: none;
     }
     
-    .btn i {
+    .btn-modern i {
         font-size: 14px;
     }
     
-    .btn-warning {
+    .btn-modern.danger {
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         color: white;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
-    .btn-warning:hover {
+    .btn-modern.danger:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
     }
     
-    .btn-warning:active {
+    .btn-modern.danger:active {
         transform: translateY(0);
         box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
     }
     
-    .btn-warning:disabled {
+    .btn-modern.danger:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
     }
     
-    .btn-default {
+    .btn-modern.secondary {
         background: white;
         color: var(--primary);
         border: 2px solid var(--primary);
     }
     
-    .btn-default:hover {
+    .btn-modern.secondary:hover {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
         transform: translateY(-2px);
     }
     
-    .btn-default:active {
+    .btn-modern.secondary:active {
         transform: translateY(0);
     }
     
     /* COUNTDOWN STATE */
-    .btn-countdown {
+    .btn-modern.countdown {
         background: linear-gradient(135deg, #94a3b8, #64748b);
         cursor: not-allowed;
+        box-shadow: none;
+    }
+    
+    .btn-modern.countdown:hover {
+        transform: none;
     }
     
     /* SMOOTH SCROLLBAR */
@@ -379,36 +432,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
     
     /* RESPONSIVE DESIGN */
     @media (max-width: 1200px) {
-        .remove-container {
+        .remove-member-container {
             padding: 20px;
+        }
+        .page-header {
+            padding: 28px;
+        }
+        .page-header h1 {
+            font-size: 28px;
+        }
+        .remove-body {
+            padding: 32px;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .remove-body {
+            padding: 28px;
         }
     }
     
     @media (max-width: 768px) {
-        .remove-container {
+        .remove-member-container {
             padding: 16px;
+        }
+        
+        .page-header {
+            padding: 24px 20px;
+            margin-bottom: 24px;
+        }
+        
+        .page-header h1 {
+            font-size: 24px;
+            flex-direction: column;
             align-items: flex-start;
+            gap: 8px;
         }
         
-        .remove-card {
-            margin-top: 20px;
-        }
-        
-        .remove-header {
-            padding: 32px 24px;
-        }
-        
-        .remove-header h1 {
-            font-size: 28px;
-        }
-        
-        .remove-icon {
-            width: 70px;
-            height: 70px;
-        }
-        
-        .remove-icon i {
-            font-size: 32px;
+        .page-breadcrumb {
+            flex-wrap: wrap;
         }
         
         .remove-body {
@@ -416,49 +478,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         }
         
         .member-avatar-large {
-            width: 80px;
-            height: 80px;
-            font-size: 34px;
+            width: 85px;
+            height: 85px;
+            font-size: 36px;
         }
         
-        .member-card {
-            padding: 24px 20px;
+        .member-name {
+            font-size: 22px;
+        }
+        
+        .member-removal-card {
+            padding: 28px 24px;
         }
         
         .action-buttons {
             flex-direction: column;
         }
         
-        .btn {
+        .btn-modern {
             width: 100%;
         }
     }
     
     @media (max-width: 480px) {
-        .remove-container {
+        .remove-member-container {
             padding: 12px;
         }
         
-        .remove-header {
-            padding: 28px 20px;
+        .page-header {
+            padding: 20px;
         }
         
-        .remove-header h1 {
-            font-size: 24px;
-        }
-        
-        .remove-header p {
-            font-size: 13px;
-        }
-        
-        .remove-icon {
-            width: 60px;
-            height: 60px;
-            margin-bottom: 16px;
-        }
-        
-        .remove-icon i {
-            font-size: 28px;
+        .page-header h1 {
+            font-size: 20px;
         }
         
         .remove-body {
@@ -466,58 +518,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
         }
         
         .member-avatar-large {
-            width: 70px;
-            height: 70px;
-            font-size: 30px;
+            width: 75px;
+            height: 75px;
+            font-size: 32px;
         }
         
         .member-name {
             font-size: 20px;
         }
         
-        .member-card {
-            padding: 20px 16px;
+        .member-email {
+            font-size: 14px;
         }
         
-        .btn {
+        .member-removal-card {
+            padding: 24px 20px;
+        }
+        
+        .btn-modern {
             padding: 12px 24px;
             font-size: 11px;
+        }
+        
+        .warning-box,
+        .project-info-box {
+            padding: 16px 18px;
         }
     }
 </style>
 
-<div class="remove-container container-fluid">
-    <div class="remove-card">
-        <div class="remove-header">
-            <div class="remove-icon">
-                <i class="fa fa-user-times"></i>
-            </div>
-            <h1>Remove Team Member</h1>
-            <p>Remove member from project team</p>
+<div class="remove-member-container">
+    <div class="page-header">
+        <h1>
+            <i class="fa fa-user-times"></i> Remove Team Member
+        </h1>
+        <div class="page-breadcrumb">
+            <a href="project-detail.php?id=<?php echo $project_id; ?>">
+                <i class="fa fa-folder"></i> <?php echo htmlspecialchars($project['project_name']); ?>
+            </a>
+            <span>/</span>
+            <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team">
+                <i class="fa fa-users"></i> Team
+            </a>
+            <span>/</span>
+            <span class="current">Remove Member</span>
         </div>
-        
+    </div>
+    
+    <div class="remove-card">
         <div class="remove-body">
             <div class="warning-box">
-                <i class="fa fa-info-circle"></i>
-                <p>This member will lose access to all project data and tasks.</p>
+                <i class="fa fa-exclamation-triangle"></i>
+                <div class="warning-box-content">
+                    <h4>Warning: This action cannot be undone</h4>
+                    <p>This member will immediately lose access to all project data, tasks, and resources. Any work assigned to them will need to be reassigned.</p>
+                </div>
             </div>
             
-            <div class="project-info">
-                <h3><i class="fa fa-folder"></i> From Project</h3>
-                <p><?php echo htmlspecialchars($project['project_name']); ?></p>
+            <div class="project-info-box">
+                <i class="fa fa-folder"></i>
+                <div class="project-info-content">
+                    <h3>Removing From Project</h3>
+                    <p><?php echo htmlspecialchars($project['project_name']); ?></p>
+                </div>
             </div>
             
-            <div class="member-card">
+            <div class="section-title">
+                <i class="fa fa-user"></i> Member to Remove
+            </div>
+            
+            <div class="member-removal-card">
                 <div class="member-avatar-large">
                     <?php echo strtoupper(substr($member['full_name'], 0, 1)); ?>
                 </div>
                 <h2 class="member-name"><?php echo htmlspecialchars($member['full_name']); ?></h2>
-                <p class="member-email"><?php echo htmlspecialchars($member['email']); ?></p>
-                <div class="member-info">
-                    <span class="info-badge">
+                <span class="member-email"><?php echo htmlspecialchars($member['email']); ?></span>
+                <div class="member-info-badges">
+                    <span class="info-badge user-role">
                         <i class="fa fa-briefcase"></i> <?php echo ucfirst($member['user_role']); ?>
                     </span>
-                    <span class="info-badge">
+                    <span class="info-badge project-role">
                         <i class="fa fa-tag"></i> <?php echo ucfirst($member['role']); ?>
                     </span>
                 </div>
@@ -525,10 +605,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
             
             <form method="POST" action="" id="removeForm">
                 <div class="action-buttons">
-                    <button type="submit" name="confirm_remove" class="btn btn-warning" id="removeBtn">
+                    <button type="submit" name="confirm_remove" class="btn-modern danger" id="removeBtn">
                         <i class="fa fa-user-times"></i> Remove Member
                     </button>
-                    <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team" class="btn btn-default">
+                    <a href="project-detail.php?id=<?php echo $project_id; ?>&tab=team" class="btn-modern secondary">
                         <i class="fa fa-times"></i> Cancel
                     </a>
                 </div>
@@ -541,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_remove'])) {
 $(document).ready(function() {
     let confirmCount = 0;
     
-    // Remove confirmation with countdown
+    // REMOVE CONFIRMATION WITH COUNTDOWN
     $('#removeForm').on('submit', function(e) {
         if (confirmCount === 0) {
             e.preventDefault();
@@ -551,7 +631,7 @@ $(document).ready(function() {
             const originalHtml = $btn.html();
             
             let countdown = 3;
-            $btn.removeClass('btn-warning').addClass('btn-countdown');
+            $btn.removeClass('danger').addClass('countdown');
             $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
             $btn.prop('disabled', true);
             
@@ -561,7 +641,7 @@ $(document).ready(function() {
                     $btn.html(`<i class="fa fa-clock-o"></i> Click again in ${countdown}s`);
                 } else {
                     clearInterval(timer);
-                    $btn.removeClass('btn-countdown').addClass('btn-warning');
+                    $btn.removeClass('countdown').addClass('danger');
                     $btn.html('<i class="fa fa-user-times"></i> Confirm Removal');
                     $btn.prop('disabled', false);
                 }
@@ -570,15 +650,28 @@ $(document).ready(function() {
             return false;
         }
         
-        // Final confirmation
-        return confirm('Are you sure you want to remove <?php echo htmlspecialchars($member['full_name']); ?> from this project?');
+        // FINAL CONFIRMATION
+        return confirm('Are you absolutely sure you want to remove <?php echo htmlspecialchars($member['full_name']); ?> from this project?\n\nThis action cannot be undone.');
     });
     
-    // Keyboard shortcut - ESC to cancel
+    // KEYBOARD SHORTCUT - ESC TO CANCEL
     $(document).on('keydown', function(e) {
         if (e.key === 'Escape') {
             window.location.href = 'project-detail.php?id=<?php echo $project_id; ?>&tab=team';
         }
+    });
+    
+    // ANIMATE ELEMENTS ON LOAD
+    $('.member-removal-card').css({
+        'animation': 'fadeInUp 0.5s ease 0.1s both'
+    });
+    
+    $('.warning-box').css({
+        'animation': 'fadeInUp 0.4s ease both'
+    });
+    
+    $('.project-info-box').css({
+        'animation': 'fadeInUp 0.4s ease 0.05s both'
     });
 });
 </script>

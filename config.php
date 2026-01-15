@@ -4,6 +4,11 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'project_management_system');
 
+// define('DB_HOST', 'localhost'); 
+// define('DB_USER', 'Vignesh_G');
+// define('DB_PASS', 'Vigneshg091002');
+// define('DB_NAME', 'PMS');
+
 class Database {
     private static $instance = null;
     private $conn;

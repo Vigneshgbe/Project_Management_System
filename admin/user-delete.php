@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Delete User';
 require_once '../includes/header.php';
 require_once '../components/user.php';
@@ -11,6 +13,7 @@ $user = $user_obj->getById($user_id);
 
 // Redirect if user not found or trying to delete self
 if (!$user || $user_id == $auth->getUserId()) {
+    ob_end_clean();
     header('Location: users.php');
     exit;
 }
@@ -18,6 +21,7 @@ if (!$user || $user_id == $auth->getUserId()) {
 // Handle deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     if ($user_obj->delete($user_id)) {
+        ob_end_clean(); // Clear buffer before redirect
         $_SESSION['success_message'] = 'User deleted successfully!';
         header('Location: users.php');
         exit;
@@ -28,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -50,10 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        min-height: calc(100vh - 100px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
         animation: fadeIn 0.4s ease;
     }
     
@@ -62,20 +62,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         to { opacity: 1; transform: translateY(0); }
     }
     
+    /* PAGE HEADER */
+    .page-header {
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--danger), var(--danger-dark));
+    }
+    
+    .page-header h1 {
+        margin: 0 0 8px 0;
+        font-weight: 700;
+        font-size: 32px;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .page-header h1 i {
+        color: var(--danger);
+        font-size: 28px;
+    }
+    
+    .page-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 12px;
+    }
+    
+    .page-breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .page-breadcrumb a:hover {
+        color: var(--primary-dark);
+    }
+    
+    .page-breadcrumb span {
+        color: #94a3b8;
+    }
+    
+    .page-breadcrumb .current {
+        color: #64748b;
+    }
+    
+    /* DELETE MODAL WRAPPER */
+    .delete-modal-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px 0;
+    }
+    
     /* DELETE MODAL CARD */
     .delete-modal-card {
         background: white;
         border-radius: 16px;
         box-shadow: var(--shadow-lg);
         border: 1px solid var(--border);
-        max-width: 650px;
+        max-width: 700px;
         width: 100%;
         overflow: hidden;
         animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.9); }
+        from { opacity: 0; transform: scale(0.95); }
         to { opacity: 1; transform: scale(1); }
     }
     
@@ -109,6 +181,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         justify-content: center;
         margin-bottom: 20px;
         border: 3px solid rgba(255, 255, 255, 0.25);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
     }
     
     .delete-icon-wrapper i {
@@ -120,6 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         margin: 0;
         font-weight: 700;
         font-size: 28px;
+        color: white;
     }
     
     .delete-modal-header p {
@@ -136,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     
     /* ERROR MESSAGE */
     .error-message {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.03));
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
         border-left: 4px solid var(--danger);
         border-radius: 12px;
         padding: 16px 20px;
@@ -166,17 +245,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     
     /* USER INFO CARD */
     .user-info-card {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), rgba(220, 38, 38, 0.02));
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.03));
         border: 2px solid rgba(239, 68, 68, 0.15);
         border-radius: 12px;
-        padding: 28px;
+        padding: 32px;
         margin-bottom: 28px;
         text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .user-info-card:hover {
+        border-color: rgba(239, 68, 68, 0.25);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
     }
     
     .user-avatar-delete {
-        width: 80px;
-        height: 80px;
+        width: 85px;
+        height: 85px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         color: white;
@@ -184,8 +269,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 32px;
-        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+        font-size: 34px;
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
         margin-bottom: 16px;
         border: 3px solid white;
     }
@@ -194,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         font-size: 22px;
         font-weight: 700;
         color: var(--dark);
-        margin-bottom: 12px;
+        margin-bottom: 14px;
     }
     
     .user-details-delete {
@@ -223,6 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     .badge-inline {
         display: inline-flex;
         align-items: center;
+        gap: 4px;
         padding: 4px 12px;
         border-radius: 6px;
         font-size: 11px;
@@ -231,24 +317,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         letter-spacing: 0.5px;
     }
     
+    .badge-inline i {
+        font-size: 10px;
+    }
+    
     .badge-inline.admin {
         background: #fee2e2;
         color: #991b1b;
     }
     
     .badge-inline.manager {
-        background: #fef3c7;
-        color: #92400e;
-    }
-    
-    .badge-inline.user {
         background: #dbeafe;
         color: #1e40af;
     }
     
+    .badge-inline.user {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    
     /* WARNING BOX */
     .warning-box {
-        background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), rgba(245, 158, 11, 0.03));
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05));
         border-left: 4px solid var(--warning);
         border-radius: 12px;
         padding: 20px 24px;
@@ -276,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     .warning-box p {
         margin: 0 0 12px 0;
         color: #78350f;
-        font-weight: 500;
+        font-weight: 600;
         line-height: 1.6;
         font-size: 14px;
     }
@@ -289,8 +379,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     .warning-box li {
         color: #78350f;
         font-weight: 500;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         font-size: 14px;
+        line-height: 1.5;
     }
     
     .warning-box .final-warning {
@@ -314,7 +405,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         padding: 14px 28px;
         border-radius: 10px;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.8px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -338,9 +429,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
     }
     
+    .btn-delete-action.danger:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+    }
+    
     .btn-delete-action.danger:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+        transform: none;
     }
     
     .btn-delete-action.cancel {
@@ -352,6 +449,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     .btn-delete-action.cancel:hover {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
         transform: translateY(-2px);
+    }
+    
+    .btn-delete-action.cancel:active {
+        transform: translateY(0);
     }
     
     /* SMOOTH SCROLLBAR */
@@ -374,9 +475,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     }
     
     /* RESPONSIVE DESIGN */
+    @media (max-width: 1200px) {
+        .user-delete-container {
+            padding: 20px;
+        }
+        .page-header {
+            padding: 28px;
+        }
+        .page-header h1 {
+            font-size: 28px;
+        }
+    }
+    
     @media (max-width: 768px) {
         .user-delete-container {
             padding: 16px;
+        }
+        .page-header {
+            padding: 24px 20px;
+            margin-bottom: 24px;
+        }
+        .page-header h1 {
+            font-size: 24px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .page-breadcrumb {
+            flex-wrap: wrap;
         }
         .delete-modal-card {
             max-width: 100%;
@@ -398,9 +524,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             padding: 32px 24px;
         }
         .user-avatar-delete {
-            width: 70px;
-            height: 70px;
-            font-size: 28px;
+            width: 75px;
+            height: 75px;
+            font-size: 30px;
         }
         .user-name-delete {
             font-size: 20px;
@@ -414,6 +540,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         .user-delete-container {
             padding: 12px;
         }
+        .page-header {
+            padding: 20px;
+        }
+        .page-header h1 {
+            font-size: 20px;
+        }
         .delete-modal-header {
             padding: 28px 20px;
         }
@@ -424,84 +556,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             padding: 28px 20px;
         }
         .user-info-card {
-            padding: 24px 20px;
+            padding: 28px 20px;
+        }
+        .user-avatar-delete {
+            width: 70px;
+            height: 70px;
+            font-size: 28px;
         }
         .warning-box {
             padding: 16px 20px;
         }
         .btn-delete-action {
             padding: 12px 24px;
-            font-size: 12px;
+            font-size: 11px;
         }
     }
 </style>
 
-<div class="user-delete-container container-fluid">
-    <div class="delete-modal-card">
-        <div class="delete-modal-header">
-            <div class="delete-icon-wrapper">
-                <i class="fa fa-exclamation-triangle"></i>
-            </div>
-            <h1>Confirm User Deletion</h1>
-            <p>This action cannot be undone</p>
+<div class="user-delete-container">
+    <div class="page-header">
+        <h1>
+            <i class="fa fa-user-times"></i> Delete User
+        </h1>
+        <div class="page-breadcrumb">
+            <a href="users.php">
+                <i class="fa fa-users"></i> Users
+            </a>
+            <span>/</span>
+            <span class="current">Delete User</span>
         </div>
-        
-        <div class="delete-modal-body">
-            <?php if (isset($error_message)): ?>
-            <div class="error-message">
-                <i class="fa fa-exclamation-circle"></i>
-                <span><?php echo htmlspecialchars($error_message); ?></span>
-            </div>
-            <?php endif; ?>
-            
-            <div class="user-info-card">
-                <div class="user-avatar-delete">
-                    <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
-                </div>
-                <div class="user-name-delete"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                <div class="user-details-delete">
-                    <div class="user-detail-item">
-                        <i class="fa fa-at"></i>
-                        <span><?php echo htmlspecialchars($user['username']); ?></span>
-                    </div>
-                    <div class="user-detail-item">
-                        <i class="fa fa-envelope"></i>
-                        <span><?php echo htmlspecialchars($user['email']); ?></span>
-                    </div>
-                    <div class="user-detail-item">
-                        <i class="fa fa-shield-alt"></i>
-                        <span class="badge-inline <?php echo $user['role']; ?>">
-                            <?php echo ucfirst($user['role']); ?>
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="warning-box">
-                <div class="warning-box-header">
+    </div>
+    
+    <div class="delete-modal-wrapper">
+        <div class="delete-modal-card">
+            <div class="delete-modal-header">
+                <div class="delete-icon-wrapper">
                     <i class="fa fa-exclamation-triangle"></i>
-                    <strong>Warning: This action cannot be undone!</strong>
                 </div>
-                <p>Deleting this user will permanently remove:</p>
-                <ul>
-                    <li>User account and credentials</li>
-                    <li>All associated user data</li>
-                    <li>Access permissions and settings</li>
-                    <li>User activity history</li>
-                </ul>
-                <p class="final-warning">Are you absolutely sure you want to proceed?</p>
+                <h1>Confirm User Deletion</h1>
+                <p>This action cannot be undone</p>
             </div>
             
-            <form method="POST" action="" id="deleteForm">
-                <div class="delete-actions">
-                    <a href="users.php" class="btn-delete-action cancel">
-                        <i class="fa fa-arrow-left"></i> Cancel
-                    </a>
-                    <button type="submit" name="confirm_delete" class="btn-delete-action danger" id="confirmDeleteBtn">
-                        <i class="fa fa-trash"></i> Delete User
-                    </button>
+            <div class="delete-modal-body">
+                <?php if (isset($error_message)): ?>
+                <div class="error-message">
+                    <i class="fa fa-exclamation-circle"></i>
+                    <span><?php echo htmlspecialchars($error_message); ?></span>
                 </div>
-            </form>
+                <?php endif; ?>
+                
+                <div class="user-info-card">
+                    <div class="user-avatar-delete">
+                        <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
+                    </div>
+                    <div class="user-name-delete"><?php echo htmlspecialchars($user['full_name']); ?></div>
+                    <div class="user-details-delete">
+                        <div class="user-detail-item">
+                            <i class="fa fa-at"></i>
+                            <span><?php echo htmlspecialchars($user['username']); ?></span>
+                        </div>
+                        <div class="user-detail-item">
+                            <i class="fa fa-envelope"></i>
+                            <span><?php echo htmlspecialchars($user['email']); ?></span>
+                        </div>
+                        <div class="user-detail-item">
+                            <i class="fa fa-shield"></i>
+                            <?php 
+                            $roleIcons = [
+                                'user' => 'fa-user',
+                                'manager' => 'fa-users',
+                                'admin' => 'fa-shield'
+                            ];
+                            $roleIcon = $roleIcons[$user['role']] ?? 'fa-user';
+                            ?>
+                            <span class="badge-inline <?php echo $user['role']; ?>">
+                                <i class="fa <?php echo $roleIcon; ?>"></i>
+                                <?php echo ucfirst($user['role']); ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <div class="warning-box-header">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <strong>Warning: This action cannot be undone!</strong>
+                    </div>
+                    <p>Deleting this user will permanently remove:</p>
+                    <ul>
+                        <li>User account and credentials</li>
+                        <li>All associated user data</li>
+                        <li>Access permissions and settings</li>
+                        <li>User activity history</li>
+                    </ul>
+                    <p class="final-warning">Are you absolutely sure you want to proceed?</p>
+                </div>
+                
+                <form method="POST" action="" id="deleteForm">
+                    <div class="delete-actions">
+                        <a href="users.php" class="btn-delete-action cancel">
+                            <i class="fa fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" name="confirm_delete" class="btn-delete-action danger" id="confirmDeleteBtn">
+                            <i class="fa fa-trash"></i> Delete User
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -517,7 +678,7 @@ $(document).ready(function() {
         
         const confirmed = confirm(
             '⚠️ FINAL CONFIRMATION ⚠️\n\n' +
-            'You are about to permanently delete:\n' + '\n'
+            'You are about to permanently delete:\n' +
             '<?php echo htmlspecialchars($user['full_name']); ?>\n\n' +
             'This action CANNOT be reversed.\n\n' +
             'Click OK to proceed with deletion or Cancel to abort.'
@@ -539,6 +700,9 @@ $(document).ready(function() {
     
     // FOCUS ON CANCEL BUTTON BY DEFAULT (SAFER)
     $('.btn-delete-action.cancel').focus();
+    
+    // ANIMATE ELEMENTS ON LOAD
+    $('.delete-modal-card').css('animation', 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both');
 });
 </script>
 

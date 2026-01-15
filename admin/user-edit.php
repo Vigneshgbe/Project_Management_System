@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Edit User';
 require_once '../includes/header.php';
 require_once '../components/user.php';
@@ -10,6 +12,7 @@ $user_obj = new User();
 $user = $user_obj->getById($user_id);
 
 if (!$user) {
+    ob_end_clean();
     header('Location: users.php');
     exit;
 }
@@ -28,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if ($user_obj->update($user_id, $data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: users.php');
         exit;
     }
@@ -35,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -128,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         color: #64748b;
     }
     
-    /* CONTENT WRAPPER - Aligned with header */
+    /* CONTENT WRAPPER - Grid Layout */
     .content-wrapper {
         display: grid;
         grid-template-columns: 350px 1fr;
@@ -171,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         justify-content: center;
         font-weight: 800;
         font-size: 40px;
-        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
         margin-bottom: 16px;
     }
     
@@ -230,6 +234,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         display: flex;
         align-items: center;
         gap: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .info-item:hover {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.03));
     }
     
     .info-item:last-child {
@@ -275,6 +284,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         letter-spacing: 0.5px;
     }
     
+    .status-badge::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.2); }
+    }
+    
     .status-badge.active {
         background: #d1fae5;
         color: #065f46;
@@ -283,10 +306,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .status-badge.inactive {
         background: #f1f5f9;
         color: #475569;
-    }
-    
-    .status-badge i {
-        font-size: 6px;
     }
     
     .role-badge {
@@ -299,6 +318,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+    }
+    
+    .role-badge i {
+        font-size: 10px;
     }
     
     .role-badge.user {
@@ -490,14 +513,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-top: 8px;
+        margin-top: 10px;
         transition: all 0.3s ease;
+    }
+    
+    .preview-badge i {
+        font-size: 12px;
     }
     
     .preview-badge.role-user {
@@ -691,7 +718,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 </style>
 
-<div class="user-edit-container container-fluid">
+<div class="user-edit-container">
     <div class="page-header">
         <h1>
             <i class="fa fa-edit"></i> Edit User Profile
@@ -715,12 +742,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="user-avatar-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
                 <div class="user-avatar-email"><?php echo htmlspecialchars($user['email']); ?></div>
                 <div class="user-meta-badges">
+                    <?php 
+                    $roleIcons = [
+                        'user' => 'fa-user',
+                        'manager' => 'fa-users',
+                        'admin' => 'fa-shield'
+                    ];
+                    $roleIcon = $roleIcons[$user['role']] ?? 'fa-user';
+                    ?>
                     <span class="role-badge <?php echo $user['role']; ?>">
-                        <i class="fa fa-user-tag"></i>
+                        <i class="fa <?php echo $roleIcon; ?>"></i>
                         <?php echo ucfirst($user['role']); ?>
                     </span>
                     <span class="status-badge <?php echo $user['status']; ?>">
-                        <i class="fa fa-circle"></i>
                         <?php echo ucfirst($user['status']); ?>
                     </span>
                 </div>
@@ -738,7 +772,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 <div class="info-item">
-                    <i class="fa fa-calendar"></i>
+                    <i class="fa fa-hashtag"></i>
                     <div class="info-item-content">
                         <div class="info-item-label">User ID</div>
                         <div class="info-item-value">#<?php echo $user['id']; ?></div>
@@ -855,7 +889,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <!-- PERMISSIONS & STATUS -->
                 <div class="form-section-title">
-                    <i class="fa fa-shield-alt"></i> Permissions & Status
+                    <i class="fa fa-shield"></i> Permissions & Status
                 </div>
                 
                 <div class="row">
@@ -869,9 +903,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="manager" <?php echo $user['role'] === 'manager' ? 'selected' : ''; ?>>Manager</option>
                                 <option value="admin" <?php echo $user['role'] === 'admin' ? 'selected' : ''; ?>>Administrator</option>
                             </select>
+                            <?php 
+                            $currentRoleIcon = $roleIcons[$user['role']] ?? 'fa-user';
+                            ?>
                             <span class="preview-badge role-<?php echo $user['role']; ?>" id="rolePreview">
-                                <i class="fa fa-user-tag"></i>
-                                <?php echo ucfirst($user['role']); ?>
+                                <i class="fa <?php echo $currentRoleIcon; ?>"></i>
+                                <?php echo $user['role'] === 'user' ? 'Member' : ucfirst($user['role']); ?>
                             </span>
                         </div>
                     </div>
@@ -908,6 +945,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script>
 $(document).ready(function() {
+    // ROLE ICONS MAP
+    const roleIcons = {
+        'user': 'fa-user',
+        'manager': 'fa-users',
+        'admin': 'fa-shield'
+    };
+    
+    // ROLE LABELS MAP
+    const roleLabels = {
+        'user': 'Member',
+        'manager': 'Manager',
+        'admin': 'Administrator'
+    };
+    
     // Cache selectors
     const roleSelect = $('#role');
     const rolePreview = $('#rolePreview');
@@ -922,10 +973,11 @@ $(document).ready(function() {
     // ROLE PREVIEW UPDATE
     roleSelect.on('change', function() {
         const role = this.value;
-        const roleText = this.options[this.selectedIndex].text;
+        const roleText = roleLabels[role];
+        const icon = roleIcons[role];
         
         rolePreview[0].className = 'preview-badge role-' + role;
-        rolePreview.html('<i class="fa fa-user-tag"></i> ' + roleText);
+        rolePreview.html('<i class="fa ' + icon + '"></i> ' + roleText);
     });
     
     // STATUS PREVIEW UPDATE
@@ -1000,10 +1052,15 @@ $(document).ready(function() {
         if (password && password.length < 6) {
             isValid = false;
             passwordInput.css('border-color', '#ef4444');
+            alert('Password must be at least 6 characters long.');
         }
         
         if (!isValid) {
             e.preventDefault();
+            
+            if (!password || password.length >= 6) {
+                alert('Please fill in all required fields.');
+            }
             
             const firstInvalid = requiredFields.filter(function() {
                 return !this.value.trim();
@@ -1020,7 +1077,10 @@ $(document).ready(function() {
     // INPUT FOCUS EFFECTS
     $('.form-control-modern').on('focus', function() {
         const label = $(this).closest('.form-group-modern').find('label');
-        label.css('color', '#6366f1');
+        label.css({
+            'color': '#6366f1',
+            'transition': 'color 0.3s ease'
+        });
     }).on('blur', function() {
         const label = $(this).closest('.form-group-modern').find('label');
         label.css('color', '#64748b');
@@ -1035,8 +1095,13 @@ $(document).ready(function() {
         
         if (email && !emailRegex.test(email)) {
             this.style.borderColor = '#ef4444';
+            alert('Please enter a valid email address.');
         }
     });
+    
+    // ANIMATE ELEMENTS ON LOAD
+    $('.user-info-card').css('animation', 'fadeInUp 0.4s ease both');
+    $('.form-card').css('animation', 'fadeInUp 0.4s ease 0.1s both');
 });
 </script>
 

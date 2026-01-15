@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Fix header warning
+
 $page_title = 'Create User';
 require_once '../includes/header.php';
 require_once '../components/user.php';
@@ -19,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     
     if ($user->create($data)) {
+        ob_end_clean(); // Clear buffer before redirect
         header('Location: users.php');
         exit;
     } else {
@@ -28,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <style>
-    /* MODERN PROFESSIONAL DESIGN - OPTIMIZED */
+    /* MODERN PROFESSIONAL DESIGN */
     
     :root {
         --primary: #6366f1;
@@ -123,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     /* ALERT */
     .alert-modern {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.03));
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
         border-left: 4px solid var(--danger);
         border-radius: 12px;
         padding: 16px 20px;
@@ -179,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     .info-card-title {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--dark);
         margin-bottom: 24px;
@@ -208,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .info-section-title {
         font-weight: 700;
         color: var(--dark);
-        font-size: 13px;
+        font-size: 12px;
         margin-bottom: 8px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -403,14 +406,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-top: 8px;
+        margin-top: 10px;
         transition: all 0.3s ease;
+    }
+    
+    .role-badge-preview i {
+        font-size: 12px;
     }
     
     .role-badge-preview.user {
@@ -508,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 28px;
         }
         .form-card, .info-card {
-            padding: 36px;
+            padding: 32px;
         }
     }
     
@@ -518,7 +525,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 24px;
         }
         .form-card {
-            padding: 32px;
+            padding: 28px;
         }
     }
     
@@ -577,7 +584,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 </style>
 
-<div class="user-create-container container-fluid">
+<div class="user-create-container">
     <div class="page-header">
         <h1>
             <i class="fa fa-user-plus"></i> Create New User
@@ -695,7 +702,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     <!-- PERMISSIONS -->
                     <div class="form-section-title">
-                        <i class="fa fa-shield-alt"></i> Permissions
+                        <i class="fa fa-shield"></i> Permissions
                     </div>
                     
                     <div class="form-group-modern">
@@ -707,7 +714,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="manager">Manager</option>
                             <option value="admin">Administrator</option>
                         </select>
-                        <span class="role-badge-preview user" id="rolePreview">Member</span>
+                        <span class="role-badge-preview user" id="rolePreview">
+                            <i class="fa fa-user"></i> Member
+                        </span>
                     </div>
                     
                     <!-- ACTION BUTTONS -->
@@ -726,7 +735,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-md-4">
             <div class="info-card">
                 <div class="info-card-title">
-                    <i class="fa fa-lightbulb"></i> Quick Guide
+                    <i class="fa fa-lightbulb-o"></i> Quick Guide
                 </div>
                 
                 <div class="info-section">
@@ -774,12 +783,19 @@ $(document).ready(function() {
     const roleSelect = $('#role');
     const rolePreview = $('#rolePreview');
     
+    const roleIcons = {
+        'user': 'fa-user',
+        'manager': 'fa-users',
+        'admin': 'fa-shield'
+    };
+    
     roleSelect.on('change', function() {
         const role = this.value;
         const roleText = this.options[this.selectedIndex].text;
+        const icon = roleIcons[role];
         
         rolePreview[0].className = 'role-badge-preview ' + role;
-        rolePreview.text(roleText);
+        rolePreview.html('<i class="fa ' + icon + '"></i> ' + roleText);
     });
     
     // PASSWORD STRENGTH INDICATOR
@@ -889,6 +905,10 @@ $(document).ready(function() {
         const label = $(this).closest('.form-group-modern').find('label');
         label.css('color', '#64748b');
     });
+    
+    // ANIMATE ELEMENTS ON LOAD
+    $('.form-card').css('animation', 'fadeInUp 0.4s ease both');
+    $('.info-card').css('animation', 'fadeInUp 0.4s ease 0.1s both');
 });
 </script>
 

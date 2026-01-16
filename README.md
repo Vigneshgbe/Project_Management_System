@@ -109,7 +109,7 @@ This Modern Project Management System is a comprehensive web application designe
 ## 📸 Screenshots
 
 ### Dashboard
-![Dashboard](screenshots/dashboard.png)
+![Dashboard](https://github.com/Vigneshgbe/Project_Management_System/blob/main/Demo_Screenshots/Dashboard%20Page.png?raw=true)
 *Modern dashboard with live statistics and project overview*
 
 ### User Management

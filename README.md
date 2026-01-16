@@ -113,15 +113,15 @@ This Modern Project Management System is a comprehensive web application designe
 *Modern dashboard with live statistics and project overview*
 
 ### User Management
-![User Management](screenshots/users.png)
+![User Management](https://github.com/Vigneshgbe/Project_Management_System/blob/main/Demo_Screenshots/User%20Management.png?raw=true)
 *Comprehensive user management interface*
 
 ### Project View
-![Projects](screenshots/projects.png)
+![Projects](https://github.com/Vigneshgbe/Project_Management_System/blob/main/Demo_Screenshots/Project%20Management.png?raw=true)
 *Project tracking and team collaboration*
 
 ### Task Management
-![Tasks](screenshots/tasks.png)
+![Tasks](https://github.com/Vigneshgbe/Project_Management_System/blob/main/Demo_Screenshots/Task%20Management.png?raw=true)
 *Task assignment and progress tracking*
 
 ---

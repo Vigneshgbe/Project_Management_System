@@ -1,0 +1,76 @@
+PADAK CRM — SETUP GUIDE
+=======================
+
+REQUIREMENTS
+------------
+- PHP 7.4+ (8.x recommended)
+- MySQL 5.7+ / MariaDB 10.3+
+- Apache with mod_rewrite
+- Hostinger shared hosting compatible
+
+INSTALLATION STEPS
+------------------
+
+1. DATABASE SETUP
+   - Create a new database in Hostinger hPanel: padak_crm
+   - Import install.sql via phpMyAdmin
+   - Default login credentials:
+     Email: admin@thepadak.com   Password: password
+     Email: thiki@thepadak.com   Password: password
+     Email: vignesh@thepadak.com Password: password
+   ⚠ Change passwords immediately after first login!
+
+2. CONFIG FILE
+   Edit config.php and update:
+     define('DB_HOST', 'localhost');
+     define('DB_NAME', 'padak_crm');
+     define('DB_USER', 'your_db_user');
+     define('DB_PASS', 'your_db_password');
+     define('BASE_URL', 'https://yourdomain.com/crm');
+
+3. FILE UPLOAD
+   Upload ALL files to your hosting directory (e.g. /public_html/crm/)
+   Make sure these folders are writable (chmod 755):
+     uploads/
+     uploads/documents/
+     uploads/avatars/
+
+4. PERMISSIONS
+   chmod 755 uploads/ uploads/documents/ uploads/avatars/
+
+5. ACCESS
+   Visit: https://yourdomain.com/crm/
+   Login with credentials above.
+
+FILE STRUCTURE
+--------------
+index.php          — Login page
+dashboard.php      — Main dashboard
+projects.php       — Project management
+tasks.php          — Task management
+documents.php      — File/document store
+contacts.php       — CRM contacts
+users.php          — Team management (admin/manager only)
+profile.php        — User profile & password change
+activity.php       — Activity log (admin only)
+config.php         — Database & app config
+install.sql        — Database schema + seed data
+includes/
+  layout.php       — Shared sidebar/header/layout
+uploads/
+  documents/       — Uploaded files stored here
+  avatars/         — User avatar images
+
+ROLES
+-----
+admin   — Full access: create users, view logs, all features
+manager — Create/edit projects, contacts, view all tasks/docs
+member  — View projects they're in, manage own tasks, upload docs
+
+NOTES FOR HOSTINGER
+-------------------
+- Use p: prefix in DB_HOST for persistent connections (already set)
+- If sessions drop, add to .htaccess:
+    php_value session.cookie_secure 0
+- Max upload is set to 20MB — adjust in .htaccess if needed
+- OPcache: if changes don't reflect, clear via hPanel > Advanced > PHP Config

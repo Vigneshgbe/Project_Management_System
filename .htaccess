@@ -1,0 +1,17 @@
+Options -Indexes
+php_flag display_errors Off
+php_value upload_max_filesize 20M
+php_value post_max_size 25M
+php_value max_execution_time 120
+
+# Rewrite for cleaner error handling
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>
+
+# Prevent access to config
+<Files "config.php">
+    Order Deny,Allow
+    Deny from all
+    Allow from 127.0.0.1
+</Files>

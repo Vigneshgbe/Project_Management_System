@@ -2,11 +2,11 @@
 // config.php — Padak CRM Configuration
 define('CRM_VERSION', '1.0.0');
 define('SITE_NAME', 'Padak CRM');
-define('BASE_URL', 'http://localhost/padak-crm'); // Change for production
+define('BASE_URL', 'http://localhost/project_management');
 
 // Database
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'padak_crm');
+define('DB_NAME', 'project_management');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_PORT', 3306);
@@ -40,7 +40,7 @@ function getCRMDB(): mysqli {
 // Session init
 function initSession(): void {
     if (session_status() === PHP_SESSION_NONE) {
-        session_name('padak_crm');
+        session_name('project_management');
         session_start();
     }
 }

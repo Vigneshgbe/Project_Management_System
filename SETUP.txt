@@ -1,4 +1,4 @@
-PADAK PMS — SETUP GUIDE
+PADAK CMS — SETUP GUIDE
 =======================
 
 REQUIREMENTS
@@ -12,7 +12,7 @@ INSTALLATION STEPS
 ------------------
 
 1. DATABASE SETUP
-   - Create a new database in Hostinger hPanel: padak_pms
+   - Create a new database in Hostinger hPanel: padak_cms
    - Import install.sql via phpMyAdmin
    - Default login credentials:
      Email: admin@thepadak.com   Password: password
@@ -23,13 +23,13 @@ INSTALLATION STEPS
 2. CONFIG FILE
    Edit config.php and update:
      define('DB_HOST', 'localhost');
-     define('DB_NAME', 'padak_pms');
+     define('DB_NAME', 'padak_cms');
      define('DB_USER', 'your_db_user');
      define('DB_PASS', 'your_db_password');
-     define('BASE_URL', 'https://yourdomain.com/pms');
+     define('BASE_URL', 'https://yourdomain.com/cms');
 
 3. FILE UPLOAD
-   Upload ALL files to your hosting directory (e.g. /public_html/pms/)
+   Upload ALL files to your hosting directory (e.g. /public_html/cms/)
    Make sure these folders are writable (chmod 755):
      uploads/
      uploads/documents/
@@ -39,7 +39,7 @@ INSTALLATION STEPS
    chmod 755 uploads/ uploads/documents/ uploads/avatars/
 
 5. ACCESS
-   Visit: https://yourdomain.com/pms/
+   Visit: https://yourdomain.com/cms/
    Login with credentials above.
 
 FILE STRUCTURE
@@ -49,7 +49,7 @@ dashboard.php      — Main dashboard
 projects.php       — Project management
 tasks.php          — Task management
 documents.php      — File/document store
-contacts.php       — PMS contacts
+contacts.php       — CMS contacts
 users.php          — Team management (admin/manager only)
 profile.php        — User profile & password change
 activity.php       — Activity log (admin only)

@@ -1,6 +1,6 @@
 <?php
-// config.php — Padak Internal Customer Relationship Management Configuration
-define('PMS_VERSION', '1.0.2');
+// config.php — Padak Internal Customer Management Configuration
+define('CMS_VERSION', '1.0.2');
 define('SITE_NAME', 'Padak Internal Customer Relationship Management');
 define('BASE_URL', 'http://localhost/projects_management'); // Change for production
 

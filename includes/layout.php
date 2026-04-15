@@ -225,8 +225,8 @@ select.form-control{cursor:pointer}
 
 <nav id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-mark">P</div>
-    <div class="logo-text">Padak <span>CRM</span></div>
+    <!-- <div class="logo-mark">P</div> -->
+    <div class="logo-text">Padak <span>Internal CRM</span></div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Main</div>

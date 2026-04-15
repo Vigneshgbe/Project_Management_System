@@ -5,36 +5,9 @@ requireLogin();
 requireRole(['admin','manager']);
 $db = getCRMDB();
 
-// Helper functions if not defined elsewhere
-if (!function_exists('h')) {
-    function h($str) {
-        return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
-    }
-}
-
-if (!function_exists('statusColor')) {
-    function statusColor($status) {
-        $colors = [
-            'planning' => '#6366f1',
-            'active' => '#10b981',
-            'on_hold' => '#94a3b8',
-            'completed' => '#f97316',
-            'cancelled' => '#ef4444',
-            'todo' => '#6366f1',
-            'in_progress' => '#f59e0b',
-            'review' => '#8b5cf6',
-            'done' => '#10b981'
-        ];
-        return $colors[$status] ?? '#6366f1';
-    }
-}
-
-if (!function_exists('fDate')) {
-    function fDate($date) {
-        if (!$date) return '-';
-        return date('M j, Y', strtotime($date));
-    }
-}
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // --- FILTERS ---
 $period = $_GET['period'] ?? '30'; // days: 7, 30, 90, 365, all
@@ -42,56 +15,42 @@ $proj_filter = (int)($_GET['project_id'] ?? 0);
 
 $date_cond = '';
 if ($period !== 'all') {
-    $days = (int)$period;
-    $date_cond = "AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)";
+    $date_cond = "AND created_at >= DATE_SUB(NOW(), INTERVAL {$period} DAY)";
 }
 $date_cond_tasks = '';
 if ($period !== 'all') {
-    $days = (int)$period;
-    $date_cond_tasks = "AND t.created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)";
+    $date_cond_tasks = "AND t.created_at >= DATE_SUB(NOW(), INTERVAL {$period} DAY)";
 }
-$proj_cond = $proj_filter ? "AND project_id={$proj_filter}" : '';
-$proj_cond_t = $proj_filter ? "AND t.project_id={$proj_filter}" : '';
+$proj_cond = $proj_filter ? "AND project_id=$proj_filter" : '';
+$proj_cond_t = $proj_filter ? "AND t.project_id=$proj_filter" : '';
 
 // --- OVERVIEW STATS ---
-$total_projects   = (int)$db->query("SELECT COUNT(*) FROM projects")->fetch_row()[0];
-$active_projects  = (int)$db->query("SELECT COUNT(*) FROM projects WHERE status='active'")->fetch_row()[0];
-$completed_proj   = (int)$db->query("SELECT COUNT(*) FROM projects WHERE status='completed'")->fetch_row()[0];
-$total_tasks      = (int)$db->query("SELECT COUNT(*) FROM tasks WHERE 1=1 {$proj_cond}")->fetch_row()[0];
-$done_tasks       = (int)$db->query("SELECT COUNT(*) FROM tasks WHERE status='done' {$proj_cond}")->fetch_row()[0];
-$overdue_tasks    = (int)$db->query("SELECT COUNT(*) FROM tasks WHERE due_date < CURDATE() AND status != 'done' {$proj_cond}")->fetch_row()[0];
-$total_contacts   = (int)$db->query("SELECT COUNT(*) FROM contacts")->fetch_row()[0];
-$total_docs       = (int)$db->query("SELECT COUNT(*) FROM documents")->fetch_row()[0];
-$total_users      = (int)$db->query("SELECT COUNT(*) FROM users WHERE status='active'")->fetch_row()[0];
+$total_projects   = $db->query("SELECT COUNT(*) FROM projects")->fetch_row()[0];
+$active_projects  = $db->query("SELECT COUNT(*) FROM projects WHERE status='active'")->fetch_row()[0];
+$completed_proj   = $db->query("SELECT COUNT(*) FROM projects WHERE status='completed'")->fetch_row()[0];
+$total_tasks      = $db->query("SELECT COUNT(*) FROM tasks $proj_cond")->fetch_row()[0];
+$done_tasks       = $db->query("SELECT COUNT(*) FROM tasks WHERE status='done' $proj_cond")->fetch_row()[0];
+$overdue_tasks    = $db->query("SELECT COUNT(*) FROM tasks WHERE due_date < CURDATE() AND status != 'done' $proj_cond")->fetch_row()[0];
+$total_contacts   = $db->query("SELECT COUNT(*) FROM contacts")->fetch_row()[0];
+$total_docs       = $db->query("SELECT COUNT(*) FROM documents")->fetch_row()[0];
+$total_users      = $db->query("SELECT COUNT(*) FROM users WHERE status='active'")->fetch_row()[0];
 
 $task_completion_rate = $total_tasks > 0 ? round($done_tasks / $total_tasks * 100) : 0;
 
 // --- TASKS BY STATUS ---
-$task_status_rows = $db->query("SELECT status, COUNT(*) as cnt FROM tasks WHERE 1=1 {$proj_cond} GROUP BY status")->fetch_all(MYSQLI_ASSOC);
+$task_status_rows = $db->query("SELECT status, COUNT(*) as cnt FROM tasks WHERE 1=1 $proj_cond GROUP BY status")->fetch_all(MYSQLI_ASSOC);
 $task_status = ['todo'=>0,'in_progress'=>0,'review'=>0,'done'=>0];
-foreach ($task_status_rows as $r) {
-    if (isset($task_status[$r['status']])) {
-        $task_status[$r['status']] = (int)$r['cnt'];
-    }
-}
+foreach ($task_status_rows as $r) $task_status[$r['status']] = (int)$r['cnt'];
 
 // --- TASKS BY PRIORITY ---
-$task_prio_rows = $db->query("SELECT priority, COUNT(*) as cnt FROM tasks WHERE 1=1 {$proj_cond} GROUP BY priority")->fetch_all(MYSQLI_ASSOC);
+$task_prio_rows = $db->query("SELECT priority, COUNT(*) as cnt FROM tasks WHERE 1=1 $proj_cond GROUP BY priority")->fetch_all(MYSQLI_ASSOC);
 $task_prio = ['low'=>0,'medium'=>0,'high'=>0,'urgent'=>0];
-foreach ($task_prio_rows as $r) {
-    if (isset($task_prio[$r['priority']])) {
-        $task_prio[$r['priority']] = (int)$r['cnt'];
-    }
-}
+foreach ($task_prio_rows as $r) $task_prio[$r['priority']] = (int)$r['cnt'];
 
 // --- PROJECTS BY STATUS ---
 $proj_status_rows = $db->query("SELECT status, COUNT(*) as cnt FROM projects GROUP BY status")->fetch_all(MYSQLI_ASSOC);
 $proj_status = ['planning'=>0,'active'=>0,'on_hold'=>0,'completed'=>0,'cancelled'=>0];
-foreach ($proj_status_rows as $r) {
-    if (isset($proj_status[$r['status']])) {
-        $proj_status[$r['status']] = (int)$r['cnt'];
-    }
-}
+foreach ($proj_status_rows as $r) $proj_status[$r['status']] = (int)$r['cnt'];
 
 // --- TASKS CREATED OVER TIME (last N days, grouped by day) ---
 $days_back = in_array($period,['7','30','90','365']) ? (int)$period : 30;
@@ -99,25 +58,22 @@ $tasks_over_time = $db->query("
   SELECT DATE(created_at) as d, COUNT(*) as cnt
   FROM tasks
   WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL {$days_back} DAY)
-  {$proj_cond}
+  $proj_cond
   GROUP BY DATE(created_at)
   ORDER BY d ASC
 ")->fetch_all(MYSQLI_ASSOC);
-
-// For tasks done - use updated_at as proxy for completed_at since completed_at doesn't exist
-$tasks_done_map = $db->query("
-  SELECT DATE(updated_at) as d, COUNT(*) as cnt
-  FROM tasks
-  WHERE updated_at >= DATE_SUB(CURDATE(), INTERVAL {$days_back} DAY) AND status='done'
-  {$proj_cond}
-  GROUP BY DATE(updated_at)
-  ORDER BY d ASC
-")->fetch_all(MYSQLI_ASSOC);
-
 // Fill in missing days
 $time_labels = [];
 $time_data_created = [];
 $time_data_done = [];
+$tasks_done_map = $db->query("
+  SELECT DATE(completed_at) as d, COUNT(*) as cnt
+  FROM tasks
+  WHERE completed_at >= DATE_SUB(CURDATE(), INTERVAL {$days_back} DAY) AND status='done'
+  $proj_cond
+  GROUP BY DATE(completed_at)
+  ORDER BY d ASC
+")->fetch_all(MYSQLI_ASSOC);
 $created_map = array_column($tasks_over_time, 'cnt', 'd');
 $done_map    = array_column($tasks_done_map, 'cnt', 'd');
 for ($i = $days_back - 1; $i >= 0; $i--) {
@@ -134,28 +90,24 @@ $member_tasks = $db->query("
     SUM(CASE WHEN t.status != 'done' THEN 1 ELSE 0 END) as open_cnt,
     SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) as done_cnt
   FROM users u
-  LEFT JOIN tasks t ON t.assigned_to = u.id {$date_cond_tasks} {$proj_cond_t}
+  LEFT JOIN tasks t ON t.assigned_to = u.id $date_cond_tasks $proj_cond_t
   WHERE u.status = 'active'
   GROUP BY u.id, u.name
-  HAVING (open_cnt + done_cnt) > 0
-  ORDER BY (open_cnt + done_cnt) DESC
+  HAVING (SUM(CASE WHEN t.status != 'done' THEN 1 ELSE 0 END) + SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END)) > 0
+  ORDER BY (SUM(CASE WHEN t.status != 'done' THEN 1 ELSE 0 END) + SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END)) DESC
   LIMIT 10
 ")->fetch_all(MYSQLI_ASSOC);
 
 // --- CONTACTS BY TYPE ---
 $contact_type_rows = $db->query("SELECT type, COUNT(*) as cnt FROM contacts GROUP BY type")->fetch_all(MYSQLI_ASSOC);
 $contact_types = ['client'=>0,'lead'=>0,'partner'=>0,'vendor'=>0];
-foreach ($contact_type_rows as $r) {
-    if (isset($contact_types[$r['type']])) {
-        $contact_types[$r['type']] = (int)$r['cnt'];
-    }
-}
+foreach ($contact_type_rows as $r) $contact_types[$r['type']] = (int)$r['cnt'];
 
 // --- TOP PROJECTS BY TASK COMPLETION ---
 $top_projects = $db->query("
   SELECT p.title,
     COUNT(t.id) as total,
-    SUM(CASE WHEN t.status='done' THEN 1 ELSE 0 END) as done,
+    SUM(t.status='done') as done,
     p.status, p.priority, p.due_date
   FROM projects p
   LEFT JOIN tasks t ON t.project_id = p.id
@@ -169,7 +121,7 @@ $top_projects = $db->query("
 $doc_cats = $db->query("SELECT category, COUNT(*) as cnt FROM documents GROUP BY category ORDER BY cnt DESC LIMIT 8")->fetch_all(MYSQLI_ASSOC);
 
 // --- RECENT ACTIVITY COUNT ---
-$activity_7d = (int)$db->query("SELECT COUNT(*) FROM activity_log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetch_row()[0];
+$activity_7d = $db->query("SELECT COUNT(*) FROM activity_log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetch_row()[0];
 
 // All projects for filter
 $all_projects = $db->query("SELECT id,title FROM projects ORDER BY title")->fetch_all(MYSQLI_ASSOC);

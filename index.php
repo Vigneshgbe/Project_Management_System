@@ -41,7 +41,8 @@ $timeout = isset($_GET['timeout']);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Sign In — Padak CRM</title>
+<title>Log In — Internal CRM</title>
+<link rel="icon" type="image/x-icon" href="https://thepadak.com/index_assets/padak_p.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}

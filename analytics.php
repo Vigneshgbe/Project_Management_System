@@ -5,6 +5,10 @@ requireLogin();
 requireRole(['admin','manager']);
 $db = getCRMDB();
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // --- FILTERS ---
 $period = $_GET['period'] ?? '30'; // days: 7, 30, 90, 365, all
 $proj_filter = (int)($_GET['project_id'] ?? 0);

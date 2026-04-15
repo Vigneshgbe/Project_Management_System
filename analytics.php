@@ -182,7 +182,7 @@ renderLayout('Analytics', 'analytics');
     ['Done Tasks',     $done_tasks,         '🏁', '#10b981'],
     ['Overdue Tasks',  $overdue_tasks,      '⚠',  '#ef4444'],
     ['Completion Rate',$task_completion_rate.'%', '📊', '#8b5cf6'],
-    ['CRM Contacts',   $total_contacts,     '👥', '#f97316'],
+    ['PMS Contacts',   $total_contacts,     '👥', '#f97316'],
     ['Documents',      $total_docs,         '📄', '#f59e0b'],
   ];
   foreach ($kpis as [$lbl,$val,$icon,$col]):
@@ -293,10 +293,10 @@ renderLayout('Analytics', 'analytics');
   </div>
 </div>
 
-<!-- ROW 4: CRM Contacts + Docs by Category -->
+<!-- ROW 4: PMS Contacts + Docs by Category -->
 <div class="an-grid-2">
   <div class="chart-card">
-    <div class="chart-title">CRM Contacts by Type</div>
+    <div class="chart-title">PMS Contacts by Type</div>
     <div class="chart-sub">Relationship breakdown</div>
     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
       <div class="chart-wrap" style="width:160px;height:160px;flex-shrink:0">

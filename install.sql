@@ -1,8 +1,8 @@
--- Padak CRM Database Schema
+-- Padak PMS Database Schema
 -- Run this once to set up the database
 
-CREATE DATABASE IF NOT EXISTS padak_crm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE padak_crm;
+CREATE DATABASE IF NOT EXISTS Projects_Management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE Projects_Management;
 
 -- Users & Roles
 CREATE TABLE users (
@@ -19,7 +19,7 @@ CREATE TABLE users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- CRM Contacts/Clients
+-- PMS Contacts/Clients
 CREATE TABLE contacts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,

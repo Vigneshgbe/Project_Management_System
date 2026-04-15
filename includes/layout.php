@@ -217,17 +217,33 @@ select.form-control{cursor:pointer}
   .btn span{display:none}
   .header-title span{display:none}
 }
+.logo-mark{
+  width:34px;
+  height:34px;
+  background:var(--orange);  /* Remove this line if you don't want the orange background */
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:16px;
+  color:#fff;
+  flex-shrink:0;
+  overflow:hidden;  /* This ensures the image doesn't overflow */
+}
 </style>
 <script>(function(){var t=localStorage.getItem('padak_theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();</script>
 </head>
 <body>
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-<nav id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-mark">P</div>
-    <div class="logo-text">Padak <span>CRM</span></div>
+<div class="sidebar-logo">
+  <div class="logo-mark">
+    <img src="/assets/padak_p.png" alt="Padak Logo" style="width: 100%; height: 100%; object-fit: contain;">
   </div>
+  <div class="logo-text">Padak <span>CRM</span></div>
+</div>
   <div class="nav-section">
     <div class="nav-label">Main</div>
     <a href="dashboard.php" class="nav-item <?= $activePage==='dashboard'?'active':'' ?>">

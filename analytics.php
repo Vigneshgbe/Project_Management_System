@@ -3,7 +3,7 @@ require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
 requireRole(['admin','manager']);
-$db = getCRMDB();
+$db = getCRMDB();  
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

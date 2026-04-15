@@ -2,7 +2,7 @@
 // config.php — Padak CRM Configuration
 define('CRM_VERSION', '1.0.0');
 define('SITE_NAME', 'Padak CRM');
-define('BASE_URL', 'http://localhost/projects_management');
+define('BASE_URL', 'http://localhost/projects_management'); // Change for production
 
 // Database
 define('DB_HOST', 'localhost');

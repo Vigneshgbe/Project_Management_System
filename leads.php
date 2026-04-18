@@ -129,31 +129,106 @@ renderLayout('Leads Pipeline', 'leads');
 ?>
 
 <style>
-.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch}
-.kanban-col{min-width:230px;width:230px;flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column}
-.kanban-col-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;border-top:3px solid var(--col-color)}
-.kanban-col-body{padding:8px;flex:1;overflow-y:auto;max-height:70vh;display:flex;flex-direction:column;gap:7px}
-.kcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.kcard:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.kcard-name{font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px}
-.kcard-company{font-size:11.5px;color:var(--text3)}
-.kcard-meta{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;align-items:center}
-.stage-select{background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;padding:3px 6px;cursor:pointer}
+/* ── LEADS PAGE ── */
+.leads-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.leads-controls-left{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;min-width:0}
+.view-toggle{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.view-toggle a{padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text2);background:var(--bg3);transition:background .15s,color .15s;white-space:nowrap}
+.view-toggle a.active{background:var(--orange);color:#fff}
+
+/* ── KANBAN ── */
+.kanban-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:16px}
+.kanban-board{display:flex;gap:12px;min-width:max-content;align-items:flex-start}
+.kanban-col{
+  width:220px;flex-shrink:0;
+  background:var(--bg2);border:1px solid var(--border);
+  border-top:3px solid var(--kcol);border-radius:var(--radius);
+  display:flex;flex-direction:column;
+}
+.kanban-col-header{
+  padding:10px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center
+}
+.kanban-col-title{font-size:12.5px;font-weight:700;color:var(--kcol)}
+.kanban-col-badge{
+  background:var(--kcol);color:#fff;
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px
+}
+.kanban-col-body{
+  padding:8px;display:flex;flex-direction:column;gap:7px;
+  min-height:120px;max-height:calc(100vh - 320px);overflow-y:auto
+}
+.kanban-empty{
+  text-align:center;padding:22px 8px;font-size:12px;
+  color:var(--text3);border:1px dashed var(--border);
+  border-radius:8px;margin:0
+}
+.kanban-col-footer{
+  padding:7px 12px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);text-align:right
+}
+
+/* ── LEAD CARD ── */
+.kcard{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:11px 12px;cursor:pointer;
+  transition:border-color .15s,transform .1s;
+}
+.kcard:hover{border-color:var(--border2);transform:translateY(-1px)}
+.kcard:active{transform:scale(.98)}
+.kcard-name{font-weight:700;font-size:13px;color:var(--text);margin-bottom:2px;line-height:1.3}
+.kcard-company{font-size:11.5px;color:var(--text2);margin-bottom:6px}
+.kcard-divider{height:1px;background:var(--border);margin:7px 0}
+.kcard-footer{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap}
+.kcard-prio{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px}
+.kcard-budget{font-size:10px;font-weight:700;color:var(--green)}
+.kcard-close{font-size:10px;color:var(--text3)}
+.kcard-assignee{font-size:10.5px;color:var(--text3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── ACTIVITY ── */
 .activity-item{background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:8px}
 .act-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--orange)}
-.pipeline-funnel{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto}
-.funnel-stage{flex:1;min-width:90px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;cursor:pointer;transition:border-color .15s}
-.funnel-stage:hover,.funnel-stage.active{border-color:var(--orange)}
-.funnel-count{font-size:20px;font-weight:800;font-family:var(--font-display)}
-.funnel-lbl{font-size:10px;color:var(--text3);margin-top:2px}
-@media(max-width:700px){.kanban-board{flex-direction:column}.kanban-col{width:100%;min-width:unset}.pipeline-funnel{flex-wrap:wrap}}
+
+/* ── SINGLE LEAD ── */
+.lead-detail-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start}
+.lead-meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.lead-meta-box{background:var(--bg3);border-radius:8px;padding:10px}
+.lead-meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
+.lead-meta-val{font-size:13px;color:var(--text)}
+
+/* ── MOBILE ── */
+@media(max-width:1100px){
+  .kanban-col{width:200px}
+}
+@media(max-width:900px){
+  /* On mobile, kanban scrolls horizontally — cols stay fixed width */
+  .kanban-col{width:180px}
+  .lead-detail-grid{grid-template-columns:1fr}
+  .lead-meta-grid{grid-template-columns:1fr 1fr}
+  .leads-controls{flex-direction:column;align-items:stretch}
+  .leads-controls-left{justify-content:flex-start}
+}
+@media(max-width:600px){
+  .kanban-col{width:160px}
+  .lead-meta-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .kanban-col{width:150px}
+  .kcard-name{font-size:12px}
+}
+/* Mobile: stack kanban vertically if user prefers */
+@media(max-width:480px){
+  .kanban-board{min-width:unset;flex-direction:column}
+  .kanban-col{width:100%}
+  .kanban-col-body{max-height:none}
+}
 </style>
 
 <?php if ($single): // ═══════════════════════════════ SINGLE LEAD VIEW ?>
 
 <div style="margin-bottom:16px"><a href="leads.php" style="color:var(--text3);font-size:13px">← Back to Pipeline</a></div>
 
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
+<div class="lead-detail-grid">
   <div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px">
@@ -176,7 +251,7 @@ renderLayout('Leads Pipeline', 'leads');
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="lead-meta-grid">
         <?php foreach ([
           ['Email',$single['email']?'<a href="mailto:'.h($single['email']).'">'.h($single['email']).'</a>':'—'],
           ['Phone',$single['phone']?h($single['phone']):'—'],
@@ -185,9 +260,9 @@ renderLayout('Leads Pipeline', 'leads');
           ['Expected Close',$single['expected_close']?fDate($single['expected_close']):'—'],
           ['Last Contact',$single['last_contact']?fDate($single['last_contact']):'—'],
         ] as [$lbl,$val]): ?>
-        <div style="background:var(--bg3);border-radius:8px;padding:10px">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px"><?= $lbl ?></div>
-          <div style="font-size:13px;color:var(--text)"><?= $val ?></div>
+        <div class="lead-meta-box">
+          <div class="lead-meta-lbl"><?= $lbl ?></div>
+          <div class="lead-meta-val"><?= $val ?></div>
         </div>
         <?php endforeach; ?>
       </div>
@@ -314,80 +389,116 @@ function saveActivity(lid){
 <?php else: // ═══════════════════════════════════════ PIPELINE LIST/KANBAN VIEW ?>
 
 <!-- KPI strip -->
-<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px">
-  <div class="stat-card"><div class="stat-icon" style="background:rgba(99,102,241,.12)">🎯</div><div><div class="stat-val"><?= $total_leads ?></div><div class="stat-lbl">Total Leads</div></div></div>
-  <div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,.12)">🏆</div><div><div class="stat-val"><?= $stage_counts['won'] ?></div><div class="stat-lbl">Won</div></div></div>
-  <div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,.12)">🔥</div><div><div class="stat-val"><?= ($stage_counts['proposal']??0)+($stage_counts['negotiation']??0) ?></div><div class="stat-lbl">Hot Leads</div></div></div>
-  <div class="stat-card"><div class="stat-icon" style="background:rgba(249,115,22,.12)">💰</div><div><div class="stat-val"><?= number_format($pipeline_val/1000,0) ?>K</div><div class="stat-lbl">Pipeline Value</div></div></div>
-  <div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,.12)">✅</div><div><div class="stat-val"><?= number_format($won_val/1000,0) ?>K</div><div class="stat-lbl">Won Value</div></div></div>
+<div class="stats-grid" style="margin-bottom:18px">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(99,102,241,.12)">🎯</div>
+    <div><div class="stat-val"><?= $total_leads ?></div><div class="stat-lbl">Total Leads</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(16,185,129,.12)">🏆</div>
+    <div><div class="stat-val"><?= $stage_counts['won'] ?></div><div class="stat-lbl">Won</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(239,68,68,.12)">❌</div>
+    <div><div class="stat-val"><?= $stage_counts['lost'] ?></div><div class="stat-lbl">Lost</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(245,158,11,.12)">🔥</div>
+    <div><div class="stat-val"><?= ($stage_counts['proposal']??0)+($stage_counts['negotiation']??0) ?></div><div class="stat-lbl">Hot Leads</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(249,115,22,.12)">💰</div>
+    <div>
+      <div class="stat-val"><?= $pipeline_val>0?number_format($pipeline_val/1000,1).'K':'0' ?></div>
+      <div class="stat-lbl">Pipeline Value</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(16,185,129,.12)">✅</div>
+    <div>
+      <div class="stat-val"><?= $won_val>0?number_format($won_val/1000,1).'K':'0' ?></div>
+      <div class="stat-lbl">Won Value</div>
+    </div>
+  </div>
 </div>
 
 <!-- Controls -->
-<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-  <form method="GET" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <div class="search-box">
-      <span style="color:var(--text3)">🔍</span>
+<div class="leads-controls">
+  <form method="GET" class="leads-controls-left" id="leads-filter-form">
+    <div class="search-box" style="min-width:180px;flex:1;max-width:280px">
+      <span style="color:var(--text3);font-size:13px">🔍</span>
       <input type="text" name="q" placeholder="Search leads…" value="<?= h($search) ?>">
     </div>
-    <select name="stage" class="form-control" style="width:auto" onchange="this.form.submit()">
+    <select name="stage" class="form-control" style="width:auto;max-width:160px" onchange="this.form.submit()">
       <option value="">All Stages</option>
       <?php foreach ($STAGES as $k=>$v): ?>
       <option value="<?= $k ?>" <?= $stage_f===$k?'selected':'' ?>><?= $v ?> (<?= $stage_counts[$k] ?>)</option>
       <?php endforeach; ?>
     </select>
-    <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
-      <a href="?mode=kanban<?= $stage_f?"&stage=$stage_f":'' ?><?= $search?"&q=".urlencode($search):'' ?>" class="btn btn-sm" style="border-radius:0;<?= $view_mode==='kanban'?'background:var(--orange);color:#fff':'background:var(--bg3);color:var(--text2)' ?>">Kanban</a>
-      <a href="?mode=list<?= $stage_f?"&stage=$stage_f":'' ?><?= $search?"&q=".urlencode($search):'' ?>" class="btn btn-sm" style="border-radius:0;<?= $view_mode==='list'?'background:var(--orange);color:#fff':'background:var(--bg3);color:var(--text2)' ?>">List</a>
+    <div class="view-toggle">
+      <a href="?mode=kanban<?= $stage_f?"&stage=$stage_f":'' ?><?= $search?"&q=".urlencode($search):'' ?>"
+         class="<?= $view_mode==='kanban'?'active':'' ?>">Kanban</a>
+      <a href="?mode=list<?= $stage_f?"&stage=$stage_f":'' ?><?= $search?"&q=".urlencode($search):'' ?>"
+         class="<?= $view_mode==='list'?'active':'' ?>">List</a>
     </div>
   </form>
-  <button class="btn btn-primary" onclick="openModal('modal-lead')">＋ <span>New Lead</span></button>
+  <button class="btn btn-primary" onclick="openModal('modal-lead')" style="white-space:nowrap">
+    ＋ <span>New Lead</span>
+  </button>
 </div>
 
 <?php if ($view_mode === 'kanban'): // ── KANBAN ── ?>
+<div class="kanban-wrap">
 <div class="kanban-board">
   <?php foreach ($STAGES as $stage_key=>$stage_label):
-    $col_leads = array_filter($leads, fn($l)=>$l['stage']===$stage_key);
-    $col_leads = array_values($col_leads);
+    $col_leads = array_values(array_filter($leads, fn($l)=>$l['stage']===$stage_key));
     $sc = $STAGE_COLORS[$stage_key];
     $col_val = array_sum(array_column($col_leads,'budget_est'));
   ?>
-  <div class="kanban-col" style="--col-color:<?= $sc ?>">
-    <div class="kanban-col-header" style="border-top-color:<?= $sc ?>">
-      <span style="color:<?= $sc ?>"><?= $stage_label ?></span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="background:<?= $sc ?>;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px"><?= count($col_leads) ?></span>
-      </div>
+  <div class="kanban-col" style="--kcol:<?= $sc ?>">
+    <div class="kanban-col-header">
+      <span class="kanban-col-title"><?= $stage_label ?></span>
+      <span class="kanban-col-badge"><?= count($col_leads) ?></span>
     </div>
     <div class="kanban-col-body">
+      <?php if (empty($col_leads)): ?>
+      <div class="kanban-empty">No leads</div>
+      <?php endif; ?>
       <?php foreach ($col_leads as $l):
-        $pc = statusColor($l['priority']);
+        $prio_colors=['urgent'=>'rgba(239,68,68,.15)','high'=>'rgba(249,115,22,.15)','medium'=>'rgba(245,158,11,.12)','low'=>'rgba(16,185,129,.12)'];
+        $prio_text=['urgent'=>'#ef4444','high'=>'#f97316','medium'=>'#f59e0b','low'=>'#10b981'];
+        $pc_bg = $prio_colors[$l['priority']]??'rgba(99,102,241,.1)';
+        $pc_tx = $prio_text[$l['priority']]??'#6366f1';
       ?>
       <div class="kcard" onclick="location.href='leads.php?view=<?= $l['id'] ?>'">
         <div class="kcard-name"><?= h($l['name']) ?></div>
-        <?php if ($l['company']): ?><div class="kcard-company">🏢 <?= h($l['company']) ?></div><?php endif; ?>
-        <div class="kcard-meta">
-          <span><?= priorityIcon($l['priority']) ?></span>
+        <?php if ($l['company']): ?>
+        <div class="kcard-company">🏢 <?= h($l['company']) ?></div>
+        <?php endif; ?>
+        <div class="kcard-divider"></div>
+        <div class="kcard-footer">
+          <span class="kcard-prio" style="background:<?= $pc_bg ?>;color:<?= $pc_tx ?>">
+            <?= priorityIcon($l['priority']) ?> <?= ucfirst($l['priority']) ?>
+          </span>
           <?php if ($l['budget_est']): ?>
-          <span style="font-size:10px;background:rgba(16,185,129,.12);color:var(--green);padding:2px 7px;border-radius:99px;font-weight:600"><?= number_format($l['budget_est'],0) ?></span>
-          <?php endif; ?>
-          <?php if ($l['expected_close']): ?>
-          <span style="font-size:10px;color:var(--text3)">📅 <?= fDate($l['expected_close'],'M j') ?></span>
+          <span class="kcard-budget">💰<?= number_format($l['budget_est'],0) ?></span>
           <?php endif; ?>
         </div>
+        <?php if ($l['expected_close']): ?>
+        <div class="kcard-close" style="margin-top:5px">📅 <?= fDate($l['expected_close'],'M j, Y') ?></div>
+        <?php endif; ?>
         <?php if ($l['assignee_name']): ?>
-        <div style="margin-top:6px;font-size:10.5px;color:var(--text3)">👤 <?= h($l['assignee_name']) ?></div>
+        <div class="kcard-assignee">👤 <?= h($l['assignee_name']) ?></div>
         <?php endif; ?>
       </div>
       <?php endforeach; ?>
-      <?php if (empty($col_leads)): ?>
-      <div style="text-align:center;padding:20px 8px;font-size:12px;color:var(--text3)">No leads</div>
-      <?php endif; ?>
     </div>
     <?php if ($col_val > 0): ?>
-    <div style="padding:7px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💰 <?= number_format($col_val,0) ?></div>
+    <div class="kanban-col-footer">💰 <?= number_format($col_val,2) ?></div>
     <?php endif; ?>
   </div>
   <?php endforeach; ?>
+</div>
 </div>
 
 <?php else: // ── LIST VIEW ── ?>

@@ -5,6 +5,24 @@ requireLogin();
 $db = getCRMDB();
 $user = currentUser();
 
+// Handle PDF view (inline, for browser preview)
+if (isset($_GET['view_pdf'])) {
+    $id = (int)$_GET['view_pdf'];
+    $doc = $db->query("SELECT * FROM documents WHERE id=$id")->fetch_assoc();
+    if ($doc) {
+        $path = UPLOAD_DOC_DIR . $doc['filename'];
+        $ext  = strtolower(pathinfo($doc['original_name'], PATHINFO_EXTENSION));
+        if (file_exists($path) && $ext === 'pdf') {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="'.addslashes($doc['original_name']).'"');
+            header('Content-Length: '.filesize($path));
+            readfile($path);
+            exit;
+        }
+    }
+    die('PDF not found.');
+}
+
 // Handle download
 if (isset($_GET['download'])) {
     $id = (int)$_GET['download'];
@@ -171,6 +189,9 @@ renderLayout('Documents', 'documents');
         <div style="font-size:10px;color:var(--text3)"><?= fDate($d['created_at'],'M j, Y') ?></div>
       </div>
       <div style="display:flex;gap:6px">
+        <?php if (strtolower(pathinfo($d['original_name'],PATHINFO_EXTENSION))==='pdf'): ?>
+        <button class="btn btn-ghost btn-sm btn-icon" title="View PDF" onclick="openPdfViewer(<?= $d['id'] ?>,<?= htmlspecialchars(json_encode($d['title'])) ?>)" style="color:var(--red)">📄</button>
+        <?php endif; ?>
         <a href="documents.php?download=<?= $d['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Download">↓</a>
         <?php if ($d['uploaded_by'] == $user['id'] || isManager()): ?>
         <form method="POST" onsubmit="return confirm('Delete document?')">
@@ -260,7 +281,34 @@ renderLayout('Documents', 'documents');
   </div>
 </div>
 
+<!-- PDF VIEWER MODAL -->
+<div class="modal-overlay" id="modal-pdf" style="align-items:stretch;padding:0">
+  <div style="background:var(--bg2);width:100%;max-width:960px;margin:auto;display:flex;flex-direction:column;height:100vh;max-height:100vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="font-family:var(--font-display);font-weight:700;font-size:15px" id="pdf-title">Document</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="pdf-download-btn" href="#" class="btn btn-ghost btn-sm">↓ Download</a>
+        <button class="btn btn-danger btn-sm" onclick="closeModal('modal-pdf');document.getElementById('pdf-frame').src=''">✕ Close</button>
+      </div>
+    </div>
+    <iframe id="pdf-frame" src="" style="flex:1;border:none;width:100%;background:#525659" allow="fullscreen"></iframe>
+  </div>
+</div>
+
+<style>
+#modal-pdf{padding:0;align-items:stretch}
+#modal-pdf > div{border-radius:0;max-height:100vh;border:none}
+@media(max-width:700px){#pdf-frame{min-height:80vh}}
+</style>
+
 <script>
+function openPdfViewer(id, title){
+  document.getElementById('pdf-title').textContent = title;
+  document.getElementById('pdf-frame').src = 'documents.php?view_pdf='+id;
+  document.getElementById('pdf-download-btn').href = 'documents.php?download='+id;
+  openModal('modal-pdf');
+}
+
 function showFileName(inp){
   const fn=document.getElementById('file-name');
   if(inp.files[0]) fn.textContent='Selected: '+inp.files[0].name+' ('+Math.round(inp.files[0].size/1024)+' KB)';

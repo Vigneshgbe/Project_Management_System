@@ -10,8 +10,7 @@ function renderLayout(string $pageTitle, string $activePage): void {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= h($pageTitle) ?> — Internal CMS</title>
-<link rel="icon" type="image/png" href="https://thepadak.com/index_assets/padak_p.png">
+<title><?= h($pageTitle) ?> — Padak CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -226,8 +225,8 @@ select.form-control{cursor:pointer}
 
 <nav id="sidebar">
   <div class="sidebar-logo">
-    <!-- <div class="logo-mark">P</div> -->
-    <div class="logo-text">Padak <span>Internal CMS</span></div>
+    <div class="logo-mark">P</div>
+    <div class="logo-text">Padak <span>CRM</span></div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Main</div>
@@ -248,6 +247,13 @@ select.form-control{cursor:pointer}
       <span class="icon">👥</span> Contacts
     </a>
     <?php if (isManager()): ?>
+    <div class="nav-label" style="margin-top:12px">Business</div>
+    <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
+      <span class="icon">🎯</span> Leads Pipeline
+    </a>
+    <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
+      <span class="icon">💰</span> Expenses
+    </a>
     <div class="nav-label" style="margin-top:12px">Admin</div>
     <a href="analytics.php" class="nav-item <?= $activePage==='analytics'?'active':'' ?>">
       <span class="icon">📊</span> Analytics

@@ -633,6 +633,25 @@ button, input, select, textarea { font-family: var(--font); }
 .etg-toast.error   { border-left: 3px solid var(--red); }
 .etg-toast.info    { border-left: 3px solid var(--orange); }
 @keyframes etgToastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ═══════════════════════════════════════════════════════
+   TINYMCE CONTAINER FIX - Critical for editor visibility
+═══════════════════════════════════════════════════════ */
+.tox-tinymce {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    overflow: hidden !important;
+}
+.tox-editor-container {
+    min-height: 280px !important;
+}
+.tox-edit-area {
+    min-height: 220px !important;
+}
+.tox-edit-area__iframe {
+    background: #fff !important;
+    min-height: 220px !important;
+}
 </style>
 </head>
 <body>
@@ -728,8 +747,7 @@ button, input, select, textarea { font-family: var(--font); }
         <div class="etg-card">
           <div class="etg-card-hd"><i class="fas fa-pen-fancy"></i><h3>Email Content</h3></div>
           <div class="etg-card-bd">
-            <textarea id="rich-text-editor" name="body_content" style="display:block;width:100%;min-height:240px;"
-            ><?= isset($_POST['body_content']) ? htmlspecialchars($_POST['body_content']) : '' ?></textarea>
+            <textarea id="rich-text-editor" name="body_content" style="display:block;width:100%;min-height:240px;"><?= isset($_POST['body_content']) ? htmlspecialchars($_POST['body_content']) : '' ?></textarea>
             <p style="margin:8px 0 0;font-size:11px;color:var(--text3);">
               <i class="fas fa-info-circle"></i>
               Important dates and keywords are highlighted automatically in the output.
@@ -922,44 +940,77 @@ document.addEventListener('themeChanged', function(e) {
 })();
 
 /* ═════════════════════════════════════════════════════════
-   TINYMCE
+   TINYMCE - FIXED INITIALIZATION
 ═════════════════════════════════════════════════════════ */
-function getTmceSkin() {
-    return etgGetTheme() === 'light'
-        ? { skin: 'oxide',      content_css: '' }
-        : { skin: 'oxide-dark', content_css: 'dark' };
-}
-
 function initTinyMCE() {
-    if (typeof tinymce === 'undefined') return;
-    var cfg = getTmceSkin();
-    var initObj = {
+    if (typeof tinymce === 'undefined') {
+        console.error('TinyMCE library not loaded');
+        return;
+    }
+    
+    var isDark = etgGetTheme() === 'dark';
+    
+    tinymce.init({
         selector: '#rich-text-editor',
         height: 280,
+        min_height: 280,
         menubar: false,
+        statusbar: true,
         plugins: 'code lists link table',
         toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright | bullist numlist | link table | code',
-        skin: cfg.skin,
-        content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5; }',
-        setup: function(ed) {
-            // Sync every change to the hidden textarea so form POST captures it
-            ed.on('input change', function() { ed.save(); });
+        skin: isDark ? 'oxide-dark' : 'oxide',
+        content_css: isDark ? 'dark' : 'default',
+        body_class: 'etg-editor-body',
+        content_style: 'body.etg-editor-body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; padding: 12px; background: #fff; color: #000; }',
+        resize: true,
+        branding: false,
+        promotion: false,
+        init_instance_callback: function(editor) {
+            console.log('TinyMCE initialized successfully');
+            // Ensure the editor container is visible
+            var container = editor.getContainer();
+            if (container) {
+                container.style.display = 'block';
+                container.style.minHeight = '280px';
+            }
+            // Ensure edit area is visible
+            var editArea = editor.getContentAreaContainer();
+            if (editArea) {
+                editArea.style.minHeight = '220px';
+            }
+        },
+        setup: function(editor) {
+            // Save content on every change
+            editor.on('input change keyup paste', function() { 
+                editor.save(); 
+            });
+            
+            // Debug logging
+            editor.on('init', function() {
+                console.log('Editor ready');
+            });
         }
-    };
-    if (cfg.content_css) initObj.content_css = cfg.content_css;
-    tinymce.init(initObj);
+    }).catch(function(error) {
+        console.error('TinyMCE initialization failed:', error);
+        etgToast('Editor failed to load. Please refresh the page.', 'error');
+    });
 }
 
 function reInitTinyMCE() {
     if (typeof tinymce === 'undefined') return;
-    try { tinymce.remove('#rich-text-editor'); } catch(e) {}
-    setTimeout(initTinyMCE, 60);
+    try { 
+        tinymce.remove('#rich-text-editor'); 
+    } catch(e) {
+        console.log('No existing editor to remove');
+    }
+    setTimeout(initTinyMCE, 100);
 }
 
 /* ═════════════════════════════════════════════════════════
    DOM READY
 ═════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM ready, initializing TinyMCE...');
     initTinyMCE();
 
     // Rebuild image fields if a layout was selected (page reload after POST)
@@ -1074,7 +1125,7 @@ function setStep(n) {
 }
 
 /* ═════════════════════════════════════════════════════════
-   RESET  ← THE KEY FIX
+   RESET
 ═════════════════════════════════════════════════════════ */
 function openResetModal()  { document.getElementById('etg-reset-modal').classList.add('show'); }
 function closeResetModal() { document.getElementById('etg-reset-modal').classList.remove('show'); }
@@ -1085,10 +1136,13 @@ function doReset() {
     // 1. Clear TinyMCE editor content
     if (typeof tinymce !== 'undefined') {
         var ed = tinymce.get('rich-text-editor');
-        if (ed) { ed.setContent(''); ed.save(); }
+        if (ed) { 
+            ed.setContent(''); 
+            ed.save(); 
+        }
     }
 
-    // 2. Reset all native form fields (text, select, file inputs, radios, checkboxes)
+    // 2. Reset all native form fields
     var form = document.getElementById('etg-form');
     form.reset();
 
@@ -1102,7 +1156,7 @@ function doReset() {
     // 4. Clear dynamic image / employee fields
     document.getElementById('etg-img-fields').innerHTML = '';
 
-    // 5. Ensure "No Photos" is selected (form.reset() should do this, but be explicit)
+    // 5. Ensure "No Photos" is selected
     var r0 = document.getElementById('lt-0');
     if (r0) r0.checked = true;
 
@@ -1119,18 +1173,29 @@ document.getElementById('etg-form').addEventListener('submit', function(e) {
     // Flush TinyMCE into textarea before submit
     if (typeof tinymce !== 'undefined') {
         var ed = tinymce.get('rich-text-editor');
-        if (ed) ed.save();
+        if (ed) {
+            ed.save();
+        }
     }
 
     // Validate: check for actual text content
     var hasContent = false;
+    var contentText = '';
+    
     if (typeof tinymce !== 'undefined') {
         var ed2 = tinymce.get('rich-text-editor');
-        if (ed2) hasContent = ed2.getContent({ format: 'text' }).trim().length > 0;
+        if (ed2) {
+            contentText = ed2.getContent({ format: 'text' }).trim();
+            hasContent = contentText.length > 0;
+        }
     }
+    
     if (!hasContent) {
         var ta = document.querySelector('textarea[name="body_content"]');
-        if (ta) hasContent = ta.value.trim().length > 0;
+        if (ta) {
+            contentText = ta.value.trim();
+            hasContent = contentText.length > 0;
+        }
     }
 
     if (!hasContent) {

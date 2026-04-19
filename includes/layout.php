@@ -261,6 +261,9 @@ select.form-control{cursor:pointer}
     </a>
     <?php if (isManager()): ?>
     <div class="nav-label" style="margin-top:12px">Business</div>
+    <a href="invoices.php" class="nav-item <?= $activePage==='invoices'?'active':'' ?>">
+      <span class="icon">🧾</span> Invoices
+    </a>
     <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
       <span class="icon">🎯</span> Leads Pipeline
     </a>
@@ -268,6 +271,9 @@ select.form-control{cursor:pointer}
       <span class="icon">💰</span> Expenses
     </a>
     <div class="nav-label" style="margin-top:12px">Admin</div>
+    <a href="portal_admin.php" class="nav-item <?= $activePage==='portal_admin'?'active':'' ?>">
+      <span class="icon">🌐</span> Client Portal
+    </a>
     <a href="analytics.php" class="nav-item <?= $activePage==='analytics'?'active':'' ?>">
       <span class="icon">📊</span> Analytics
     </a>

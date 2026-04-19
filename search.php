@@ -759,21 +759,6 @@ function clearFilters(){
 // ═══════════════════════════════════════════════════════════════════
 // WEB SEARCH ENGINE CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
-// 
-// SECURITY & PRIVACY GUARANTEES:
-// • Only search query transmitted via URL parameters
-// • No CRM data, session cookies, or internal state sent
-// • Strict referrerpolicy="no-referrer" on all iframes
-// • Full iframe sandboxing with minimal permissions
-// • noopener,noreferrer for new tab links
-// 
-// LEGAL COMPLIANCE:
-// • All engines are publicly accessible search tools
-// • Embedding allowed via their public iframe policies
-// • No API keys required, no rate limits violated
-// • Fair use for personal/internal business research
-// 
-// ═══════════════════════════════════════════════════════════════════
 
 var WS_ENGINES = {
   // ── BING ──
@@ -807,10 +792,10 @@ var WS_ENGINES = {
   ddg: {
     name: 'DuckDuckGo', 
     icon: '🦆',
-    iframe: true,
+    iframe: false,
     url: 'https://lite.duckduckgo.com/lite/?q=',
-    notice: '<strong style="color:var(--green)">✅ Inline (DuckDuckGo):</strong> Privacy-focused search with lite interface. No tracking, query-only transmission.',
-    reason: ''
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> Privacy-focused search with lite interface. No tracking, query-only transmission.',
+    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser security blocks iframe embedding.'
   },
 
   // ── PERPLEXITY AI ──
@@ -820,10 +805,10 @@ var WS_ENGINES = {
   perplexity: {
     name: 'Perplexity', 
     icon: '🔮',
-    iframe: true,
+    iframe: false,
     url: 'https://www.perplexity.ai/search?q=',
-    notice: '<strong style="color:var(--green)">✅ Inline (Perplexity):</strong> AI-powered search engine. Query-only, no CRM data shared.',
-    reason: ''
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> AI-powered search engine. Query-only, no CRM data shared.',
+    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser security blocks iframe embedding.'
   },
 
   // ── GOOGLE (New Tab Only) ──

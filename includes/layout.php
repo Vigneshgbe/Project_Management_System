@@ -250,6 +250,9 @@ select.form-control{cursor:pointer}
       <span class="icon">💬</span> Chat
     </a>
     <div class="nav-label" style="margin-top:12px">Resources</div>
+    <a href="email_template.php" class="nav-item <?= $activePage==='email_template'?'active':'' ?>">
+      <span class="icon">📧</span> Email Template
+    </a>
     <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
       <span class="icon">📄</span> Documents
     </a>

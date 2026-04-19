@@ -179,7 +179,7 @@ $docs = $db->query("
     WHERE $fw ORDER BY d.created_at DESC
 ")->fetch_all(MYSQLI_ASSOC);
 
-$categories  = array_column($db->query("SELECT DISTINCT category FROM documents ORDER BY category")->fetch_all(MYSQLI_NUM), 0);
+$categories = ['Design', 'Development', 'Finance', 'General', 'HR', 'Legal', 'Marketing', 'Reports'];
 $projects    = $db->query("SELECT id,title FROM projects ORDER BY title")->fetch_all(MYSQLI_ASSOC);
 $contacts    = $db->query("SELECT id,name FROM contacts ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 

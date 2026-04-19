@@ -249,7 +249,7 @@ select.form-control{cursor:pointer}
     <?php if (isManager()): ?>
     <div class="nav-label" style="margin-top:12px">Business</div>
     <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
-      <span class="icon">🎯</span> Leads Pipeline
+      <span class="icon">🎯</span> Leads
     </a>
     <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
       <span class="icon">💰</span> Expenses

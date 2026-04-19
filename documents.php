@@ -331,7 +331,7 @@ renderLayout('Documents', 'documents');
       </div>
       <div style="display:flex;gap:5px">
         <?php if ($is_pdf): ?>
-        <button class="btn btn-ghost btn-sm btn-icon" title="Preview PDF" onclick="openPdfViewer(<?= $d['id'] ?>,<?= json_encode($d['title']) ?>)" style="color:var(--red)">👁</button>
+        <button class="btn btn-ghost btn-sm btn-icon" title="Preview PDF" onclick="openPdfViewer(<?= $d['id'] ?>,<?= htmlspecialchars(json_encode($d['title']), ENT_QUOTES) ?>)" style="color:var(--red)">👁</button>
         <?php endif; ?>
         <a href="documents.php?download=<?= $d['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Download">↓</a>
         <?php if ($d['uploaded_by'] == $user['id'] || isManager()): ?>

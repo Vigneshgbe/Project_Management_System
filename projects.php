@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'create') {
             $uid = $user['id'];
             $stmt = $db->prepare("INSERT INTO projects (title,description,contact_id,status,priority,start_date,due_date,budget,currency,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("ssisssssdi", $title,$desc,$contact,$status,$priority,$start,$due,$budget,$currency,$uid);
+            $stmt->bind_param("ssissssdsi", $title,$desc,$contact,$status,$priority,$start,$due,$budget,$currency,$uid);
             $stmt->execute();
             $pid = $db->insert_id;
             if ($members) {
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             if (!isManager()) { flash('Access denied.','error'); ob_end_clean(); header('Location: projects.php'); exit; }
             $stmt = $db->prepare("UPDATE projects SET title=?,description=?,contact_id=?,status=?,priority=?,start_date=?,due_date=?,budget=?,currency=? WHERE id=?");
-            $stmt->bind_param("ssisssssdi", $title,$desc,$contact,$status,$priority,$start,$due,$budget,$currency,$id);
+            $stmt->bind_param("ssissssdsi", $title,$desc,$contact,$status,$priority,$start,$due,$budget,$currency,$id);
             $stmt->execute();
             $db->query("DELETE FROM project_members WHERE project_id=$id");
             if ($members) {
@@ -126,76 +126,145 @@ if ($view_id) {
 renderLayout('Projects', 'projects');
 ?>
 
-<?php if ($single): // ============ SINGLE PROJECT VIEW ============ ?>
+<?php
+// Helper: currency symbol
+function currSymbol(string $c): string {
+    return match($c) {
+        'USD' => '$', 'EUR' => '€', 'GBP' => '£',
+        'INR' => '₹', 'LKR' => 'Rs.',
+        default => h($c).' '
+    };
+}
+?>
+
+<style>
+/* PROJECT PAGE */
+.proj-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.proj-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:0;overflow:hidden;cursor:pointer;
+  transition:border-color .18s,box-shadow .18s;display:flex;flex-direction:column
+}
+.proj-card:hover{border-color:var(--border2);box-shadow:0 4px 18px rgba(0,0,0,.22)}
+.proj-card-top{padding:16px 18px 12px;flex:1}
+.proj-card-bar{height:4px;background:var(--bg4);position:relative;overflow:hidden}
+.proj-card-bar-fill{height:100%;background:var(--orange);transition:width .4s}
+.proj-card-bottom{padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg3)}
+.proj-status-strip{height:3px;width:100%;margin-bottom:12px;border-radius:99px}
+
+/* progress control */
+.prog-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.prog-bar-bg{flex:1;height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;cursor:pointer}
+.prog-bar-fill{height:100%;background:var(--orange);border-radius:99px;transition:width .3s}
+.prog-input{width:56px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;color:var(--text);font-size:12px;text-align:center}
+.prog-input:focus{outline:none;border-color:var(--orange)}
+
+/* single project */
+.sp-grid{display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start}
+.sp-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.sp-meta-box{background:var(--bg3);border-radius:8px;padding:12px}
+.sp-meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.sp-meta-val{font-size:13px;font-weight:600;color:var(--text)}
+
+@media(max-width:960px){.sp-grid{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.proj-list{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.sp-meta{grid-template-columns:1fr 1fr}}
+</style>
+
+<?php if ($single): // ════ SINGLE PROJECT VIEW ════
+
+  $ptotal = count($proj_tasks);
+  $pdone  = count(array_filter($proj_tasks,fn($t)=>$t['status']==='done'));
+  $ppct   = $ptotal > 0 ? round($pdone/$ptotal*100) : (int)$single['progress'];
+  $sc     = statusColor($single['status']);
+  $pc     = statusColor($single['priority']);
+  $sym    = currSymbol($single['currency']??'LKR');
+?>
 <div style="margin-bottom:16px">
   <a href="projects.php" style="color:var(--text3);font-size:13px">← Back to Projects</a>
 </div>
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
-  <!-- Left -->
+<div class="sp-grid">
+  <!-- LEFT -->
   <div>
     <div class="card" style="margin-bottom:16px">
+      <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
-        <div>
-          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:700;margin-bottom:6px"><?= h($single['title']) ?></h2>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <?php $sc=statusColor($single['status']); $pc=statusColor($single['priority']); ?>
+        <div style="flex:1;min-width:0">
+          <h2 style="font-family:var(--font-display);font-size:21px;font-weight:700;margin-bottom:8px;line-height:1.2"><?= h($single['title']) ?></h2>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span class="badge" style="background:<?= $sc ?>20;color:<?= $sc ?>"><?= h(str_replace('_',' ',$single['status'])) ?></span>
-            <span class="badge" style="background:<?= $pc ?>20;color:<?= $pc ?>"><?= priorityIcon($single['priority']) ?> <?= h($single['priority']) ?></span>
+            <span class="badge" style="background:<?= $pc ?>20;color:<?= $pc ?>"><?= priorityIcon($single['priority']) ?> <?= ucfirst($single['priority']) ?></span>
             <?php if ($single['client_name']): ?>
-            <span style="font-size:12px;color:var(--text2)">👥 <?= h($single['client_name']) ?></span>
+            <span style="font-size:12px;color:var(--text2)">🏢 <?= h($single['client_name']) ?></span>
             <?php endif; ?>
           </div>
         </div>
         <?php if (isManager()): ?>
-        <div class="dropdown">
+        <div class="dropdown" style="flex-shrink:0">
           <button class="btn btn-ghost btn-sm" onclick="toggleDropdown('proj-dd')">⋯</button>
           <div class="dropdown-menu" id="proj-dd">
-            <a class="dropdown-item" href="projects.php?edit=<?= $single['id'] ?>">✎ Edit</a>
+            <a class="dropdown-item" href="projects.php?edit=<?= $single['id'] ?>">✎ Edit Project</a>
             <div class="dropdown-divider"></div>
-            <a class="dropdown-item danger" href="#" onclick="if(confirm('Delete project?'))document.getElementById('del-proj').submit()">🗑 Delete</a>
+            <a class="dropdown-item danger" href="#" onclick="if(confirm('Delete this project and all its data?'))document.getElementById('del-proj').submit()">🗑 Delete</a>
           </div>
-          <form id="del-proj" method="POST" style="display:none"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= $single['id'] ?>"></form>
+          <form id="del-proj" method="POST" style="display:none">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= $single['id'] ?>">
+          </form>
         </div>
         <?php endif; ?>
       </div>
+
       <?php if ($single['description']): ?>
-      <p style="color:var(--text2);font-size:13.5px;line-height:1.6;margin-bottom:16px"><?= nl2br(h($single['description'])) ?></p>
+      <p style="color:var(--text2);font-size:13.5px;line-height:1.7;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px"><?= nl2br(h($single['description'])) ?></p>
       <?php endif; ?>
-      <!-- Progress -->
-      <?php
-        $ptotal = count($proj_tasks);
-        $pdone  = count(array_filter($proj_tasks,fn($t)=>$t['status']==='done'));
-        $ppct   = $ptotal > 0 ? round($pdone/$ptotal*100) : (int)$single['progress'];
-      ?>
-      <div style="margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:12px;color:var(--text2);font-weight:600">PROGRESS</span>
-          <span style="font-size:13px;font-weight:700"><?= $ppct ?>%</span>
+
+      <!-- Meta boxes -->
+      <div class="sp-meta">
+        <div class="sp-meta-box">
+          <div class="sp-meta-lbl">Start Date</div>
+          <div class="sp-meta-val"><?= fDate($single['start_date']) ?></div>
         </div>
-        <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:<?= $ppct ?>%"></div></div>
+        <div class="sp-meta-box">
+          <div class="sp-meta-lbl">Due Date</div>
+          <div class="sp-meta-val" <?php if ($single['due_date'] && $single['due_date'] < date('Y-m-d') && $single['status'] !== 'completed') echo 'style="color:var(--red)"'; ?>><?= fDate($single['due_date']) ?></div>
+        </div>
+        <div class="sp-meta-box">
+          <div class="sp-meta-lbl">Budget</div>
+          <div class="sp-meta-val"><?= $single['budget'] ? $sym.number_format((float)$single['budget'],2) : '—' ?></div>
+        </div>
+        <div class="sp-meta-box">
+          <div class="sp-meta-lbl">Tasks Done</div>
+          <div class="sp-meta-val"><span style="color:var(--green)"><?= $pdone ?></span> / <?= $ptotal ?></div>
+        </div>
       </div>
-      <!-- Meta grid -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-        <div style="background:var(--bg3);border-radius:8px;padding:12px">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Start</div>
-          <div style="font-size:13px;font-weight:600"><?= fDate($single['start_date']) ?></div>
+
+      <!-- Progress with inline edit -->
+      <div style="margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Progress</span>
+        <span style="font-size:13px;font-weight:700;color:var(--orange)" id="pct-display"><?= $ppct ?>%</span>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-bar-bg" onclick="clickBar(event,this)">
+          <div class="prog-bar-fill" id="prog-fill" style="width:<?= $ppct ?>%"></div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:12px">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Due</div>
-          <div style="font-size:13px;font-weight:600"><?= fDate($single['due_date']) ?></div>
-        </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:12px">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Budget</div>
-          <div style="font-size:13px;font-weight:600"><?= $single['budget'] ? h($single['currency']).' '.number_format($single['budget'],2) : '—' ?></div>
-        </div>
+        <input type="number" class="prog-input" id="prog-val" value="<?= $ppct ?>" min="0" max="100" onchange="syncProgress(this.value)" oninput="syncProgress(this.value)">
+        <?php if (isManager()): ?>
+        <form method="POST" id="prog-form" style="display:none">
+          <input type="hidden" name="action" value="progress">
+          <input type="hidden" name="id" value="<?= $single['id'] ?>">
+          <input type="hidden" name="progress" id="prog-hidden" value="<?= $ppct ?>">
+        </form>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveProgress()">Save</button>
+        <?php endif; ?>
       </div>
     </div>
 
     <!-- Tasks -->
     <div class="card" style="margin-bottom:16px">
       <div class="card-header">
-        <div class="card-title">Tasks (<?= count($proj_tasks) ?>)</div>
-        <a href="tasks.php?project_id=<?= $single['id'] ?>&new=1" class="btn btn-primary btn-sm">＋ Add Task</a>
+        <div class="card-title">Tasks <span style="font-size:13px;color:var(--text3);font-weight:400">(<?= $ptotal ?>)</span></div>
+        <a href="tasks.php?project_id=<?= $single['id'] ?>&new=1" class="btn btn-primary btn-sm">＋ Task</a>
       </div>
       <?php if (empty($proj_tasks)): ?>
         <div class="empty-state"><div class="icon">✅</div><p>No tasks yet.</p></div>
@@ -204,12 +273,15 @@ renderLayout('Projects', 'projects');
         <table>
           <thead><tr><th>Task</th><th>Assignee</th><th>Status</th><th>Due</th></tr></thead>
           <tbody>
-            <?php foreach ($proj_tasks as $t): $sc=statusColor($t['status']); ?>
+            <?php foreach ($proj_tasks as $t):
+              $ts = statusColor($t['status']);
+              $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d') && $t['status'] !== 'done';
+            ?>
             <tr onclick="location.href='tasks.php?edit=<?= $t['id'] ?>'" style="cursor:pointer">
               <td class="td-main"><?= priorityIcon($t['priority']) ?> <?= h($t['title']) ?></td>
-              <td><?= h($t['assignee'] ?? '—') ?></td>
-              <td><span class="badge" style="background:<?= $sc ?>20;color:<?= $sc ?>"><?= h(str_replace('_',' ',$t['status'])) ?></span></td>
-              <td><?= fDate($t['due_date']) ?></td>
+              <td style="font-size:12.5px"><?= h($t['assignee'] ?? '—') ?></td>
+              <td><span class="badge" style="background:<?= $ts ?>20;color:<?= $ts ?>"><?= h(str_replace('_',' ',$t['status'])) ?></span></td>
+              <td style="font-size:12.5px;<?= $overdue?'color:var(--red)':'' ?>"><?= fDate($t['due_date']) ?><?= $overdue?' ⚠':'' ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
@@ -221,21 +293,33 @@ renderLayout('Projects', 'projects');
     <!-- Documents -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Documents (<?= count($proj_docs) ?>)</div>
-        <a href="documents.php?project_id=<?= $single['id'] ?>&new=1" class="btn btn-ghost btn-sm">＋ Upload</a>
+        <div class="card-title">Documents <span style="font-size:13px;color:var(--text3);font-weight:400">(<?= count($proj_docs) ?>)</span></div>
+        <a href="documents.php?project_id=<?= $single['id'] ?>&new=1" class="btn btn-ghost btn-sm">↑ Upload</a>
       </div>
       <?php if (empty($proj_docs)): ?>
         <div class="empty-state"><div class="icon">📄</div><p>No documents attached.</p></div>
       <?php else: ?>
         <div style="display:flex;flex-direction:column;gap:8px">
-          <?php foreach ($proj_docs as $d): ?>
-          <div style="background:var(--bg3);border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:12px">
-            <span style="font-size:22px">📄</span>
+          <?php foreach ($proj_docs as $d):
+            $ext = strtolower(pathinfo($d['original_name'],PATHINFO_EXTENSION));
+            $dicon = match(true) {
+              in_array($ext,['pdf'])         => '📕',
+              in_array($ext,['doc','docx'])  => '📘',
+              in_array($ext,['xls','xlsx'])  => '📗',
+              in_array($ext,['jpg','jpeg','png','gif']) => '🖼',
+              default => '📄'
+            };
+          ?>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:22px;flex-shrink:0"><?= $dicon ?></span>
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text)"><?= h($d['title']) ?></div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h($d['title']) ?></div>
               <div style="font-size:11px;color:var(--text3)"><?= h($d['original_name']) ?> · <?= formatSize($d['file_size']) ?></div>
             </div>
-            <a href="documents.php?download=<?= $d['id'] ?>" class="btn btn-ghost btn-sm">↓</a>
+            <?php if (strtolower($ext)==='pdf'): ?>
+            <a href="documents.php?view_pdf=<?= $d['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Preview PDF" style="color:var(--red)" target="_blank">👁</a>
+            <?php endif; ?>
+            <a href="documents.php?download=<?= $d['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Download">↓</a>
           </div>
           <?php endforeach; ?>
         </div>
@@ -243,19 +327,47 @@ renderLayout('Projects', 'projects');
     </div>
   </div>
 
-  <!-- Right -->
+  <!-- RIGHT SIDEBAR -->
   <div>
-    <div class="card" style="margin-bottom:16px">
+    <!-- Task Status Summary -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:14px">Task Summary</div>
+      <?php
+        $todo_c   = count(array_filter($proj_tasks,fn($t)=>$t['status']==='todo'));
+        $inprog_c = count(array_filter($proj_tasks,fn($t)=>$t['status']==='in_progress'));
+        $review_c = count(array_filter($proj_tasks,fn($t)=>$t['status']==='review'));
+      ?>
+      <?php foreach ([['To Do',$todo_c,'#6366f1'],['In Progress',$inprog_c,'#f59e0b'],['Review',$review_c,'#8b5cf6'],['Done',$pdone,'#10b981']] as [$l,$v,$c]): ?>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:8px;height:8px;border-radius:50%;background:<?= $c ?>;flex-shrink:0"></div>
+          <span style="font-size:13px;color:var(--text2)"><?= $l ?></span>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:<?= $c ?>"><?= $v ?></span>
+      </div>
+      <?php endforeach; ?>
+      <div style="display:flex;justify-content:space-between;padding:8px 0">
+        <span style="font-size:13px;color:var(--text2);font-weight:600">Total</span>
+        <span style="font-size:13px;font-weight:700"><?= $ptotal ?></span>
+      </div>
+    </div>
+
+    <!-- Team Members -->
+    <div class="card">
       <div class="card-title" style="margin-bottom:14px">Team Members</div>
       <?php if (empty($proj_members_list)): ?>
         <p style="font-size:13px;color:var(--text3)">No members assigned.</p>
       <?php else: ?>
         <div style="display:flex;flex-direction:column;gap:10px">
-          <?php foreach ($proj_members_list as $m): ?>
+          <?php foreach ($proj_members_list as $m):
+            $init = strtoupper(substr($m['name'],0,1));
+            $role_colors=['admin'=>'#ef4444','manager'=>'#f59e0b','member'=>'#6366f1'];
+            $rc = $role_colors[$m['role']]??'#94a3b8';
+          ?>
           <div style="display:flex;align-items:center;gap:10px">
-            <div class="avatar"><?= strtoupper(substr($m['name'],0,1)) ?></div>
+            <div class="avatar" style="background:<?= $rc ?>"><?= $init ?></div>
             <div>
-              <div style="font-size:13px;font-weight:600"><?= h($m['name']) ?></div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)"><?= h($m['name']) ?></div>
               <div style="font-size:11px;color:var(--text3);text-transform:capitalize"><?= h($m['role']) ?></div>
             </div>
           </div>
@@ -263,79 +375,113 @@ renderLayout('Projects', 'projects');
         </div>
       <?php endif; ?>
     </div>
-
-    <div class="card">
-      <div class="card-title" style="margin-bottom:14px">Quick Stats</div>
-      <?php
-        $todo = count(array_filter($proj_tasks,fn($t)=>$t['status']==='todo'));
-        $inprog = count(array_filter($proj_tasks,fn($t)=>$t['status']==='in_progress'));
-        $review = count(array_filter($proj_tasks,fn($t)=>$t['status']==='review'));
-      ?>
-      <?php foreach ([['To Do',$todo,'#6366f1'],['In Progress',$inprog,'#f59e0b'],['Review',$review,'#8b5cf6'],['Done',$pdone,'#10b981']] as [$l,$v,$c]): ?>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px;color:var(--text2)"><?= $l ?></span>
-        <span style="font-size:13px;font-weight:700;color:<?= $c ?>"><?= $v ?></span>
-      </div>
-      <?php endforeach; ?>
-      <div style="display:flex;justify-content:space-between;padding:8px 0">
-        <span style="font-size:13px;color:var(--text2)">Total Tasks</span>
-        <span style="font-size:13px;font-weight:700"><?= $ptotal ?></span>
-      </div>
-    </div>
   </div>
 </div>
 
-<?php else: // ============ PROJECT LIST ============ ?>
+<script>
+function syncProgress(val){
+  val=Math.max(0,Math.min(100,parseInt(val)||0));
+  document.getElementById('prog-fill').style.width=val+'%';
+  document.getElementById('pct-display').textContent=val+'%';
+  document.getElementById('prog-val').value=val;
+  document.getElementById('prog-hidden').value=val;
+}
+function clickBar(e,el){
+  var rect=el.getBoundingClientRect();
+  var pct=Math.round((e.clientX-rect.left)/rect.width*100);
+  syncProgress(pct);
+}
+function saveProgress(){
+  document.getElementById('prog-form').submit();
+}
+</script>
 
-<div class="card-header" style="margin-bottom:16px">
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1">
-    <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div class="search-box">
-        <span style="color:var(--text3)">🔍</span>
-        <input type="text" name="q" placeholder="Search projects…" value="<?= h($search) ?>">
-      </div>
-      <select name="status" class="form-control" style="width:auto;padding:7px 12px" onchange="this.form.submit()">
-        <option value="">All Status</option>
-        <?php foreach (['planning','active','on_hold','completed','cancelled'] as $s): ?>
-        <option value="<?= $s ?>" <?= $status_filter===$s?'selected':'' ?>><?= ucfirst(str_replace('_',' ',$s)) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </form>
-  </div>
+<?php else: // ════ PROJECT LIST ════ ?>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1">
+    <div class="search-box" style="flex:1;max-width:280px">
+      <span style="color:var(--text3)">🔍</span>
+      <input type="text" name="q" placeholder="Search projects…" value="<?= h($search) ?>">
+    </div>
+    <select name="status" class="form-control" style="width:auto" onchange="this.form.submit()">
+      <option value="">All Status</option>
+      <?php foreach (['planning','active','on_hold','completed','cancelled'] as $s): ?>
+      <option value="<?= $s ?>" <?= $status_filter===$s?'selected':'' ?>><?= ucfirst(str_replace('_',' ',$s)) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </form>
   <?php if (isManager()): ?>
-  <button class="btn btn-primary" onclick="openModal('modal-project')">＋ <span>New Project</span></button>
+  <button class="btn btn-primary" onclick="openModal('modal-project')" style="flex-shrink:0">＋ <span>New Project</span></button>
   <?php endif; ?>
 </div>
 
 <?php if (empty($projects)): ?>
-<div class="card"><div class="empty-state"><div class="icon">📁</div><p>No projects found. <?= isManager() ? '<a href="#" onclick="openModal(\'modal-project\')" style="color:var(--orange)">Create the first one</a>' : '' ?></p></div></div>
+<div class="card">
+  <div class="empty-state">
+    <div class="icon">📁</div>
+    <p>No projects found.<?= isManager() ? ' <a href="#" onclick="openModal(\'modal-project\')" style="color:var(--orange)">Create the first one</a>' : '' ?></p>
+  </div>
+</div>
 <?php else: ?>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">
+<div class="proj-list">
   <?php foreach ($projects as $p):
     $progress = $p['total_tasks'] > 0 ? round($p['done_tasks']/$p['total_tasks']*100) : (int)$p['progress'];
-    $sc=statusColor($p['status']); $pc=statusColor($p['priority']);
+    $sc = statusColor($p['status']);
+    $pc = statusColor($p['priority']);
+    $sym = currSymbol($p['currency'] ?? 'LKR');
+    $pbar_color = $progress >= 75 ? '#10b981' : ($progress >= 40 ? '#f59e0b' : '#f97316');
+    $is_overdue = $p['due_date'] && $p['due_date'] < date('Y-m-d') && $p['status'] !== 'completed' && $p['status'] !== 'cancelled';
   ?>
-  <div class="card" style="cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'" onclick="location.href='projects.php?view=<?= $p['id'] ?>'">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-      <div>
-        <div style="font-size:15px;font-weight:700;font-family:var(--font-display);margin-bottom:5px"><?= h($p['title']) ?></div>
-        <span class="badge" style="background:<?= $sc ?>20;color:<?= $sc ?>"><?= h(str_replace('_',' ',$p['status'])) ?></span>
+  <div class="proj-card" onclick="location.href='projects.php?view=<?= $p['id'] ?>'">
+    <!-- Status color strip -->
+    <div style="height:3px;background:<?= $sc ?>"></div>
+    <div class="proj-card-top">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;font-family:var(--font-display);color:var(--text);margin-bottom:6px;line-height:1.2;word-break:break-word"><?= h($p['title']) ?></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="badge" style="background:<?= $sc ?>18;color:<?= $sc ?>"><?= h(str_replace('_',' ',$p['status'])) ?></span>
+            <span class="badge" style="background:<?= $pc ?>18;color:<?= $pc ?>"><?= priorityIcon($p['priority']) ?> <?= ucfirst($p['priority']) ?></span>
+          </div>
+        </div>
+        <span style="font-size:20px;flex-shrink:0;opacity:.7"><?= $p['status']==='completed' ? '✅' : ($p['status']==='cancelled' ? '🚫' : ($p['status']==='on_hold' ? '⏸' : '📁')) ?></span>
       </div>
-      <span style="font-size:18px"><?= priorityIcon($p['priority']) ?></span>
-    </div>
-    <?php if ($p['client_name']): ?>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">👥 <?= h($p['client_name']) ?></div>
-    <?php endif; ?>
-    <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+
+      <?php if ($p['client_name']): ?>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+        🏢 <span><?= h($p['client_name']) ?></span>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($p['budget']): ?>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">
+        💰 <span style="color:var(--text2);font-weight:600"><?= $sym.number_format((float)$p['budget'],2) ?></span>
+      </div>
+      <?php endif; ?>
+
+      <!-- Progress bar -->
+      <div style="margin-bottom:4px;display:flex;justify-content:space-between">
         <span style="font-size:11px;color:var(--text3)">Progress</span>
-        <span style="font-size:11px;font-weight:600"><?= $progress ?>%</span>
+        <span style="font-size:11px;font-weight:700;color:<?= $pbar_color ?>"><?= $progress ?>%</span>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:<?= $progress ?>%"></div></div>
+      <div style="height:5px;background:var(--bg4);border-radius:99px;overflow:hidden;margin-bottom:0">
+        <div style="height:100%;width:<?= $progress ?>%;background:<?= $pbar_color ?>;border-radius:99px;transition:width .3s"></div>
+      </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:11.5px;color:var(--text3)">📋 <?= $p['total_tasks'] ?> tasks · 👥 <?= $p['member_count'] ?></span>
-      <span style="font-size:11.5px;color:var(--text3)"><?= $p['due_date'] ? 'Due '.fDate($p['due_date']) : 'No deadline' ?></span>
+
+    <!-- Card footer -->
+    <div class="proj-card-bottom">
+      <span style="font-size:11.5px;color:var(--text3)">
+        📋 <?= $p['total_tasks'] ?> tasks &nbsp;·&nbsp; 👥 <?= $p['member_count'] ?>
+      </span>
+      <span style="font-size:11.5px;color:<?= $is_overdue?'var(--red)':'var(--text3)' ?>">
+        <?php if ($p['due_date']): ?>
+          <?= $is_overdue ? '⚠ Overdue' : fDate($p['due_date'],'M j, Y') ?>
+        <?php else: ?>
+          No deadline
+        <?php endif; ?>
+      </span>
     </div>
   </div>
   <?php endforeach; ?>
@@ -359,7 +505,7 @@ renderLayout('Projects', 'projects');
         </div>
         <div class="form-group">
           <label class="form-label">Description</label>
-          <textarea name="description" class="form-control" placeholder="Project overview…"><?= h($edit_proj['description'] ?? '') ?></textarea>
+          <textarea name="description" class="form-control"><?= h($edit_proj['description'] ?? '') ?></textarea>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -374,8 +520,8 @@ renderLayout('Projects', 'projects');
           <div class="form-group">
             <label class="form-label">Priority</label>
             <select name="priority" class="form-control">
-              <?php foreach (['low','medium','high','urgent'] as $p): ?>
-              <option value="<?= $p ?>" <?= ($edit_proj['priority']??'medium')===$p?'selected':'' ?>><?= ucfirst($p) ?></option>
+              <?php foreach (['low','medium','high','urgent'] as $pv): ?>
+              <option value="<?= $pv ?>" <?= ($edit_proj['priority']??'medium')===$pv?'selected':'' ?>><?= ucfirst($pv) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -384,16 +530,16 @@ renderLayout('Projects', 'projects');
           <div class="form-group">
             <label class="form-label">Status</label>
             <select name="status" class="form-control">
-              <?php foreach (['planning','active','on_hold','completed','cancelled'] as $s): ?>
-              <option value="<?= $s ?>" <?= ($edit_proj['status']??'planning')===$s?'selected':'' ?>><?= ucfirst(str_replace('_',' ',$s)) ?></option>
+              <?php foreach (['planning','active','on_hold','completed','cancelled'] as $sv): ?>
+              <option value="<?= $sv ?>" <?= ($edit_proj['status']??'planning')===$sv?'selected':'' ?>><?= ucfirst(str_replace('_',' ',$sv)) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Currency</label>
-            <select name="currency" class="form-control">
-              <?php foreach (['LKR','USD','EUR','GBP'] as $c): ?>
-              <option <?= ($edit_proj['currency']??'LKR')===$c?'selected':'' ?>><?= $c ?></option>
+            <select name="currency" class="form-control" id="proj-currency">
+              <?php foreach (['LKR'=>'Rs. — Sri Lankan Rupee','INR'=>'₹ — Indian Rupee','USD'=>'$ — US Dollar','EUR'=>'€ — Euro','GBP'=>'£ — British Pound'] as $cv=>$cl): ?>
+              <option value="<?= $cv ?>" <?= ($edit_proj['currency']??'LKR')===$cv?'selected':'' ?>><?= $cl ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -410,13 +556,16 @@ renderLayout('Projects', 'projects');
         </div>
         <div class="form-group">
           <label class="form-label">Budget</label>
-          <input type="number" name="budget" step="0.01" class="form-control" value="<?= h($edit_proj['budget']??'') ?>" placeholder="0.00">
+          <div style="display:flex;gap:0">
+            <span id="proj-sym" style="background:var(--bg4);border:1px solid var(--border);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);padding:9px 12px;font-size:13px;color:var(--text2);white-space:nowrap">Rs.</span>
+            <input type="number" name="budget" step="0.01" class="form-control" value="<?= h($edit_proj['budget']??'') ?>" placeholder="0.00" style="border-radius:0 var(--radius-sm) var(--radius-sm) 0;border-left:none">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Team Members</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto">
             <?php foreach ($all_users as $u): ?>
-            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding:4px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding:4px;border-radius:4px" onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''">
               <input type="checkbox" name="members[]" value="<?= $u['id'] ?>" <?= in_array($u['id'],$edit_members)?'checked':'' ?> style="accent-color:var(--orange)">
               <?= h($u['name']) ?> <span style="font-size:10px;color:var(--text3)"><?= h($u['role']) ?></span>
             </label>
@@ -432,10 +581,23 @@ renderLayout('Projects', 'projects');
   </div>
 </div>
 
+<script>
+// Currency symbol updater in modal
+var symMap={'LKR':'Rs.','INR':'₹','USD':'$','EUR':'€','GBP':'£'};
+document.getElementById('proj-currency')?.addEventListener('change',function(){
+  var sym=symMap[this.value]||this.value;
+  document.getElementById('proj-sym').textContent=sym;
+});
+// Set on load for edit mode
+(function(){
+  var sel=document.getElementById('proj-currency');
+  if(sel){var sym=symMap[sel.value]||sel.value;document.getElementById('proj-sym').textContent=sym;}
+})();
+</script>
+
 <?php if ($edit_id): ?>
-<script>document.addEventListener('DOMContentLoaded',()=>openModal('modal-project'))</script>
+<script>document.addEventListener('DOMContentLoaded',function(){openModal('modal-project')})</script>
 <?php endif; ?>
 
-<?php endif; // end list view ?>
-
+<?php endif; ?>
 <?php renderLayoutEnd(); ?>

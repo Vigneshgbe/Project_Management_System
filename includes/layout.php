@@ -240,6 +240,9 @@ select.form-control{cursor:pointer}
     <a href="tasks.php" class="nav-item <?= $activePage==='tasks'?'active':'' ?>">
       <span class="icon">✅</span> Tasks
     </a>
+    <a href="calendar.php" class="nav-item <?= $activePage==='calendar'?'active':'' ?>">
+      <span class="icon">📅</span> Calendar
+    </a>
     <div class="nav-label" style="margin-top:12px">Resources</div>
     <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
       <span class="icon">📄</span> Documents

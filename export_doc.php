@@ -32,37 +32,16 @@ $date    = date('F j, Y', strtotime($rd['updated_at']));
 $safe_fn = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $title);
 
 // ═══════════════════════════════════════════════════════
-// PDF EXPORT — Full styled HTML page sent as PDF download
-// Uses wkhtmltopdf approach: serve as application/pdf
-// Browser renders + saves. Works without any server library.
+// PDF EXPORT — Pure PHP PDF binary, actual file download
+// No external libraries. Writes raw PDF 1.4 syntax.
 // ═══════════════════════════════════════════════════════
 if ($format === 'pdf') {
-    // Build clean print-ready HTML
-    $html = buildPdfHtml($title, $content, $author, $date, $rd['category']);
-
-    // Try to use wkhtmltopdf if available on server (Hostinger sometimes has it)
-    $wk = trim(shell_exec('which wkhtmltopdf 2>/dev/null') ?? '');
-    if ($wk) {
-        $tmp_in  = sys_get_temp_dir().'/rdoc_'.$id.'.html';
-        $tmp_out = sys_get_temp_dir().'/rdoc_'.$id.'.pdf';
-        file_put_contents($tmp_in, $html);
-        shell_exec(escapeshellcmd($wk).' --quiet --page-size A4 --margin-top 20mm --margin-bottom 20mm --margin-left 20mm --margin-right 20mm '.escapeshellarg($tmp_in).' '.escapeshellarg($tmp_out).' 2>/dev/null');
-        if (file_exists($tmp_out) && filesize($tmp_out) > 0) {
-            header('Content-Type: application/pdf');
-            header('Content-Disposition: attachment; filename="'.rawurlencode($safe_fn).'.pdf"');
-            header('Content-Length: '.filesize($tmp_out));
-            readfile($tmp_out);
-            @unlink($tmp_in); @unlink($tmp_out);
-            exit;
-        }
-        @unlink($tmp_in);
-    }
-
-    // Fallback: serve as HTML page that auto-triggers browser print dialog
-    // with a proper download prompt via Content-Disposition on a styled page
-    // This is the most reliable cross-host approach with zero server dependencies
-    header('Content-Type: text/html; charset=UTF-8');
-    echo $html;
+    $pdf_bytes = buildPdf($title, $content, $author, $date, $rd['category']);
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="'.$safe_fn.'.pdf"');
+    header('Content-Length: '.strlen($pdf_bytes));
+    header('Cache-Control: no-store');
+    echo $pdf_bytes;
     exit;
 }
 
@@ -80,84 +59,420 @@ if ($format === 'docx') {
     exit;
 }
 
+
 // ═══════════════════════════════════════════════════════
-// HTML BUILDER FOR PDF
+// PDF BUILDER — Pure PHP, writes valid PDF 1.4 binary
+// Handles: title, meta, paragraphs, headings, bold,
+// italic, tables (basic), lists, line-wrap, page-break
 // ═══════════════════════════════════════════════════════
-function buildPdfHtml(string $title, string $content, string $author, string $date, string $category): string {
-    $ht = htmlspecialchars($title, ENT_QUOTES);
-    $ha = htmlspecialchars($author, ENT_QUOTES);
-    $hd = htmlspecialchars($date, ENT_QUOTES);
-    $hc = htmlspecialchars($category, ENT_QUOTES);
-    return <<<HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{$ht}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a;background:#fff;padding:40px 60px;max-width:900px;margin:0 auto}
-.doc-header{border-bottom:2px solid #f97316;padding-bottom:16px;margin-bottom:24px}
-.doc-title{font-size:22pt;font-weight:700;color:#1a1a1a;margin-bottom:8px;line-height:1.2}
-.doc-meta{font-size:9pt;color:#666;display:flex;gap:16px;flex-wrap:wrap}
-.doc-meta span{display:inline-flex;align-items:center;gap:4px}
-.doc-content{line-height:1.75;color:#1a1a1a}
-.doc-content h1{font-size:18pt;margin:20px 0 10px;color:#1a1a1a;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
-.doc-content h2{font-size:15pt;margin:18px 0 8px;color:#1a1a1a}
-.doc-content h3{font-size:12pt;margin:14px 0 6px;color:#374151}
-.doc-content h4{font-size:11pt;margin:12px 0 5px;color:#374151}
-.doc-content p{margin-bottom:10px}
-.doc-content ul,.doc-content ol{padding-left:26px;margin-bottom:10px}
-.doc-content li{margin-bottom:4px}
-.doc-content table{border-collapse:collapse;width:100%;margin:14px 0;font-size:10pt}
-.doc-content table td,.doc-content table th{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
-.doc-content table th{background:#f3f4f6;font-weight:700;color:#111}
-.doc-content table tr:nth-child(even) td{background:#f9fafb}
-.doc-content blockquote{border-left:3px solid #f97316;margin:12px 0;padding:8px 16px;background:#fff7ed;color:#374151;font-style:italic}
-.doc-content pre{background:#1e293b;color:#e2e8f0;padding:14px 16px;border-radius:6px;overflow-x:auto;font-family:'Courier New',monospace;font-size:9pt;margin:12px 0}
-.doc-content code{background:#f1f5f9;color:#dc2626;padding:1px 5px;border-radius:3px;font-family:'Courier New',monospace;font-size:9pt}
-.doc-content pre code{background:none;color:inherit;padding:0}
-.doc-content img{max-width:100%;height:auto;border-radius:4px;margin:8px 0}
-.doc-content a{color:#f97316}
-.doc-content hr{border:none;border-top:1px solid #e5e7eb;margin:16px 0}
-.doc-footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:8.5pt;color:#9ca3af;display:flex;justify-content:space-between}
-@media print{
-  body{padding:0;max-width:none}
-  .no-print{display:none}
-  @page{margin:2cm;size:A4}
+function buildPdf(string $title, string $html, string $author, string $date, string $category): string {
+
+    // ── Parse HTML into flat line array ──
+    $lines = htmlToTextLines($html, $title, $author, $date, $category);
+
+    // ── PDF constants ──
+    $W       = 595.28;   // A4 width pt
+    $H       = 841.89;   // A4 height pt
+    $ML      = 56.69;    // left margin
+    $MR      = 56.69;    // right margin
+    $MT      = 56.69;    // top margin
+    $MB      = 56.69;    // bottom margin
+    $TW      = $W - $ML - $MR;  // text width
+    $FS_BODY = 11;
+    $FS_H1   = 20;
+    $FS_H2   = 16;
+    $FS_H3   = 13;
+    $FS_META = 9;
+    $LINE_H  = 16;       // body line height
+    $FONT_N  = 'Helvetica';
+    $FONT_B  = 'Helvetica-Bold';
+    $FONT_I  = 'Helvetica-Oblique';
+    $FONT_BI = 'Helvetica-BoldOblique';
+    $FONT_C  = 'Courier';
+
+    // ── PDF object collector ──
+    $objs   = [];
+    $xrefs  = [];
+    $pages  = [];
+    $objNum = 0;
+
+    $addObj = function(string $stream) use (&$objs, &$objNum): int {
+        $objNum++;
+        $objs[$objNum] = $stream;
+        return $objNum;
+    };
+
+    // Build page content streams
+    $cur_page_cmds = '';
+    $y = $H - $MT;
+
+    $newPage = function() use (&$cur_page_cmds, &$pages, &$y, &$addObj, $H, $MT, $MB, $ML, $TW, $W, $FONT_N, $FS_META, $title) {
+        // Footer
+        $ft = pdfEsc('Padak CRM  —  '.pdfTruncate($title, 60));
+        $pn = count($pages) + 1;
+        $cur_page_cmds .= "BT /{$FONT_N} {$FS_META} Tf {$ML} 20 Td ({$ft}) Tj ET\n";
+        $cur_page_cmds .= "BT /{$FONT_N} {$FS_META} Tf ".($W-$ML-20)." 20 Td ({$pn}) Tj ET\n";
+        // Top line
+        $cur_page_cmds .= "{$ML} ".($H-$MT+8)." m ".($W-$ML)." ".($H-$MT+8)." l S\n";
+        $pages[] = $cur_page_cmds;
+        $cur_page_cmds = '';
+        $y = $H - $MT;
+    };
+
+    $checkY = function(float $need) use (&$y, &$newPage, $MB) {
+        if ($y - $need < $MB) $newPage();
+    };
+
+    $drawText = function(string $font, float $size, float $x, float $yy, string $text, array $rgb=[0,0,0]) use (&$cur_page_cmds) {
+        $r = $rgb[0]; $g = $rgb[1]; $b = $rgb[2];
+        $cur_page_cmds .= "{$r} {$g} {$b} rg\n";
+        $cur_page_cmds .= "BT /{$font} {$size} Tf {$x} {$yy} Td (".pdfEsc($text).") Tj ET\n";
+        $cur_page_cmds .= "0 0 0 rg\n";
+    };
+
+    $drawLine = function(float $x1, float $y1, float $x2, float $y2, float $w=0.5, array $rgb=[0.8,0.8,0.8]) use (&$cur_page_cmds) {
+        $cur_page_cmds .= "{$rgb[0]} {$rgb[1]} {$rgb[2]} RG {$w} w {$x1} {$y1} m {$x2} {$y2} l S 0 0 0 RG\n";
+    };
+
+    // ── Approximate char width (Helvetica proportional) ──
+    $charW = function(string $text, float $size): float {
+        // Average width ratio for Helvetica ≈ 0.52
+        return mb_strlen($text) * $size * 0.52;
+    };
+
+    // ── Word-wrap a line ──
+    $wrapText = function(string $text, float $size, float $maxW) use ($charW): array {
+        $words = explode(' ', $text);
+        $lines = []; $cur = '';
+        foreach ($words as $w) {
+            $test = $cur ? $cur.' '.$w : $w;
+            if ($charW($test, $size) <= $maxW) {
+                $cur = $test;
+            } else {
+                if ($cur !== '') $lines[] = $cur;
+                // If single word too long, truncate
+                while ($charW($w, $size) > $maxW && mb_strlen($w) > 1) {
+                    $w = mb_substr($w, 0, -1);
+                }
+                $cur = $w;
+            }
+        }
+        if ($cur !== '') $lines[] = $cur;
+        return $lines ?: [''];
+    };
+
+    // ── Draw title block on first page ──
+    // Orange header bar
+    $cur_page_cmds .= "0.976 0.451 0.086 rg\n{$ML} ".($y-2)." m ".($W-$ML)." ".($y-2)." l ".($W-$ML)." ".($y-26)." l {$ML} ".($y-26)." l f\n0 0 0 rg\n";
+    // Title text (white)
+    $cur_page_cmds .= "1 1 1 rg BT /{$FONT_B} {$FS_H1} Tf ".($ML+4)." ".($y-21)." Td (".pdfEsc(pdfTruncate($title,70)).") Tj ET 0 0 0 rg\n";
+    $y -= 36;
+    // Meta line
+    $meta = $author.'  ·  '.$date.'  ·  '.$category;
+    $cur_page_cmds .= "0.4 0.4 0.4 rg BT /{$FONT_I} {$FS_META} Tf {$ML} {$y} Td (".pdfEsc($meta).") Tj ET 0 0 0 rg\n";
+    $y -= 6;
+    // Divider
+    $cur_page_cmds .= "0.976 0.451 0.086 RG 1 w {$ML} {$y} m ".($W-$ML)." {$y} l S 0 0 0 RG 0.5 w\n";
+    $y -= 18;
+
+    // ── Render lines ──
+    foreach ($lines as $ln) {
+        $type = $ln['type'];
+        $text = $ln['text'] ?? '';
+
+        switch ($type) {
+            case 'h1':
+                $checkY(36);
+                $y -= 6;
+                $drawLine($ML, $y+2, $W-$MR, $y+2, 0.5, [0.9,0.9,0.9]);
+                $wrapped = $wrapText($text, $FS_H1, $TW);
+                foreach ($wrapped as $wl) {
+                    $checkY(28);
+                    $drawText($FONT_B, $FS_H1, $ML, $y, $wl, [0.1,0.1,0.1]);
+                    $y -= 26;
+                }
+                $drawLine($ML, $y+4, $W-$MR, $y+4, 0.4, [0.9,0.9,0.9]);
+                $y -= 6;
+                break;
+            case 'h2':
+                $checkY(28);
+                $y -= 4;
+                $wrapped = $wrapText($text, $FS_H2, $TW);
+                foreach ($wrapped as $wl) {
+                    $checkY(22);
+                    $drawText($FONT_B, $FS_H2, $ML, $y, $wl, [0.15,0.15,0.15]);
+                    $y -= 22;
+                }
+                $y -= 2;
+                break;
+            case 'h3':
+                $checkY(20);
+                $y -= 4;
+                $wrapped = $wrapText($text, $FS_H3, $TW);
+                foreach ($wrapped as $wl) {
+                    $checkY(18);
+                    $drawText($FONT_B, $FS_H3, $ML, $y, $wl, [0.22,0.22,0.22]);
+                    $y -= 18;
+                }
+                break;
+            case 'h4':
+                $checkY(18);
+                $y -= 2;
+                $drawText($FONT_B, $FS_BODY+1, $ML, $y, pdfTruncate($text, 90), [0.3,0.3,0.3]);
+                $y -= 16;
+                break;
+            case 'p':
+                if (trim($text) === '') { $y -= 6; break; }
+                $wrapped = $wrapText($text, $FS_BODY, $TW);
+                foreach ($wrapped as $wl) {
+                    $checkY($LINE_H);
+                    $drawText($FONT_N, $FS_BODY, $ML, $y, $wl);
+                    $y -= $LINE_H;
+                }
+                $y -= 3;
+                break;
+            case 'li':
+                $bullet = ($ln['ordered'] ?? false) ? (($ln['index'] ?? 1).'.') : '•';
+                $indent = $ML + 14;
+                $maxW   = $TW - 14;
+                $wrapped = $wrapText($text, $FS_BODY, $maxW);
+                $first = true;
+                foreach ($wrapped as $wl) {
+                    $checkY($LINE_H);
+                    if ($first) { $drawText($FONT_N, $FS_BODY, $ML+2, $y, $bullet); $first = false; }
+                    $drawText($FONT_N, $FS_BODY, $indent, $y, $wl);
+                    $y -= $LINE_H;
+                }
+                $y -= 2;
+                break;
+            case 'table':
+                $rows   = $ln['rows'] ?? [];
+                $cols   = max(array_map('count', $rows)) ?: 1;
+                $colW   = $TW / $cols;
+                $rowH   = 20;
+                $checkY($rowH * min(count($rows), 3));
+                foreach ($rows as $ri => $cells) {
+                    if ($y - $rowH < $MB) { $newPage(); }
+                    $isHead = ($ri === 0 && ($ln['has_head'] ?? false));
+                    if ($isHead) {
+                        $cur_page_cmds .= "0.95 0.95 0.95 rg {$ML} ".($y-$rowH+4)." m ".($W-$MR)." ".($y-$rowH+4)." l ".($W-$MR)." ".($y+4)." l {$ML} ".($y+4)." l f 0 0 0 rg\n";
+                    }
+                    // row border
+                    $cur_page_cmds .= "0.85 0.85 0.85 RG 0.4 w {$ML} ".($y-$rowH+4)." m ".($W-$MR)." ".($y-$rowH+4)." l S 0 0 0 RG\n";
+                    foreach ($cells as $ci => $cell) {
+                        $cx  = $ML + $ci * $colW + 4;
+                        $cty = $y - 2;
+                        $ft  = $isHead ? $FONT_B : $FONT_N;
+                        $txt = pdfTruncate(trim(strip_tags($cell ?? '')), (int)floor($colW / ($FS_BODY*0.52)));
+                        $drawText($ft, $FS_BODY-1, $cx, $cty, $txt);
+                        // vertical line
+                        if ($ci > 0) {
+                            $lx = $ML + $ci * $colW;
+                            $cur_page_cmds .= "0.85 0.85 0.85 RG 0.3 w {$lx} ".($y+4)." m {$lx} ".($y-$rowH+4)." l S 0 0 0 RG\n";
+                        }
+                    }
+                    $y -= $rowH;
+                }
+                // outer border
+                $tableH = count($rows) * $rowH;
+                $cur_page_cmds .= "0.7 0.7 0.7 RG 0.5 w {$ML} {$y} m ".($W-$MR)." {$y} l ".($W-$MR)." ".($y+$tableH)." l {$ML} ".($y+$tableH)." l S 0 0 0 RG\n";
+                $y -= 8;
+                break;
+            case 'quote':
+                $wrapped = $wrapText($text, $FS_BODY, $TW - 20);
+                $qH = count($wrapped) * $LINE_H + 8;
+                $checkY($qH);
+                // Orange left bar
+                $cur_page_cmds .= "0.976 0.451 0.086 rg ".($ML)." ".($y-$qH+12)." m ".($ML)." ".($y+4)." l ".($ML+3)." ".($y+4)." l ".($ML+3)." ".($y-$qH+12)." l f 0 0 0 rg\n";
+                // Tinted bg
+                $cur_page_cmds .= "1.0 0.97 0.93 rg ".($ML+3)." ".($y-$qH+12)." m ".($W-$MR)." ".($y-$qH+12)." l ".($W-$MR)." ".($y+4)." l ".($ML+3)." ".($y+4)." l f 0 0 0 rg\n";
+                foreach ($wrapped as $wl) {
+                    $drawText($FONT_I, $FS_BODY, $ML+14, $y, $wl, [0.22,0.22,0.22]);
+                    $y -= $LINE_H;
+                }
+                $y -= 6;
+                break;
+            case 'code':
+                $clines = explode("\n", $text);
+                $checkY(min(count($clines), 4) * 14 + 10);
+                $cH = count($clines) * 14 + 8;
+                $cur_page_cmds .= "0.12 0.16 0.24 rg {$ML} ".($y-$cH+8)." m ".($W-$MR)." ".($y-$cH+8)." l ".($W-$MR)." ".($y+6)." l {$ML} ".($y+6)." l f 0 0 0 rg\n";
+                foreach ($clines as $cl) {
+                    if ($y - 14 < $MB) $newPage();
+                    $txt = pdfTruncate($cl, 90);
+                    $cur_page_cmds .= "0.89 0.91 0.94 rg BT /{$FONT_C} 9 Tf ".($ML+6)." {$y} Td (".pdfEsc($txt).") Tj ET 0 0 0 rg\n";
+                    $y -= 13;
+                }
+                $y -= 8;
+                break;
+            case 'hr':
+                $y -= 4;
+                $drawLine($ML, $y, $W-$MR, $y, 0.5, [0.88,0.88,0.88]);
+                $y -= 8;
+                break;
+            case 'pagebreak':
+                $newPage();
+                break;
+        }
+    }
+
+    // Flush last page
+    $newPage();
+
+    // ── Assemble PDF ──
+    $pdf  = "%PDF-1.4\n";
+    $pdf .= "%\xe2\xe3\xcf\xd3\n"; // binary comment
+
+    // Catalog + Pages placeholder (obj 1 + 2)
+    $catalog_id = $addObj("<< /Type /Catalog /Pages 2 0 R >>");
+    $pages_id   = 2; $objNum = max($objNum, 2);
+    $objs[2]    = ''; // placeholder
+
+    // Font resources (obj 3–8)
+    $fonts = [];
+    foreach (['Helvetica','Helvetica-Bold','Helvetica-Oblique','Helvetica-BoldOblique','Courier'] as $fn) {
+        $fid = $addObj("<< /Type /Font /Subtype /Type1 /BaseFont /{$fn} /Encoding /WinAnsiEncoding >>");
+        $fonts[$fn] = $fid;
+    }
+
+    $font_res = "/F1 {$fonts['Helvetica']} 0 R /F2 {$fonts['Helvetica-Bold']} 0 R /F3 {$fonts['Helvetica-Oblique']} 0 R /F4 {$fonts['Helvetica-BoldOblique']} 0 R /F5 {$fonts['Courier']} 0 R";
+
+    // Map font names used in commands to /Fn references
+    $font_map = [
+        'Helvetica'            => 'F1',
+        'Helvetica-Bold'       => 'F2',
+        'Helvetica-Oblique'    => 'F3',
+        'Helvetica-BoldOblique'=> 'F4',
+        'Courier'              => 'F5',
+    ];
+
+    $page_ids = [];
+    foreach ($pages as $pg) {
+        // Replace font names with /Fn refs
+        foreach ($font_map as $name => $ref) {
+            $pg = str_replace('/'.$name.' ', '/'.$ref.' ', $pg);
+        }
+        $len = strlen($pg);
+        $sid = $addObj("<< /Length {$len} >>\nstream\n{$pg}endstream");
+        $pid = $addObj("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents {$sid} 0 R /Resources << /Font << {$font_res} >> >> >>");
+        $page_ids[] = $pid;
+    }
+
+    // Pages object
+    $kids = implode(' 0 R ', $page_ids).' 0 R';
+    $objs[2] = "<< /Type /Pages /Kids [{$kids}] /Count ".count($page_ids)." >>";
+
+    // Info object
+    $info_id = $addObj("<< /Title (".pdfEsc($title).") /Author (".pdfEsc($author).") /Producer (Padak CRM) /CreationDate (D:".date('YmdHis').") >>");
+
+    // Build body + xref
+    $offsets = [];
+    foreach ($objs as $n => $body) {
+        $offsets[$n] = strlen($pdf);
+        $pdf .= "{$n} 0 obj\n{$body}\nendobj\n";
+    }
+
+    $xref_offset = strlen($pdf);
+    $total = $objNum + 1;
+    $pdf .= "xref\n0 {$total}\n";
+    $pdf .= "0000000000 65535 f \n";
+    for ($i = 1; $i <= $objNum; $i++) {
+        $pdf .= str_pad($offsets[$i] ?? 0, 10, '0', STR_PAD_LEFT)." 00000 n \n";
+    }
+    $pdf .= "trailer\n<< /Size {$total} /Root 1 0 R /Info {$info_id} 0 R >>\n";
+    $pdf .= "startxref\n{$xref_offset}\n%%EOF\n";
+
+    return $pdf;
 }
-.export-bar{background:#f97316;color:#fff;padding:10px 20px;text-align:center;font-size:11pt;font-weight:600;position:sticky;top:0;z-index:999;display:flex;justify-content:center;gap:20px;align-items:center}
-.export-bar button{background:#fff;color:#f97316;border:none;padding:6px 16px;border-radius:6px;font-weight:700;cursor:pointer;font-size:10pt}
-</style>
-</head>
-<body>
-<div class="export-bar no-print">
-  <span>📄 {$ht}</span>
-  <button onclick="window.print()">🖨 Print / Save as PDF</button>
-  <button onclick="window.close()" style="background:rgba(255,255,255,.2);color:#fff">✕ Close</button>
-</div>
-<br class="no-print">
-<div class="doc-header">
-  <div class="doc-title">{$ht}</div>
-  <div class="doc-meta">
-    <span>✍ {$ha}</span>
-    <span>📅 {$hd}</span>
-    <span>📂 {$hc}</span>
-  </div>
-</div>
-<div class="doc-content">{$content}</div>
-<div class="doc-footer">
-  <span>Padak CRM — {$ht}</span>
-  <span>{$hd}</span>
-</div>
-<script>
-// Show save-as-PDF instructions if not printing
-if(!window.opener && window.location.search.indexOf('autoprint')!==-1) window.print();
-</script>
-</body>
-</html>
-HTML;
+
+function pdfEsc(string $s): string {
+    // Convert to ISO-8859-1 (PDF standard encoding), escape PDF special chars
+    $s = mb_convert_encoding($s, 'ISO-8859-1', 'UTF-8');
+    return str_replace(['\\','(',')',"\r","\n"], ['\\\\','\\(','\\)','',''], $s);
+}
+
+function pdfTruncate(string $s, int $max): string {
+    return mb_strlen($s) > $max ? mb_substr($s, 0, $max-1).'…' : $s;
+}
+
+// ── HTML → structured line array for PDF renderer ──
+function htmlToTextLines(string $html, string $title, string $author, string $date, string $category): array {
+    if (!$html) return [['type'=>'p','text'=>'No content.']];
+
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $dom->loadHTML('<?xml encoding="UTF-8"><div>'.$html.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+
+    $lines = [];
+    $list_counters = [];
+
+    function walkNodes(DOMNode $node, array &$lines, array &$list_counters, string $context = ''): void {
+        if ($node->nodeType === XML_TEXT_NODE) {
+            $text = trim(preg_replace('/\s+/', ' ', $node->textContent));
+            if ($text && $context === '') $lines[] = ['type'=>'p','text'=>$text];
+            return;
+        }
+        if ($node->nodeType !== XML_ELEMENT_NODE) return;
+        $tag = strtolower($node->nodeName);
+
+        switch ($tag) {
+            case 'h1': $lines[] = ['type'=>'h1','text'=>trim($node->textContent)]; break;
+            case 'h2': $lines[] = ['type'=>'h2','text'=>trim($node->textContent)]; break;
+            case 'h3': $lines[] = ['type'=>'h3','text'=>trim($node->textContent)]; break;
+            case 'h4': case 'h5': case 'h6': $lines[] = ['type'=>'h4','text'=>trim($node->textContent)]; break;
+            case 'p':
+                $text = trim(preg_replace('/\s+/', ' ', $node->textContent));
+                if ($text) $lines[] = ['type'=>'p','text'=>$text];
+                break;
+            case 'br': $lines[] = ['type'=>'p','text'=>'']; break;
+            case 'hr': $lines[] = ['type'=>'hr']; break;
+            case 'ul':
+                foreach ($node->childNodes as $li) {
+                    if (strtolower($li->nodeName) === 'li') {
+                        $lines[] = ['type'=>'li','text'=>trim(preg_replace('/\s+/',' ',$li->textContent)),'ordered'=>false];
+                    }
+                }
+                break;
+            case 'ol':
+                $idx = 1;
+                foreach ($node->childNodes as $li) {
+                    if (strtolower($li->nodeName) === 'li') {
+                        $lines[] = ['type'=>'li','text'=>trim(preg_replace('/\s+/',' ',$li->textContent)),'ordered'=>true,'index'=>$idx++];
+                    }
+                }
+                break;
+            case 'table':
+                $rows = []; $has_head = false;
+                foreach ($node->childNodes as $ch) {
+                    $cn = strtolower($ch->nodeName);
+                    if ($cn === 'thead') { $has_head = true; foreach ($ch->childNodes as $tr) { if (strtolower($tr->nodeName)==='tr') { $row=[]; foreach ($tr->childNodes as $td) { if (in_array(strtolower($td->nodeName),['td','th'])) $row[]=trim($td->textContent); } if ($row) $rows[]=$row; } } }
+                    elseif (in_array($cn,['tbody','tfoot'])) { foreach ($ch->childNodes as $tr) { if (strtolower($tr->nodeName)==='tr') { $row=[]; foreach ($tr->childNodes as $td) { if (in_array(strtolower($td->nodeName),['td','th'])) $row[]=trim($td->textContent); } if ($row) $rows[]=$row; } } }
+                    elseif ($cn==='tr') { $row=[]; foreach ($ch->childNodes as $td) { if (in_array(strtolower($td->nodeName),['td','th'])) $row[]=trim($td->textContent); } if ($row) $rows[]=$row; }
+                }
+                if ($rows) $lines[] = ['type'=>'table','rows'=>$rows,'has_head'=>$has_head];
+                break;
+            case 'blockquote':
+                $text = trim(preg_replace('/\s+/',' ',$node->textContent));
+                if ($text) $lines[] = ['type'=>'quote','text'=>$text];
+                break;
+            case 'pre':
+                $lines[] = ['type'=>'code','text'=>$node->textContent];
+                break;
+            default:
+                foreach ($node->childNodes as $child) walkNodes($child, $lines, $list_counters);
+                break;
+        }
+    }
+
+    $root = $dom->getElementsByTagName('div')->item(0);
+    if ($root) {
+        foreach ($root->childNodes as $child) {
+            walkNodes($child, $lines, $list_counters);
+        }
+    }
+
+    return $lines ?: [['type'=>'p','text'=>strip_tags($html)]];
 }
 
 // ═══════════════════════════════════════════════════════

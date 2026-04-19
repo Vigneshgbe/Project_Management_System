@@ -309,8 +309,9 @@ document.addEventListener('DOMContentLoaded', function() {
     loadChannels();
     if (CID) openChannel(CID);
     if (THREAD_OF) openThread(THREAD_OF);
-    // Poll every 4 seconds
-    pollTimer = setInterval(poll, 4000);
+    // Poll started by loadMessages after first channel load
+    // If no CID, start poll anyway for unread badge updates
+    if (!CID) { pollTimer = setInterval(poll, 4000); }
     // Enable send button
     document.getElementById('msg-input').addEventListener('input', function() {
         document.getElementById('send-btn').disabled = !this.value.trim() && !pendingFile;
@@ -393,6 +394,7 @@ function openChannel(cid) {
     feed.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:20px;margin-bottom:6px">⏳</div><div style="font-size:13px">Loading messages…</div></div>';
     msgIndex = {};
     serverTime = null; // Reset poll timer for new channel
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } // Stop poll during load
     // Load messages
     loadMessages(cid, false);
     // Update URL
@@ -435,7 +437,6 @@ function loadMessages(cid, append, before) {
         if (d.messages.length) {
             serverTime = d.messages[d.messages.length-1].iso;
         } else if (!serverTime) {
-            // No messages yet - set serverTime to now so poll works for new messages
             var now = new Date();
             serverTime = now.getFullYear()+'-'+
                 String(now.getMonth()+1).padStart(2,'0')+'-'+
@@ -444,6 +445,8 @@ function loadMessages(cid, append, before) {
                 String(now.getMinutes()).padStart(2,'0')+':'+
                 String(now.getSeconds()).padStart(2,'0');
         }
+        // Restart poll after messages loaded
+        if (!pollTimer) { pollTimer = setInterval(poll, 4000); }
     });
 }
 

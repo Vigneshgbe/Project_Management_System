@@ -56,7 +56,9 @@ function fmtMsg(array $r, int $me): array {
         'time'      => date('g:ia', strtotime($r['created_at'])),
         'date'      => date('M j', strtotime($r['created_at'])),
         'iso'       => $r['created_at'],
-        'reactions' => parseReactions($r['reactions'] ?? ''),
+        'reactions' => array_map(function($rx) {
+            return ['emoji'=>$rx['emoji'],'cnt'=>(int)$rx['cnt'],'mine'=>(bool)(int)$rx['mine']];
+        }, $r['reactions_raw'] ?? []),
         'reply_count'=> (int)($r['reply_count'] ?? 0),
     ];
 }
@@ -112,7 +114,7 @@ switch ($action) {
             // Ensure current user is in #general
             $db->query("INSERT IGNORE INTO chat_members (channel_id,user_id) VALUES ({$gen['id']},$uid)");
         }
-        $rows = $db->query("
+        $rows_result = $db->query("
             SELECT cc.*, 
                 CASE WHEN cc.type='direct' THEN (
                     SELECT u.name FROM chat_members cm2
@@ -130,7 +132,9 @@ switch ($action) {
             FROM chat_channels cc
             JOIN chat_members mb ON mb.channel_id=cc.id AND mb.user_id=$uid
             ORDER BY COALESCE(last_at,'2000-01-01') DESC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        if (!$rows_result) { ok(['channels'=>[]]); break; }
+        $rows = $rows_result->fetch_all(MYSQLI_ASSOC);
         ok(['channels' => $rows]);
         break;
 
@@ -146,25 +150,28 @@ switch ($action) {
             : "m.channel_id=$cid AND m.parent_id IS NULL AND m.deleted=0";
         if ($before) $where .= " AND m.id < $before";
 
-        $sql = "
-            SELECT m.id, m.channel_id, m.user_id, m.parent_id, m.body,
-                   m.file_url, m.file_name, m.file_size, m.edited, m.deleted,
-                   m.created_at, m.updated_at,
-                   u.name AS user_name,
-                (SELECT COUNT(*) FROM chat_messages r WHERE r.parent_id=m.id AND r.deleted=0) AS reply_count,
-                (SELECT GROUP_CONCAT(emoji,'||',cnt,'||',mine ORDER BY cnt DESC SEPARATOR ';;')
-                 FROM (
-                    SELECT emoji, COUNT(*) AS cnt, MAX(IF(user_id=$uid,1,0)) AS mine
-                    FROM chat_reactions WHERE message_id=m.id GROUP BY emoji
-                 ) react_agg
-                ) AS reactions
-            FROM chat_messages m
-            JOIN users u ON u.id=m.user_id
-            WHERE $where
-            ORDER BY m.created_at DESC LIMIT 40";
+        // Simple, reliable query - no subqueries that might fail
+        $sql = "SELECT m.id, m.channel_id, m.user_id, m.parent_id, m.body,
+                       m.file_url, m.file_name, m.file_size, m.edited, m.deleted,
+                       m.created_at, u.name AS user_name
+                FROM chat_messages m
+                JOIN users u ON u.id=m.user_id
+                WHERE $where
+                ORDER BY m.created_at DESC LIMIT 40";
         $result = $db->query($sql);
         if (!$result) { err('DB error: ' . $db->error); }
         $rows = $result->fetch_all(MYSQLI_ASSOC);
+        // Add reply counts and reactions to each message
+        foreach ($rows as &$row) {
+            $mid = (int)$row['id'];
+            // Reply count
+            $rc = $db->query("SELECT COUNT(*) AS c FROM chat_messages WHERE parent_id=$mid AND deleted=0");
+            $row['reply_count'] = $rc ? (int)$rc->fetch_assoc()['c'] : 0;
+            // Reactions
+            $rq = $db->query("SELECT emoji, COUNT(*) AS cnt, MAX(IF(user_id=$uid,1,0)) AS mine FROM chat_reactions WHERE message_id=$mid GROUP BY emoji");
+            $row['reactions_raw'] = $rq ? $rq->fetch_all(MYSQLI_ASSOC) : [];
+        }
+        unset($row);
 
         // Mark as read
         $db->query("UPDATE chat_members SET last_read=NOW() WHERE channel_id=$cid AND user_id=$uid");
@@ -305,12 +312,13 @@ switch ($action) {
         $since = $_GET['since'] ?? date('Y-m-d H:i:s', strtotime('-5 seconds'));
         if (!$cid || !isMember($cid,$uid,$db)) err('Access denied');
         $since_esc = $db->real_escape_string($since);
-        $rows = $db->query("
+        $poll_result = $db->query("
             SELECT m.*, u.name AS user_name, 0 AS reply_count, NULL AS reactions
             FROM chat_messages m JOIN users u ON u.id=m.user_id
             WHERE m.channel_id=$cid AND m.created_at > '$since_esc' AND m.deleted=0 AND m.parent_id IS NULL
             ORDER BY m.created_at ASC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $rows = $poll_result ? $poll_result->fetch_all(MYSQLI_ASSOC) : [];
         $unread = $db->query("
             SELECT cc.id, COUNT(cm.id) AS cnt
             FROM chat_channels cc

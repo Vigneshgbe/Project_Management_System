@@ -30,70 +30,7 @@ function saveUpload(string $key, int $idx = 0): string {
     return $fname;
 }
 
-// ── POST HANDLER ──
-$preview_html = '';
-$message = '';
-$posted = [];  // carry form values back
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
-    // Carry posted values
-    $posted = [
-        'body_content'   => $_POST['body_content']   ?? '',
-        'regards_text'   => $_POST['regards_text']   ?? 'Best Regards,',
-        'regards_name'   => $_POST['regards_name']   ?? '',
-        'regards_title'  => $_POST['regards_title']  ?? '',
-        'layout_type'    => $_POST['layout_type']    ?? '0',
-        'group_caption'  => $_POST['group_caption']  ?? '',
-    ];
-
-    if (!$posted['body_content']) {
-        $message = 'error:Please add email content before generating.';
-    } else {
-        // Header image
-        $header_path = saveUpload('header_image');
-        $header_b64  = $header_path ? getBase64Image($header_path) : '';
-        if ($header_path) @unlink($header_path);
-
-        $layout = $posted['layout_type'];
-        $employee_images  = [];
-        $employee_details = [];
-        $group_b64 = '';
-
-        if ($layout === 'group') {
-            $gp = saveUpload('group_image');
-            $group_b64 = $gp ? getBase64Image($gp) : '';
-            if ($gp) @unlink($gp);
-        } else {
-            $max = match($layout) { '1'=>1,'2'=>2,'3'=>3,'2-2'=>4,'3-2'=>5,'3-3'=>9,default=>0 };
-            for ($i = 1; $i <= $max; $i++) {
-                $ep = saveUpload('employee_image', $i);
-                $employee_images[]  = $ep ? getBase64Image($ep) : '';
-                if ($ep) @unlink($ep);
-                $employee_details[] = [
-                    'name'  => trim($_POST['employee_name_'.$i]  ?? ''),
-                    'title' => trim($_POST['employee_title_'.$i] ?? ''),
-                ];
-            }
-        }
-
-        $preview_html = generateEmailTemplate([
-            'header_image'    => $header_b64,
-            'body_content'    => $posted['body_content'],
-            'signature_name'  => $posted['regards_name'],
-            'signature_title' => $posted['regards_title'],
-            'regards_text'    => $posted['regards_text'],
-            'layout_type'     => $layout,
-            'employee_images' => $employee_images,
-            'employee_details'=> $employee_details,
-            'group_image'     => $group_b64,
-            'group_caption'   => $posted['group_caption'],
-        ]);
-        $message = 'success:Email template generated successfully!';
-        logActivity('generated email template', 'email', 0);
-    }
-}
-
-// ── EMAIL GENERATION FUNCTIONS (ported from standalone) ──
+// ── EMAIL GENERATION FUNCTIONS (from standalone) ──
 
 function processContentForOutlook(string $html): string {
     if (!$html) return '';
@@ -130,7 +67,7 @@ function processContentForOutlook(string $html): string {
         }
     }
     $out = $dom->saveHTML();
-    $out = preg_replace(['/<\?xml[^>]+\?>$/m','/<\/?html[^>]*>/i','/<\/?head[^>]*>/i','/<\/?body[^>]*>/i'], '', $out);
+    $out = preg_replace(['/<\?xml[^>]+\?>/','/<\/?html[^>]*>/i','/<\/?head[^>]*>/i','/<\/?body[^>]*>/i'], '', $out);
     return trim($out);
 }
 
@@ -219,12 +156,12 @@ function generateEmailTemplate(array $opts): string {
     $t .= '<!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="'.$W.'"><tr><td><![endif]-->';
     $t .= '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" width="'.$W.'" style="width:'.$W.'px;max-width:100%;border-collapse:collapse;margin:0 auto;font-family:'.$font.' !important;">';
 
-    // Header image
+    // Header
     $t .= '<tr><td align="center" style="padding:0;font-family:'.$font.' !important;" width="'.$W.'">';
     if ($header_image) $t .= '<img src="'.$header_image.'" alt="Header" width="'.$W.'" style="width:'.$W.'px;max-width:100%;display:block;border:0;margin:0 auto;"/>';
     $t .= '</td></tr>';
 
-    // Body content
+    // Body
     $t .= '<tr><td class="outlook-content-cell" align="left" style="padding:30px 50px;font-family:'.$font.' !important;" width="'.$W.'">';
     $t .= '<div style="width:100%;font-family:'.$font.' !important;line-height:1.5 !important;mso-line-height-rule:exactly;">'.$body.'</div>';
     $t .= '</td></tr>';
@@ -255,20 +192,78 @@ function generateEmailTemplate(array $opts): string {
     return $t;
 }
 
+// ── POST HANDLER ──
+$preview_html = '';
+$message = '';
+$posted = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
+    $posted = [
+        'body_content'   => $_POST['body_content']   ?? '',
+        'regards_text'   => $_POST['regards_text']   ?? 'Best Regards,',
+        'regards_name'   => $_POST['regards_name']   ?? '',
+        'regards_title'  => $_POST['regards_title']  ?? '',
+        'layout_type'    => $_POST['layout_type']    ?? '0',
+        'group_caption'  => $_POST['group_caption']  ?? '',
+    ];
+
+    if (!$posted['body_content']) {
+        $message = 'error:Please add email content before generating.';
+    } else {
+        // Header image
+        $header_path = saveUpload('header_image');
+        $header_b64  = $header_path ? getBase64Image($header_path) : '';
+        if ($header_path) @unlink($header_path);
+
+        $layout = $posted['layout_type'];
+        $employee_images  = [];
+        $employee_details = [];
+        $group_b64 = '';
+
+        if ($layout === 'group') {
+            $gp = saveUpload('group_image');
+            $group_b64 = $gp ? getBase64Image($gp) : '';
+            if ($gp) @unlink($gp);
+        } else {
+            $max = match($layout) { '1'=>1,'2'=>2,'3'=>3,'2-2'=>4,'3-2'=>5,'3-3'=>9,default=>0 };
+            for ($i = 1; $i <= $max; $i++) {
+                $ep = saveUpload('employee_image', $i);
+                $employee_images[]  = $ep ? getBase64Image($ep) : '';
+                if ($ep) @unlink($ep);
+                $employee_details[] = [
+                    'name'  => trim($_POST['employee_name_'.$i]  ?? ''),
+                    'title' => trim($_POST['employee_title_'.$i] ?? ''),
+                ];
+            }
+        }
+
+        $preview_html = generateEmailTemplate([
+            'header_image'    => $header_b64,
+            'body_content'    => $posted['body_content'],
+            'signature_name'  => $posted['regards_name'],
+            'signature_title' => $posted['regards_title'],
+            'regards_text'    => $posted['regards_text'],
+            'layout_type'     => $layout,
+            'employee_images' => $employee_images,
+            'employee_details'=> $employee_details,
+            'group_image'     => $group_b64,
+            'group_caption'   => $posted['group_caption'],
+        ]);
+        $message = 'success:Email template generated successfully!';
+        logActivity('generated email template', 'email', 0);
+    }
+}
+
 renderLayout('Email Template', 'email_template');
 ?>
 
-<!-- Page-specific CDN: TinyMCE + Font Awesome (not in main layout) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
 
 <style>
-/* ══ EMAIL TEMPLATE PAGE ══ */
 .et-layout{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;min-height:calc(100vh - var(--header-h) - 64px)}
 .et-form{display:flex;flex-direction:column;gap:14px;overflow-y:auto;padding-right:4px}
 .et-preview{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:sticky;top:calc(var(--header-h) + 16px);max-height:calc(100vh - var(--header-h) - 80px);overflow-y:auto}
-
-/* Steps */
 .et-steps{display:flex;align-items:center;margin-bottom:4px;gap:0}
 .et-step{display:flex;align-items:center;flex:1}
 .et-step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;z-index:1;transition:all .2s}
@@ -280,66 +275,32 @@ renderLayout('Email Template', 'email_template');
 .et-step-label.done{color:var(--green)}
 .et-step-line{flex:1;height:2px;background:var(--border);margin:0 8px}
 .et-step-line.done{background:var(--green)}
-
-/* Layout selector */
 .layout-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .layout-opt{position:relative;cursor:pointer}
 .layout-opt input{position:absolute;opacity:0;width:0;height:0}
-.layout-opt-box{
-  border:2px solid var(--border);border-radius:var(--radius);padding:10px 6px 8px;
-  text-align:center;transition:all .15s;background:var(--bg3);
-}
+.layout-opt-box{border:2px solid var(--border);border-radius:var(--radius);padding:10px 6px 8px;text-align:center;transition:all .15s;background:var(--bg3)}
 .layout-opt input:checked + .layout-opt-box{border-color:var(--orange);background:var(--orange-bg)}
 .layout-opt-box:hover{border-color:var(--border2)}
-.layout-opt-visual{
-  height:44px;background:var(--bg4);border-radius:5px;margin-bottom:6px;
-  display:flex;align-items:center;justify-content:center;gap:3px;padding:4px;
-}
+.layout-opt-visual{height:44px;background:var(--bg4);border-radius:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:3px;padding:4px}
 .lv-dot{background:var(--blue);border-radius:3px;flex:1;height:100%}
 .layout-opt-label{font-size:10px;color:var(--text2);font-weight:600;line-height:1.2}
-
-/* Employee upload card */
 .emp-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:8px}
 .emp-card-title{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
-
-/* File drop zone */
-.file-drop{
-  border:2px dashed var(--border);border-radius:var(--radius);padding:16px;
-  text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);
-  position:relative;
-}
+.file-drop{border:2px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);position:relative}
 .file-drop:hover,.file-drop.drag{border-color:var(--orange);background:var(--orange-bg)}
 .file-drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .file-drop-icon{font-size:22px;margin-bottom:4px;color:var(--text3)}
 .file-drop-text{font-size:12px;color:var(--text3)}
 .file-drop-name{font-size:12px;color:var(--orange);margin-top:4px;font-weight:600}
-
-/* Preview section */
 .et-preview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 .et-preview-title{font-size:14px;font-weight:700;color:var(--text);font-family:var(--font-display)}
 .et-preview-actions{display:flex;gap:6px;flex-wrap:wrap}
-.et-preview-empty{
-  text-align:center;padding:48px 20px;color:var(--text3);
-  background:var(--bg3);border-radius:var(--radius);
-}
+.et-preview-empty{text-align:center;padding:48px 20px;color:var(--text3);background:var(--bg3);border-radius:var(--radius)}
 .et-preview-empty-icon{font-size:40px;margin-bottom:12px;opacity:.6}
-#et-preview-frame{
-  width:100%;border:1px solid var(--border);border-radius:var(--radius);
-  background:#fff;overflow:hidden;
-}
-
-/* Copy toast */
-.copy-toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:var(--green);color:#fff;padding:8px 20px;border-radius:99px;
-  font-size:13px;font-weight:600;z-index:999;
-  opacity:0;transition:opacity .3s;pointer-events:none;
-}
+#et-preview-container{width:100%;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden}
+.copy-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:8px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
 .copy-toast.show{opacity:1}
-
-/* TinyMCE override for dark mode */
 .tox-tinymce{border-radius:var(--radius-sm) !important;border-color:var(--border) !important}
-
 @media(max-width:1100px){.et-layout{grid-template-columns:1fr}.et-preview{position:static;max-height:none}}
 @media(max-width:600px){.layout-grid{grid-template-columns:repeat(2,1fr)}.et-steps{display:none}}
 </style>
@@ -355,11 +316,7 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
 <?php endif; ?>
 
 <div class="et-layout">
-
-  <!-- ══ LEFT: FORM ══ -->
   <div class="et-form">
-
-    <!-- Step indicator -->
     <div class="et-steps">
       <?php
       $steps = ['Content','Images','Signature','Generate'];
@@ -379,7 +336,6 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
     <form method="POST" enctype="multipart/form-data" id="et-form">
       <input type="hidden" name="action" value="generate">
 
-      <!-- ① Header Image -->
       <div class="card">
         <div class="card-header">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
@@ -394,7 +350,6 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
         </div>
       </div>
 
-      <!-- ② Email Content -->
       <div class="card">
         <div class="card-header">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
@@ -407,7 +362,6 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
         </div>
       </div>
 
-      <!-- ③ Image Layout -->
       <div class="card">
         <div class="card-header">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
@@ -417,14 +371,14 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
         <div class="layout-grid">
           <?php
           $layouts = [
-            '0'   => ['No Images',        ''],
-            'group'=>['Group Photo',       'grp'],
-            '1'   => ['Single',           '1'],
-            '2'   => ['Two (1×2)',         '2'],
-            '3'   => ['Three (1×3)',       '3'],
-            '2-2' => ['Four (2×2)',        '4'],
-            '3-2' => ['Five (3+2)',        '5'],
-            '3-3' => ['Nine (3×3)',        '9'],
+            '0'   => ['No Images',''],
+            'group'=>['Group Photo','grp'],
+            '1'   => ['Single','1'],
+            '2'   => ['Two (1×2)','2'],
+            '3'   => ['Three (1×3)','3'],
+            '2-2' => ['Four (2×2)','4'],
+            '3-2' => ['Five (3+2)','5'],
+            '3-3' => ['Nine (3×3)','9'],
           ];
           foreach ($layouts as $lv => [$ll, $lc]):
             $checked = ($layout_val === $lv) ? 'checked' : '';
@@ -447,11 +401,9 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
           </label>
           <?php endforeach; ?>
         </div>
-        <!-- Dynamic employee/group image fields -->
         <div id="layout-fields"></div>
       </div>
 
-      <!-- ④ Signature -->
       <div class="card">
         <div class="card-header">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
@@ -477,7 +429,6 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
         </div>
       </div>
 
-      <!-- Submit row -->
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button type="submit" class="btn btn-primary" id="et-submit" onclick="syncTinyMCE()">
           ⚡ Generate Template
@@ -490,7 +441,6 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
     </form>
   </div>
 
-  <!-- ══ RIGHT: PREVIEW ══ -->
   <div class="et-preview">
     <div class="et-preview-header">
       <div class="et-preview-title">📧 Preview</div>
@@ -510,14 +460,12 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
     </div>
 
     <?php if ($preview_html): ?>
-    <!-- Scaled preview iframe -->
-    <div id="et-preview-frame">
+    <div id="et-preview-container">
       <iframe id="preview-iframe"
-        style="width:750px;height:600px;border:none;transform-origin:top left;display:block"
+        style="width:750px;height:auto;min-height:600px;border:none;transform-origin:top left;display:block"
         sandbox="allow-same-origin"
         title="Email preview"></iframe>
     </div>
-    <!-- Copy instructions -->
     <div style="margin-top:12px;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text3)">
       <strong style="color:var(--text2)">📋 How to use:</strong>
       Click <em>Copy for Outlook/Gmail</em>, open a new email, and paste (<kbd style="background:var(--bg4);padding:1px 5px;border-radius:3px;border:1px solid var(--border)">Ctrl+V</kbd>).
@@ -533,16 +481,13 @@ $mtext       = $message ? explode(':', $message, 2)[1] ?? '' : '';
   </div>
 </div>
 
-<!-- Copy toast -->
 <div class="copy-toast" id="copy-toast">✓ Copied to clipboard!</div>
 
-<!-- Embed generated HTML for JS access -->
 <?php if ($preview_html): ?>
 <script id="et-html-data" type="application/x-email-template"><?= htmlspecialchars($preview_html, ENT_QUOTES, 'UTF-8') ?></script>
 <?php endif; ?>
 
 <script>
-// ══ TINYMCE INIT ══
 var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
 
 tinymce.init({
@@ -551,18 +496,28 @@ tinymce.init({
   menubar: false,
   skin: isDark ? 'oxide-dark' : 'oxide',
   content_css: isDark ? 'dark' : 'default',
-  plugins: ['lists','link','table','code','fontsize','image'],
-  toolbar: 'undo redo | fontsize | bold italic underline | forecolor | alignleft aligncenter alignright | bullist numlist | table link | code',
+  plugins: ['lists','link','table','code','image'],
+  toolbar: 'undo redo | fontsize lineheight | bold italic underline | forecolor | alignleft aligncenter alignright | bullist numlist | table link | code',
   font_size_formats: '10pt 11pt 12pt 14pt 16pt 18pt 24pt',
+  lineheight_formats: '1.0 1.2 1.5 1.8 2.0 2.5',
   content_style: "body{font-family:'Proxima Nova',Arial,sans-serif;font-size:12pt;line-height:1.6;padding:8px}",
   promotion: false, branding: false,
   setup: function(ed) {
-    document.addEventListener('themeChanged', function(e) {
-      // Reload TinyMCE skin on theme change
-      var content = ed.getContent();
-      tinymce.remove('#et-tinymce');
-      isDark = e.detail.theme === 'dark';
-      tinymce.init(tinymce.settings);
+    ed.ui.registry.addMenuButton('lineheight', {
+      icon: 'line-height',
+      tooltip: 'Line Height',
+      fetch: function(callback) {
+        var items = ['1.0','1.2','1.5','1.8','2.0','2.5'].map(function(lh) {
+          return {
+            type: 'menuitem',
+            text: lh,
+            onAction: function() {
+              ed.execCommand('LineHeight', false, lh);
+            }
+          };
+        });
+        callback(items);
+      }
     });
   }
 });
@@ -573,7 +528,6 @@ function syncTinyMCE() {
   return true;
 }
 
-// ══ LAYOUT FIELD BUILDER ══
 var MAX_EMP = {'1':1,'2':2,'3':3,'2-2':4,'3-2':5,'3-3':9};
 
 function updateLayoutFields(type) {
@@ -602,7 +556,6 @@ function updateLayoutFields(type) {
       + '<div class="form-group"><label class="form-label">Title</label><input type="text" name="employee_title_'+i+'" class="form-control" placeholder="Position"></div>'
       + '</div></div>';
   }
-  // Re-attach change listeners
   document.querySelectorAll('#layout-fields input[type=file]').forEach(function(inp) {
     inp.addEventListener('change', function() { previewDrop(this, this.dataset.drop); });
   });
@@ -625,25 +578,34 @@ function previewDrop(inp, dropId) {
   if (drop) drop.style.borderColor = 'var(--green)';
 }
 
-// Init layout fields on load if a layout was posted
 document.addEventListener('DOMContentLoaded', function() {
   var checked = document.querySelector('input[name="layout_type"]:checked');
   if (checked) updateLayoutFields(checked.value);
 
-  // Load preview iframe
   var data = document.getElementById('et-html-data');
   if (data) {
     var html = data.textContent;
     var iframe = document.getElementById('preview-iframe');
     if (iframe) {
       var doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open(); doc.write(html); doc.close();
-      // Scale to fit preview panel
-      scalePreview();
+      doc.open(); 
+      doc.write(html); 
+      doc.close();
+      
+      // Auto-adjust iframe height based on content
+      iframe.onload = function() {
+        try {
+          var body = iframe.contentDocument.body;
+          var height = body.scrollHeight;
+          iframe.style.height = height + 'px';
+          scalePreview();
+        } catch(e) {
+          console.log('Could not auto-resize iframe');
+        }
+      };
     }
   }
 
-  // Drag-over styling
   document.querySelectorAll('.file-drop').forEach(function(d) {
     d.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag'); });
     d.addEventListener('dragleave', function() { this.classList.remove('drag'); });
@@ -660,17 +622,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function scalePreview() {
   var iframe = document.getElementById('preview-iframe');
-  var wrap   = document.getElementById('et-preview-frame');
+  var wrap   = document.getElementById('et-preview-container');
   if (!iframe || !wrap) return;
   var available = wrap.offsetWidth;
   var scale     = Math.min(1, available / 750);
   iframe.style.transform = 'scale(' + scale + ')';
-  iframe.style.height    = '600px';
-  wrap.style.height      = (600 * scale) + 'px';
+  wrap.style.height = (iframe.offsetHeight * scale) + 'px';
 }
 window.addEventListener('resize', scalePreview);
 
-// ══ COPY FUNCTIONS ══
 function getEmailHTML() {
   var data = document.getElementById('et-html-data');
   return data ? data.textContent : '';
@@ -687,7 +647,6 @@ function copyForClient(client) {
   var html = getEmailHTML();
   if (!html) return;
 
-  // Use Clipboard API with HTML mime type
   if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
     var blob = new Blob([html], {type: 'text/html'});
     var text = new Blob([stripTags(html)], {type: 'text/plain'});
@@ -700,7 +659,6 @@ function copyForClient(client) {
 }
 
 function fallbackCopy(html, client) {
-  // iframe selection method
   var iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;height:500px';
   document.body.appendChild(iframe);

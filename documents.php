@@ -357,7 +357,15 @@ renderLayout('Documents', 'documents');
   <a href="documents.php?tab=editor" style="color:var(--text3);font-size:13px">← Back to Documents</a>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <?php if ($edit_rd): ?>
-    <a href="documents.php?print_doc=<?= $edit_rd['id'] ?>" target="_blank" class="btn btn-ghost btn-sm">🖨 Print / Export PDF</a>
+    <div class="dropdown" style="display:inline-block">
+      <button class="btn btn-ghost btn-sm" onclick="toggleDropdown('export-dd-top')">↓ Export ▾</button>
+      <div class="dropdown-menu" id="export-dd-top">
+        <a class="dropdown-item" href="export_doc.php?id=<?= $edit_rd['id'] ?>&format=pdf" target="_blank">📕 Export as PDF</a>
+        <a class="dropdown-item" href="export_doc.php?id=<?= $edit_rd['id'] ?>&format=docx">📘 Export as DOCX</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="documents.php?print_doc=<?= $edit_rd['id'] ?>" target="_blank">🖨 Print Preview</a>
+      </div>
+    </div>
     <?php if (isManager() || $edit_rd['created_by'] == $user['id']): ?>
     <form method="POST" onsubmit="return confirm('Delete this document?')" style="display:inline">
       <input type="hidden" name="action" value="delete_rich">
@@ -560,7 +568,15 @@ function submitEditorForm() {
   </div>
   <div class="rdoc-actions">
     <a href="documents.php?tab=editor&edit=<?= $rd['id'] ?>" class="btn btn-ghost btn-sm" title="Edit">✎ Edit</a>
-    <a href="documents.php?print_doc=<?= $rd['id'] ?>" target="_blank" class="btn btn-ghost btn-sm" title="Print/Export PDF">🖨</a>
+    <div class="dropdown" style="display:inline-block">
+      <button class="btn btn-ghost btn-sm" onclick="toggleDropdown('exp<?= $rd['id'] ?>')">↓ Export</button>
+      <div class="dropdown-menu" id="exp<?= $rd['id'] ?>" style="right:0">
+        <a class="dropdown-item" href="export_doc.php?id=<?= $rd['id'] ?>&format=pdf" target="_blank">📕 PDF</a>
+        <a class="dropdown-item" href="export_doc.php?id=<?= $rd['id'] ?>&format=docx">📘 DOCX</a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="documents.php?print_doc=<?= $rd['id'] ?>" target="_blank">🖨 Print</a>
+      </div>
+    </div>
     <?php if (isManager() || $rd['created_by'] == $user['id']): ?>
     <form method="POST" onsubmit="return confirm('Delete document?')" style="display:inline">
       <input type="hidden" name="action" value="delete_rich">

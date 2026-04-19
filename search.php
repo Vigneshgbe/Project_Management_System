@@ -198,8 +198,24 @@ renderLayout('Search', 'search');
 }
 .saved-name:hover{color:var(--orange)}
 
-/* External search */
-.ext-search-card{
+/* External search engine tabs */
+.ws-tab{
+  flex:1;min-width:80px;padding:8px 6px;background:var(--bg3);border:none;
+  border-right:1px solid var(--border);color:var(--text2);font-size:12px;
+  font-weight:600;cursor:pointer;transition:background .15s,color .15s;
+  font-family:var(--font);position:relative;display:flex;align-items:center;
+  justify-content:center;gap:4px;flex-wrap:wrap;
+}
+.ws-tab:last-child{border-right:none}
+.ws-tab:hover{background:var(--bg4);color:var(--text)}
+.ws-tab.active{background:var(--orange);color:#fff}
+.ws-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;letter-spacing:.03em}
+.ws-badge.embed{background:rgba(16,185,129,.2);color:#10b981}
+.ws-badge.newtab{background:rgba(148,163,184,.2);color:var(--text3)}
+.ws-tab.active .ws-badge.embed{background:rgba(255,255,255,.25);color:#fff}
+.ws-tab.active .ws-badge.newtab{background:rgba(255,255,255,.2);color:#fff}
+
+
   background:var(--bg2);border:1px solid var(--border);
   border-radius:var(--radius-lg);padding:18px 20px;
   margin-top:16px;
@@ -359,31 +375,94 @@ renderLayout('Search', 'search');
       </div>
     </div>
 
-    <!-- EXTERNAL SEARCH (opens new tab — safe, no data sent) -->
+    <!-- EXTERNAL SEARCH — iframe where legally allowed, new-tab otherwise -->
     <div class="ext-search-card" id="ext-card">
-      <div class="ext-search-title">
-        🌐 Web Search
-        <span style="font-size:11px;font-weight:400;color:var(--green)">🔒 No CRM data is sent</span>
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div class="ext-search-title">🌐 Web Search</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)">
+          <span style="color:var(--green);font-size:13px">🔒</span>
+          Your CRM data is never sent to any search engine
+        </div>
       </div>
-      <div class="ext-search-notice">
-        Need to look something up externally? Type your question below — it opens in a
-        <strong>new tab</strong> using the search engine of your choice.
-        Your CRM session, data, and URLs are never shared.
+
+      <!-- Engine selector tabs -->
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px;flex-wrap:wrap">
+        <!-- EMBEDDABLE (iframe) -->
+        <button class="ws-tab active" id="tab-startpage" onclick="selectEngine('startpage')"
+          title="✅ Legally embeddable — Startpage's own embed policy allows this">
+          🔎 Startpage
+          <span class="ws-badge embed">Inline</span>
+        </button>
+        <button class="ws-tab" id="tab-wiki" onclick="selectEngine('wiki')"
+          title="✅ Wikipedia mobile — CC BY-SA licence, allows embedding">
+          📖 Wikipedia
+          <span class="ws-badge embed">Inline</span>
+        </button>
+        <!-- NEW TAB ONLY -->
+        <button class="ws-tab" id="tab-brave" onclick="selectEngine('brave')"
+          title="Opens in new tab — Brave's SAMEORIGIN header prevents iframes">
+          🦁 Brave
+          <span class="ws-badge newtab">↗ Tab</span>
+        </button>
+        <button class="ws-tab" id="tab-ecosia" onclick="selectEngine('ecosia')"
+          title="Opens in new tab — Ecosia ToS prohibits framing">
+          🌿 Ecosia
+          <span class="ws-badge newtab">↗ Tab</span>
+        </button>
+        <button class="ws-tab" id="tab-bing" onclick="selectEngine('bing')"
+          title="Opens in new tab — Microsoft ToS prohibits framing Bing">
+          🔵 Bing
+          <span class="ws-badge newtab">↗ Tab</span>
+        </button>
       </div>
-      <input type="text" class="ext-search-input" id="ext-q"
-        placeholder="Ask anything externally… e.g. 'PHP best practices'"
-        onkeydown="if(event.key==='Enter')openExtSearch()">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="ext-btn primary-ext" onclick="openExtSearch('brave')">🦁 Brave Search</button>
-        <button class="ext-btn" onclick="openExtSearch('startpage')">🔎 Startpage</button>
-        <button class="ext-btn" onclick="openExtSearch('ecosia')">🌿 Ecosia</button>
-        <button class="ext-btn" onclick="openExtSearch('wiki')">📖 Wikipedia</button>
+
+      <!-- Search input row -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" class="ext-search-input" id="ext-q"
+          style="flex:1;margin-bottom:0"
+          placeholder="Search the web…"
+          onkeydown="if(event.key==='Enter')doWebSearch()"
+          value="<?= h($q) ?>">
+        <button class="ext-btn primary-ext" onclick="doWebSearch()" style="white-space:nowrap">Search</button>
       </div>
-      <div style="margin-top:10px;font-size:11.5px;color:var(--text3);line-height:1.5">
-        <strong>Brave</strong> & <strong>Startpage</strong>: Privacy-first, no tracking, legally compliant. &nbsp;
-        <strong>Ecosia</strong>: Plants trees with ad revenue. &nbsp;
-        <strong>Wikipedia</strong>: Reference lookups.
+
+      <!-- Legal status notice -->
+      <div id="ws-notice" style="font-size:11.5px;color:var(--text3);margin-bottom:10px;padding:7px 10px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--green)">
+        <strong style="color:var(--green)">✅ Inline (Startpage):</strong>
+        Startpage's own embed policy permits iframe use. Results load below — no CRM data sent.
       </div>
+
+      <!-- IFRAME AREA (Startpage + Wikipedia only) -->
+      <div id="ws-frame-wrap" style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:none;position:relative">
+        <div id="ws-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg3);z-index:2;font-size:13px;color:var(--text3)">
+          <span>⏳ Loading results…</span>
+        </div>
+        <iframe
+          id="ws-frame"
+          src="about:blank"
+          style="width:100%;height:520px;border:none;display:block"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+          referrerpolicy="no-referrer"
+          loading="lazy"
+          title="External web search — sandboxed">
+        </iframe>
+      </div>
+
+      <!-- NEW-TAB fallback message -->
+      <div id="ws-newtab-msg" style="display:none;padding:14px;background:var(--bg3);border-radius:var(--radius);text-align:center;border:1px dashed var(--border)">
+        <div style="font-size:16px;margin-bottom:6px" id="ws-newtab-icon">🦁</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px" id="ws-newtab-name">Brave Search</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="ws-newtab-reason">
+          Uses <code>SAMEORIGIN</code> header — inline embedding is technically blocked.
+        </div>
+        <button class="ext-btn primary-ext" id="ws-newtab-btn" onclick="">↗ Open in New Tab</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">
+          Opens with <code>noopener,noreferrer</code> — your CRM session is fully isolated
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -507,7 +586,9 @@ function doSearch(){
   var to       = document.getElementById('f-to')?.value       || '';
 
   history.replaceState(null,'','search.php?q='+encodeURIComponent(q)+'&type='+CTYPE);
-  document.getElementById('ext-q').value = q;
+  // Sync to web search box (but don't auto-trigger web search)
+  var extQ = document.getElementById('ext-q');
+  if (extQ && !extQ.value) extQ.value = q;
   showLoading();
 
   var params = new URLSearchParams({
@@ -674,18 +755,94 @@ function clearFilters(){
   if(CQ) doSearch();
 }
 
-// ── EXTERNAL SEARCH (new tab — no data leakage) ──
-function openExtSearch(engine){
+// ── WEB SEARCH ENGINE CONFIG ──
+var WS_ENGINES = {
+  startpage: {
+    name: 'Startpage', icon: '🔎',
+    iframe: true,
+    // Startpage iframe embed — their embed policy permits this
+    url: 'https://www.startpage.com/search?q=',
+    notice: '<strong style="color:var(--green)">✅ Inline (Startpage):</strong> Startpage\'s embed policy permits iframe use. No tracking, no CRM data sent.',
+    reason: ''
+  },
+  wiki: {
+    name: 'Wikipedia', icon: '📖',
+    iframe: true,
+    // Wikipedia mobile — CC BY-SA licence, no XFO restriction on mobile subdomain
+    url: 'https://en.m.wikipedia.org/w/index.php?search=',
+    notice: '<strong style="color:var(--green)">✅ Inline (Wikipedia):</strong> Wikipedia content is CC BY-SA licensed. Mobile site allows embedding. Reference lookups only.',
+    reason: ''
+  },
+  brave: {
+    name: 'Brave Search', icon: '🦁',
+    iframe: false,
+    url: 'https://search.brave.com/search?q=',
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Brave):</strong> Brave uses a SAMEORIGIN header — inline embedding is technically blocked. Opens in isolated new tab.',
+    reason: 'Uses <code>SAMEORIGIN</code> header — inline embedding blocked by browser security.'
+  },
+  ecosia: {
+    name: 'Ecosia', icon: '🌿',
+    iframe: false,
+    url: 'https://www.ecosia.org/search?q=',
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Ecosia):</strong> Ecosia\'s ToS does not permit framing. Opens in isolated new tab with noopener,noreferrer.',
+    reason: 'ToS does not permit framing. Opens securely in new tab.'
+  },
+};
+
+var WS_ACTIVE = 'startpage';
+
+function selectEngine(key) {
+  WS_ACTIVE = key;
+  // Update tab active state
+  Object.keys(WS_ENGINES).forEach(function(k) {
+    var btn = document.getElementById('tab-' + k);
+    if (btn) btn.classList.toggle('active', k === key);
+  });
+  // Update notice
+  var eng = WS_ENGINES[key];
+  document.getElementById('ws-notice').innerHTML = eng.notice;
+  // Update notice border colour
+  var noticeBorder = eng.iframe ? 'var(--green)' : 'var(--orange)';
+  document.getElementById('ws-notice').style.borderLeftColor = noticeBorder;
+  // If a search has been run, re-run for new engine
   var q = document.getElementById('ext-q').value.trim();
-  if (!q){ toast('Enter a search query first','error'); return; }
-  var urls = {
-    brave:     'https://search.brave.com/search?q=',
-    startpage: 'https://www.startpage.com/search?q=',
-    ecosia:    'https://www.ecosia.org/search?q=',
-    wiki:      'https://en.wikipedia.org/w/index.php?search='
-  };
-  var base = urls[engine] || urls.brave;
-  window.open(base + encodeURIComponent(q), '_blank', 'noopener,noreferrer');
+  if (q) doWebSearch();
+  else {
+    // Reset both panels
+    document.getElementById('ws-frame-wrap').style.display = 'none';
+    document.getElementById('ws-newtab-msg').style.display = 'none';
+  }
+}
+
+function doWebSearch() {
+  var q = document.getElementById('ext-q').value.trim();
+  if (!q) { toast('Enter a web search query', 'error'); return; }
+  var eng = WS_ENGINES[WS_ACTIVE];
+  var fullUrl = eng.url + encodeURIComponent(q);
+
+  if (eng.iframe) {
+    // Show iframe panel, hide new-tab panel
+    document.getElementById('ws-newtab-msg').style.display = 'none';
+    document.getElementById('ws-frame-wrap').style.display = 'block';
+    document.getElementById('ws-loading').style.display = 'flex';
+    var frame = document.getElementById('ws-frame');
+    frame.onload = function() {
+      document.getElementById('ws-loading').style.display = 'none';
+    };
+    frame.src = fullUrl;
+  } else {
+    // Hide iframe, show new-tab panel
+    document.getElementById('ws-frame-wrap').style.display = 'none';
+    document.getElementById('ws-newtab-msg').style.display = 'block';
+    document.getElementById('ws-newtab-icon').textContent  = eng.icon;
+    document.getElementById('ws-newtab-name').textContent  = eng.name + ' — "' + q + '"';
+    document.getElementById('ws-newtab-reason').innerHTML  = eng.reason;
+    var openBtn = document.getElementById('ws-newtab-btn');
+    openBtn.textContent = '↗ Open "' + q + '" in ' + eng.name;
+    openBtn.onclick = function() {
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    };
+  }
 }
 
 // ── UTILS ──

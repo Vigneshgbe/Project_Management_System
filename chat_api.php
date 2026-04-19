@@ -56,7 +56,7 @@ function fmtMsg(array $r, int $me): array {
         'time'      => date('g:ia', strtotime($r['created_at'])),
         'date'      => date('M j', strtotime($r['created_at'])),
         'iso'       => $r['created_at'],
-        'reactions' => json_decode($r['reactions'] ?? '[]', true) ?: [],
+        'reactions' => parseReactions($r['reactions'] ?? ''),
         'reply_count'=> (int)($r['reply_count'] ?? 0),
     ];
 }
@@ -78,10 +78,40 @@ function renderBody(string $body): string {
     return nl2br($body);
 }
 
+// ── parse GROUP_CONCAT reactions string ──
+function parseReactions(string $raw): array {
+    if (!$raw) return [];
+    $out = [];
+    foreach (explode('~', $raw) as $part) {
+        $bits = explode('|', $part);
+        if (count($bits) >= 3) {
+            $out[] = [
+                'emoji' => $bits[0],
+                'cnt'   => (int)$bits[1],
+                'mine'  => (bool)$bits[2],
+            ];
+        }
+    }
+    return $out;
+}
+
 switch ($action) {
 
     // ══ GET CHANNELS (sidebar list) ══
     case 'get_channels':
+        // Auto-create #general if missing
+        $gen = $db->query("SELECT id FROM chat_channels WHERE type='general' AND name='general' LIMIT 1")->fetch_assoc();
+        if (!$gen) {
+            $db->query("INSERT INTO chat_channels (type,name,created_by) VALUES ('general','general',$uid)");
+            $gcid = $db->insert_id;
+            $active_users = $db->query("SELECT id FROM users WHERE status='active'")->fetch_all(MYSQLI_ASSOC);
+            foreach ($active_users as $au) {
+                $db->query("INSERT IGNORE INTO chat_members (channel_id,user_id) VALUES ($gcid,{$au['id']})");
+            }
+        } else {
+            // Ensure current user is in #general
+            $db->query("INSERT IGNORE INTO chat_members (channel_id,user_id) VALUES ({$gen['id']},$uid)");
+        }
         $rows = $db->query("
             SELECT cc.*, 
                 CASE WHEN cc.type='direct' THEN (
@@ -119,12 +149,11 @@ switch ($action) {
         $rows = $db->query("
             SELECT m.*, u.name AS user_name,
                 (SELECT COUNT(*) FROM chat_messages r WHERE r.parent_id=m.id AND r.deleted=0) AS reply_count,
-                (SELECT JSON_ARRAYAGG(JSON_OBJECT('emoji',emoji,'cnt',cnt,'mine',mine)) FROM (
-                    SELECT cr.emoji,COUNT(*) AS cnt,
-                        MAX(IF(cr.user_id=$uid,1,0)) AS mine
-                    FROM chat_reactions cr WHERE cr.message_id=m.id
-                    GROUP BY cr.emoji
-                ) rx) AS reactions
+                (SELECT GROUP_CONCAT(cr.emoji,'|',cnt_tbl.cnt,'|',cnt_tbl.mine ORDER BY cnt_tbl.cnt DESC SEPARATOR '~') FROM (
+                    SELECT cr2.emoji, COUNT(*) AS cnt, MAX(IF(cr2.user_id=$uid,1,0)) AS mine
+                    FROM chat_reactions cr2 WHERE cr2.message_id=m.id GROUP BY cr2.emoji
+                ) cnt_tbl JOIN (SELECT DISTINCT emoji FROM chat_reactions WHERE message_id=m.id) cr ON cr.emoji=cnt_tbl.emoji
+                ) AS reactions
             FROM chat_messages m
             JOIN users u ON u.id=m.user_id
             WHERE $where
@@ -173,7 +202,7 @@ switch ($action) {
         $mentions = parseMentions($body, $db);
         if ($mentions) {
             foreach ($mentions as $muid) {
-                $db->query("INSERT IGNORE INTO activity_log (user_id,action,entity_type,entity_id,details) VALUES ($uid,'mentioned','chat_message',$mid,'User $muid')");
+                logActivity('mentioned in chat', 'chat_message', $mid, 'User '.$muid);
             }
         }
 

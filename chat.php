@@ -326,14 +326,24 @@ function api(params, method, cb) {
         url += '?' + new URLSearchParams(params).toString();
     } else {
         var fd = new FormData();
-        Object.keys(params).forEach(function(k) { fd.append(k, params[k]); });
+        Object.keys(params).forEach(function(k) {
+            // Don't append array values directly - they become "[object Object]"
+            if (Array.isArray(params[k])) {
+                params[k].forEach(function(v) { fd.append(k, v); });
+            } else {
+                fd.append(k, params[k] === null ? '' : params[k]);
+            }
+        });
         if (pendingFile && params.action === 'send') { fd.append('file', pendingFile); }
         opts.body = fd;
     }
     fetch(url, opts)
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(cb)
-        .catch(function(e) { console.error(e); });
+        .catch(function(e) { console.error('API error:', e); });
 }
 
 // ══ LOAD CHANNELS ══
@@ -389,7 +399,10 @@ function loadMessages(cid, append, before) {
     var params = { action: 'get_messages', channel_id: cid };
     if (before) params.before = before;
     api(params, 'GET', function(d) {
-        if (!d.ok) return;
+        if (!d.ok) {
+            console.error('get_messages error:', d.error);
+            return;
+        }
         var feed = document.getElementById('msg-feed');
         if (!append) {
             feed.innerHTML = '';
@@ -411,7 +424,19 @@ function loadMessages(cid, append, before) {
             appendMsg(feed, m);
         });
         if (!append) feed.scrollTop = feed.scrollHeight;
-        serverTime = d.messages.length ? d.messages[d.messages.length-1].iso : serverTime;
+        // Set serverTime: use last message time, or current time if no messages
+        if (d.messages.length) {
+            serverTime = d.messages[d.messages.length-1].iso;
+        } else if (!serverTime) {
+            // No messages yet - set serverTime to now so poll works for new messages
+            var now = new Date();
+            serverTime = now.getFullYear()+'-'+
+                String(now.getMonth()+1).padStart(2,'0')+'-'+
+                String(now.getDate()).padStart(2,'0')+' '+
+                String(now.getHours()).padStart(2,'0')+':'+
+                String(now.getMinutes()).padStart(2,'0')+':'+
+                String(now.getSeconds()).padStart(2,'0');
+        }
     });
 }
 
@@ -612,10 +637,18 @@ function createChannel() {
     var name = document.getElementById('new-chan-name').value.trim();
     if (!name) { toast('Name required', 'error'); return; }
     var members = Array.from(document.querySelectorAll('.new-chan-member:checked')).map(function(el){ return el.value; });
-    api({ action: 'create_channel', name: name, 'members[]': members }, 'POST', function(d) {
-        if (d.ok) { closeModal('modal-new-channel'); loadChannels(); openChannel(d.channel_id); }
-        else toast(d.error || 'Failed', 'error');
-    });
+    // Build FormData manually to correctly send array values
+    var fd = new FormData();
+    fd.append('action', 'create_channel');
+    fd.append('name', name);
+    members.forEach(function(m) { fd.append('members[]', m); });
+    fetch('chat_api.php', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) { closeModal('modal-new-channel'); loadChannels(); openChannel(d.channel_id); }
+            else toast(d.error || 'Failed', 'error');
+        })
+        .catch(function(e) { toast('Request failed', 'error'); });
 }
 
 // ══ FILE HANDLING ══

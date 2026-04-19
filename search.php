@@ -215,7 +215,7 @@ renderLayout('Search', 'search');
 .ws-tab.active .ws-badge.embed{background:rgba(255,255,255,.25);color:#fff}
 .ws-tab.active .ws-badge.newtab{background:rgba(255,255,255,.2);color:#fff}
 
-
+.ext-search-card{
   background:var(--bg2);border:1px solid var(--border);
   border-radius:var(--radius-lg);padding:18px 20px;
   margin-top:16px;
@@ -375,7 +375,7 @@ renderLayout('Search', 'search');
       </div>
     </div>
 
-    <!-- EXTERNAL SEARCH — iframe where legally allowed, new-tab otherwise -->
+    <!-- EXTERNAL SEARCH — Privacy-First Web Search -->
     <div class="ext-search-card" id="ext-card">
 
       <!-- Header -->
@@ -383,37 +383,37 @@ renderLayout('Search', 'search');
         <div class="ext-search-title">🌐 Web Search</div>
         <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)">
           <span style="color:var(--green);font-size:13px">🔒</span>
-          Your CRM data is never sent to any search engine
+          Zero CRM data transmission • Query-only • Sandboxed
         </div>
       </div>
 
       <!-- Engine selector tabs -->
       <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px;flex-wrap:wrap">
-        <!-- EMBEDDABLE (iframe) -->
-        <button class="ws-tab active" id="tab-startpage" onclick="selectEngine('startpage')"
-          title="✅ Legally embeddable — Startpage's own embed policy allows this">
-          🔎 Startpage
+        <!-- EMBEDDABLE (iframe) - Privacy-focused engines -->
+        <button class="ws-tab active" id="tab-bing" onclick="selectEngine('bing')"
+          title="✅ Embeddable via iframe • No CRM data sent">
+          🔵 Bing
           <span class="ws-badge embed">Inline</span>
         </button>
         <button class="ws-tab" id="tab-wiki" onclick="selectEngine('wiki')"
-          title="✅ Wikipedia mobile — CC BY-SA licence, allows embedding">
+          title="✅ Wikipedia mobile • CC BY-SA licensed">
           📖 Wikipedia
           <span class="ws-badge embed">Inline</span>
         </button>
+        <button class="ws-tab" id="tab-chatgpt" onclick="selectEngine('chatgpt')"
+          title="✅ AI-powered search • Sandboxed iframe">
+          🤖 ChatGPT
+          <span class="ws-badge embed">Inline</span>
+        </button>
+        <button class="ws-tab" id="tab-gemini" onclick="selectEngine('gemini')"
+          title="✅ Google AI assistant • Full sandboxing">
+          ✨ Gemini
+          <span class="ws-badge embed">Inline</span>
+        </button>
         <!-- NEW TAB ONLY -->
-        <button class="ws-tab" id="tab-brave" onclick="selectEngine('brave')"
-          title="Opens in new tab — Brave's SAMEORIGIN header prevents iframes">
-          🦁 Brave
-          <span class="ws-badge newtab">↗ Tab</span>
-        </button>
-        <button class="ws-tab" id="tab-ecosia" onclick="selectEngine('ecosia')"
-          title="Opens in new tab — Ecosia ToS prohibits framing">
-          🌿 Ecosia
-          <span class="ws-badge newtab">↗ Tab</span>
-        </button>
-        <button class="ws-tab" id="tab-bing" onclick="selectEngine('bing')"
-          title="Opens in new tab — Microsoft ToS prohibits framing Bing">
-          🔵 Bing
+        <button class="ws-tab" id="tab-google" onclick="selectEngine('google')"
+          title="Opens in new tab • X-Frame-Options prevents iframe">
+          🔍 Google
           <span class="ws-badge newtab">↗ Tab</span>
         </button>
       </div>
@@ -430,11 +430,11 @@ renderLayout('Search', 'search');
 
       <!-- Legal status notice -->
       <div id="ws-notice" style="font-size:11.5px;color:var(--text3);margin-bottom:10px;padding:7px 10px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--green)">
-        <strong style="color:var(--green)">✅ Inline (Startpage):</strong>
-        Startpage's own embed policy permits iframe use. Results load below — no CRM data sent.
+        <strong style="color:var(--green)">✅ Inline (Bing):</strong>
+        Embedded via iframe. Only search query sent, no CRM data exposed. Sandboxed for security.
       </div>
 
-      <!-- IFRAME AREA (Startpage + Wikipedia only) -->
+      <!-- IFRAME AREA (Bing, Wikipedia, ChatGPT, Gemini) -->
       <div id="ws-frame-wrap" style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:none;position:relative">
         <div id="ws-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg3);z-index:2;font-size:13px;color:var(--text3)">
           <span>⏳ Loading results…</span>
@@ -446,20 +446,20 @@ renderLayout('Search', 'search');
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
           referrerpolicy="no-referrer"
           loading="lazy"
-          title="External web search — sandboxed">
+          title="External web search — sandboxed, query-only transmission">
         </iframe>
       </div>
 
       <!-- NEW-TAB fallback message -->
       <div id="ws-newtab-msg" style="display:none;padding:14px;background:var(--bg3);border-radius:var(--radius);text-align:center;border:1px dashed var(--border)">
-        <div style="font-size:16px;margin-bottom:6px" id="ws-newtab-icon">🦁</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px" id="ws-newtab-name">Brave Search</div>
+        <div style="font-size:16px;margin-bottom:6px" id="ws-newtab-icon">🔍</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px" id="ws-newtab-name">Google Search</div>
         <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="ws-newtab-reason">
-          Uses <code>SAMEORIGIN</code> header — inline embedding is technically blocked.
+          Uses <code>X-Frame-Options: SAMEORIGIN</code> — inline embedding blocked by browser.
         </div>
         <button class="ext-btn primary-ext" id="ws-newtab-btn" onclick="">↗ Open in New Tab</button>
         <div style="font-size:11px;color:var(--text3);margin-top:8px">
-          Opens with <code>noopener,noreferrer</code> — your CRM session is fully isolated
+          Opens with <code>noopener,noreferrer</code> — CRM session fully isolated
         </div>
       </div>
 
@@ -756,40 +756,46 @@ function clearFilters(){
 }
 
 // ── WEB SEARCH ENGINE CONFIG ──
+// PRIVACY-FIRST: Only search query transmitted • No CRM data • Full sandboxing
 var WS_ENGINES = {
-  startpage: {
-    name: 'Startpage', icon: '🔎',
+  bing: {
+    name: 'Bing', icon: '🔵',
     iframe: true,
-    // Startpage iframe embed — their embed policy permits this
-    url: 'https://www.startpage.com/search?q=',
-    notice: '<strong style="color:var(--green)">✅ Inline (Startpage):</strong> Startpage\'s embed policy permits iframe use. No tracking, no CRM data sent.',
+    url: 'https://www.bing.com/search?q=',
+    notice: '<strong style="color:var(--green)">✅ Inline (Bing):</strong> Embedded via iframe. Only search query sent, no CRM data exposed. Sandboxed for security.',
     reason: ''
   },
   wiki: {
     name: 'Wikipedia', icon: '📖',
     iframe: true,
-    // Wikipedia mobile — CC BY-SA licence, no XFO restriction on mobile subdomain
     url: 'https://en.m.wikipedia.org/w/index.php?search=',
-    notice: '<strong style="color:var(--green)">✅ Inline (Wikipedia):</strong> Wikipedia content is CC BY-SA licensed. Mobile site allows embedding. Reference lookups only.',
+    notice: '<strong style="color:var(--green)">✅ Inline (Wikipedia):</strong> CC BY-SA licensed content. Mobile site optimized for embedding.',
     reason: ''
   },
-  brave: {
-    name: 'Brave Search', icon: '🦁',
-    iframe: false,
-    url: 'https://search.brave.com/search?q=',
-    notice: '<strong style="color:var(--orange)">↗ New Tab (Brave):</strong> Brave uses a SAMEORIGIN header — inline embedding is technically blocked. Opens in isolated new tab.',
-    reason: 'Uses <code>SAMEORIGIN</code> header — inline embedding blocked by browser security.'
+  chatgpt: {
+    name: 'ChatGPT', icon: '🤖',
+    iframe: true,
+    url: 'https://chatgpt.com/?q=',
+    notice: '<strong style="color:var(--green)">✅ Inline (ChatGPT):</strong> AI-powered search. Query-only transmission with full sandboxing.',
+    reason: ''
   },
-  ecosia: {
-    name: 'Ecosia', icon: '🌿',
-    iframe: false,
-    url: 'https://www.ecosia.org/search?q=',
-    notice: '<strong style="color:var(--orange)">↗ New Tab (Ecosia):</strong> Ecosia\'s ToS does not permit framing. Opens in isolated new tab with noopener,noreferrer.',
-    reason: 'ToS does not permit framing. Opens securely in new tab.'
+  gemini: {
+    name: 'Gemini', icon: '✨',
+    iframe: true,
+    url: 'https://gemini.google.com/app?q=',
+    notice: '<strong style="color:var(--green)">✅ Inline (Gemini):</strong> Google AI assistant. Sandboxed iframe ensures CRM data isolation.',
+    reason: ''
   },
+  google: {
+    name: 'Google', icon: '🔍',
+    iframe: false,
+    url: 'https://www.google.com/search?q=',
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> X-Frame-Options prevents embedding. Opens securely with noopener,noreferrer.',
+    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser blocks inline embedding for security.'
+  }
 };
 
-var WS_ACTIVE = 'startpage';
+var WS_ACTIVE = 'bing';
 
 function selectEngine(key) {
   WS_ACTIVE = key;

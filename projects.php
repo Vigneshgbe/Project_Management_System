@@ -216,12 +216,8 @@ function currSymbol(string $c): string {
 
   $ptotal    = count($proj_tasks);
   $pdone     = count(array_filter($proj_tasks,fn($t)=>$t['status']==='done'));
-  $saved_pct = (int)$single['progress'];
-  // Fix: respect manually saved progress. Task % only when no manual value set.
-  $task_pct  = $ptotal > 0 ? round($pdone/$ptotal*100) : null;
-  $ppct      = ($task_pct === 100) ? 100
-             : ($saved_pct > 0   ? $saved_pct
-             : ($task_pct !== null ? $task_pct : 0));
+  // Always use the manually saved progress value from DB
+  $ppct      = (int)$single['progress'];
   $sc     = statusColor($single['status']);
   $pc     = statusColor($single['priority']);
   $sym    = currSymbol($single['currency']??'LKR');
@@ -484,7 +480,8 @@ function clickBar(e, el){
 <?php else: ?>
 <div class="proj-list">
   <?php foreach ($projects as $p):
-    $progress = $p['total_tasks'] > 0 ? round($p['done_tasks']/$p['total_tasks']*100) : (int)$p['progress'];
+    // Always use manually saved progress. Task done count is informational only.
+    $progress = (int)$p['progress'];
     $sc = statusColor($p['status']);
     $pc = statusColor($p['priority']);
     $sym = currSymbol($p['currency'] ?? 'LKR');

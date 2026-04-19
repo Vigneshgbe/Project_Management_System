@@ -138,44 +138,90 @@ function currSymbol(string $c): string {
 ?>
 
 <style>
-/* PROJECT PAGE */
+/* ══ PROJECT LIST ══ */
 .proj-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+
 .proj-card{
-  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:0;overflow:hidden;cursor:pointer;
-  transition:border-color .18s,box-shadow .18s;display:flex;flex-direction:column
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;
+  display:flex;flex-direction:column;
+  transition:border-color .2s,box-shadow .2s,transform .15s;
+  position:relative;
 }
-.proj-card:hover{border-color:var(--border2);box-shadow:0 4px 18px rgba(0,0,0,.22)}
-.proj-card-top{padding:16px 18px 12px;flex:1}
-.proj-card-bar{height:4px;background:var(--bg4);position:relative;overflow:hidden}
-.proj-card-bar-fill{height:100%;background:var(--orange);transition:width .4s}
-.proj-card-bottom{padding:10px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg3)}
-.proj-status-strip{height:3px;width:100%;margin-bottom:12px;border-radius:99px}
+.proj-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--pc,#f97316);border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+}
+.proj-card:hover{
+  border-color:var(--pc,var(--border2));
+  box-shadow:0 8px 32px rgba(0,0,0,.22);
+  transform:translateY(-2px);
+}
+.proj-card:active{transform:translateY(0)}
+.proj-card-top{padding:20px 18px 14px;flex:1}
+.proj-card-bottom{
+  padding:10px 18px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg3);gap:8px;
+}
 
-/* progress control */
-.prog-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.prog-bar-bg{flex:1;height:8px;background:var(--bg4);border-radius:99px;overflow:hidden;cursor:pointer}
-.prog-bar-fill{height:100%;background:var(--orange);border-radius:99px;transition:width .3s}
-.prog-input{width:56px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;color:var(--text);font-size:12px;text-align:center}
+/* ══ PROGRESS CONTROL ══ */
+.prog-wrap{display:flex;align-items:center;gap:10px;margin-bottom:0}
+.prog-bar-bg{
+  flex:1;height:8px;background:var(--bg4);
+  border-radius:99px;overflow:hidden;cursor:pointer;
+}
+.prog-bar-fill{
+  height:100%;background:var(--orange);
+  border-radius:99px;transition:width .3s ease,background .3s ease;
+}
+.prog-input{
+  width:58px;background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);padding:5px 8px;
+  color:var(--text);font-size:12px;text-align:center;
+  transition:border-color .15s;
+  -moz-appearance:textfield;
+}
 .prog-input:focus{outline:none;border-color:var(--orange)}
+.prog-input::-webkit-inner-spin-button,
+.prog-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 
-/* single project */
+/* ══ SINGLE PROJECT VIEW ══ */
 .sp-grid{display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start}
-.sp-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
-.sp-meta-box{background:var(--bg3);border-radius:8px;padding:12px}
-.sp-meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.sp-meta-val{font-size:13px;font-weight:600;color:var(--text)}
+.sp-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.sp-meta-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:10px;padding:13px 14px;
+  transition:border-color .15s;
+}
+.sp-meta-box:hover{border-color:var(--border2)}
+.sp-meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.sp-meta-val{font-size:14px;font-weight:700;color:var(--text)}
+.task-tr{transition:background .12s}
+.task-tr:hover{background:var(--bg3)!important}
+.mem-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.mem-row:last-child{border-bottom:none}
+.sp-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.stat-pill{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.stat-pill:last-child{border-bottom:none}
+.stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
 @media(max-width:960px){.sp-grid{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:768px){.proj-list{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.sp-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.sp-meta{grid-template-columns:1fr 1fr}.proj-card-top{padding:16px 14px 12px}}
+}
 </style>
 
 <?php if ($single): // ════ SINGLE PROJECT VIEW ════
 
-  $ptotal = count($proj_tasks);
-  $pdone  = count(array_filter($proj_tasks,fn($t)=>$t['status']==='done'));
-  $ppct   = $ptotal > 0 ? round($pdone/$ptotal*100) : (int)$single['progress'];
+  $ptotal    = count($proj_tasks);
+  $pdone     = count(array_filter($proj_tasks,fn($t)=>$t['status']==='done'));
+  $saved_pct = (int)$single['progress'];
+  // Fix: respect manually saved progress. Task % only when no manual value set.
+  $task_pct  = $ptotal > 0 ? round($pdone/$ptotal*100) : null;
+  $ppct      = ($task_pct === 100) ? 100
+             : ($saved_pct > 0   ? $saved_pct
+             : ($task_pct !== null ? $task_pct : 0));
   $sc     = statusColor($single['status']);
   $pc     = statusColor($single['priority']);
   $sym    = currSymbol($single['currency']??'LKR');
@@ -240,24 +286,33 @@ function currSymbol(string $c): string {
       </div>
 
       <!-- Progress with inline edit -->
-      <div style="margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+      <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Progress</span>
         <span style="font-size:13px;font-weight:700;color:var(--orange)" id="pct-display"><?= $ppct ?>%</span>
       </div>
-      <div class="prog-wrap">
-        <div class="prog-bar-bg" onclick="clickBar(event,this)">
-          <div class="prog-bar-fill" id="prog-fill" style="width:<?= $ppct ?>%"></div>
+      <?php if (isManager()): ?>
+      <form method="POST" id="prog-form">
+        <input type="hidden" name="action" value="progress">
+        <input type="hidden" name="id" value="<?= $single['id'] ?>">
+        <div class="prog-wrap">
+          <div class="prog-bar-bg" onclick="clickBar(event,this)" style="cursor:pointer">
+            <div class="prog-bar-fill" id="prog-fill" style="width:<?= $ppct ?>%"></div>
+          </div>
+          <!-- Single input — name="progress" directly, no hidden field needed -->
+          <input type="number" class="prog-input" id="prog-val" name="progress"
+            value="<?= $ppct ?>" min="0" max="100"
+            oninput="syncProgress(this.value)">
+          <button type="submit" class="btn btn-primary btn-sm">Save</button>
         </div>
-        <input type="number" class="prog-input" id="prog-val" value="<?= $ppct ?>" min="0" max="100" onchange="syncProgress(this.value)" oninput="syncProgress(this.value)">
-        <?php if (isManager()): ?>
-        <form method="POST" id="prog-form" style="display:none">
-          <input type="hidden" name="action" value="progress">
-          <input type="hidden" name="id" value="<?= $single['id'] ?>">
-          <input type="hidden" name="progress" id="prog-hidden" value="<?= $ppct ?>">
-        </form>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveProgress()">Save</button>
-        <?php endif; ?>
+      </form>
+      <?php else: ?>
+      <div class="prog-wrap">
+        <div class="prog-bar-bg">
+          <div class="prog-bar-fill" style="width:<?= $ppct ?>%"></div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--orange)"><?= $ppct ?>%</span>
       </div>
+      <?php endif; ?>
     </div>
 
     <!-- Tasks -->
@@ -277,11 +332,11 @@ function currSymbol(string $c): string {
               $ts = statusColor($t['status']);
               $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d') && $t['status'] !== 'done';
             ?>
-            <tr onclick="location.href='tasks.php?edit=<?= $t['id'] ?>'" style="cursor:pointer">
+            <tr class="task-tr" onclick="location.href='tasks.php?edit=<?= $t['id'] ?>'" style="cursor:pointer">
               <td class="td-main"><?= priorityIcon($t['priority']) ?> <?= h($t['title']) ?></td>
-              <td style="font-size:12.5px"><?= h($t['assignee'] ?? '—') ?></td>
-              <td><span class="badge" style="background:<?= $ts ?>20;color:<?= $ts ?>"><?= h(str_replace('_',' ',$t['status'])) ?></span></td>
-              <td style="font-size:12.5px;<?= $overdue?'color:var(--red)':'' ?>"><?= fDate($t['due_date']) ?><?= $overdue?' ⚠':'' ?></td>
+              <td style="font-size:12.5px;color:var(--text2)"><?= h($t['assignee'] ?? '—') ?></td>
+              <td><span class="badge" style="background:<?= $ts ?>18;color:<?= $ts ?>;font-size:11px"><?= h(str_replace('_',' ',$t['status'])) ?></span></td>
+              <td style="font-size:12.5px;<?= $overdue?'color:var(--red);font-weight:600':'' ?>"><?= fDate($t['due_date']) ?><?= $overdue?' ⚠':'' ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
@@ -380,19 +435,22 @@ function currSymbol(string $c): string {
 
 <script>
 function syncProgress(val){
-  val=Math.max(0,Math.min(100,parseInt(val)||0));
-  document.getElementById('prog-fill').style.width=val+'%';
-  document.getElementById('pct-display').textContent=val+'%';
-  document.getElementById('prog-val').value=val;
-  document.getElementById('prog-hidden').value=val;
+  val = Math.max(0, Math.min(100, parseInt(val) || 0));
+  var fill = document.getElementById('prog-fill');
+  var disp = document.getElementById('pct-display');
+  // Don't overwrite the input itself — user is typing
+  if (fill) fill.style.width = val + '%';
+  if (disp) disp.textContent = val + '%';
+  // Update the progress bar color based on value
+  if (fill) fill.style.background = val >= 75 ? '#10b981' : val >= 40 ? '#f59e0b' : '#f97316';
 }
-function clickBar(e,el){
-  var rect=el.getBoundingClientRect();
-  var pct=Math.round((e.clientX-rect.left)/rect.width*100);
+function clickBar(e, el){
+  var rect = el.getBoundingClientRect();
+  var pct  = Math.round((e.clientX - rect.left) / rect.width * 100);
+  pct = Math.max(0, Math.min(100, pct));
+  var inp = document.getElementById('prog-val');
+  if (inp) inp.value = pct;
   syncProgress(pct);
-}
-function saveProgress(){
-  document.getElementById('prog-form').submit();
 }
 </script>
 
@@ -432,55 +490,52 @@ function saveProgress(){
     $sym = currSymbol($p['currency'] ?? 'LKR');
     $pbar_color = $progress >= 75 ? '#10b981' : ($progress >= 40 ? '#f59e0b' : '#f97316');
     $is_overdue = $p['due_date'] && $p['due_date'] < date('Y-m-d') && $p['status'] !== 'completed' && $p['status'] !== 'cancelled';
+    $status_icon = match($p['status']) { 'completed'=>'✅','cancelled'=>'🚫','on_hold'=>'⏸',default=>'📁' };
   ?>
-  <div class="proj-card" onclick="location.href='projects.php?view=<?= $p['id'] ?>'">
-    <!-- Status color strip -->
-    <div style="height:3px;background:<?= $sc ?>"></div>
+  <div class="proj-card" style="--pc:<?= $sc ?>" onclick="location.href='projects.php?view=<?= $p['id'] ?>'">
     <div class="proj-card-top">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+
+      <!-- Title row -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;font-family:var(--font-display);color:var(--text);margin-bottom:6px;line-height:1.2;word-break:break-word"><?= h($p['title']) ?></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <span class="badge" style="background:<?= $sc ?>18;color:<?= $sc ?>"><?= h(str_replace('_',' ',$p['status'])) ?></span>
-            <span class="badge" style="background:<?= $pc ?>18;color:<?= $pc ?>"><?= priorityIcon($p['priority']) ?> <?= ucfirst($p['priority']) ?></span>
+          <div style="font-size:15px;font-weight:700;font-family:var(--font-display);color:var(--text);margin-bottom:7px;line-height:1.3;word-break:break-word"><?= h($p['title']) ?></div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span class="badge" style="background:<?= $sc ?>18;color:<?= $sc ?>;font-size:11px"><?= ucfirst(str_replace('_',' ',$p['status'])) ?></span>
+            <span class="badge" style="background:<?= $pc ?>18;color:<?= $pc ?>;font-size:11px"><?= priorityIcon($p['priority']) ?> <?= ucfirst($p['priority']) ?></span>
           </div>
         </div>
-        <span style="font-size:20px;flex-shrink:0;opacity:.7"><?= $p['status']==='completed' ? '✅' : ($p['status']==='cancelled' ? '🚫' : ($p['status']==='on_hold' ? '⏸' : '📁')) ?></span>
+        <div style="width:34px;height:34px;border-radius:8px;background:<?= $sc ?>16;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0"><?= $status_icon ?></div>
       </div>
 
-      <?php if ($p['client_name']): ?>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:5px">
-        🏢 <span><?= h($p['client_name']) ?></span>
+      <!-- Client & Budget -->
+      <?php if ($p['client_name'] || $p['budget']): ?>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:11px">
+        <?php if ($p['client_name']): ?>
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px">🏢 <?= h($p['client_name']) ?></span>
+        <?php endif; ?>
+        <?php if ($p['budget']): ?>
+        <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;font-weight:600">💰 <?= $sym.number_format((float)$p['budget'],2) ?></span>
+        <?php endif; ?>
       </div>
       <?php endif; ?>
 
-      <?php if ($p['budget']): ?>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:8px">
-        💰 <span style="color:var(--text2);font-weight:600"><?= $sym.number_format((float)$p['budget'],2) ?></span>
+      <!-- Progress -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:10.5px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Progress</span>
+        <span style="font-size:12px;font-weight:800;color:<?= $pbar_color ?>"><?= $progress ?>%</span>
       </div>
-      <?php endif; ?>
-
-      <!-- Progress bar -->
-      <div style="margin-bottom:4px;display:flex;justify-content:space-between">
-        <span style="font-size:11px;color:var(--text3)">Progress</span>
-        <span style="font-size:11px;font-weight:700;color:<?= $pbar_color ?>"><?= $progress ?>%</span>
-      </div>
-      <div style="height:5px;background:var(--bg4);border-radius:99px;overflow:hidden;margin-bottom:0">
-        <div style="height:100%;width:<?= $progress ?>%;background:<?= $pbar_color ?>;border-radius:99px;transition:width .3s"></div>
+      <div style="height:5px;background:var(--bg4);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:<?= $progress ?>%;background:<?= $pbar_color ?>;border-radius:99px;transition:width .4s ease"></div>
       </div>
     </div>
 
-    <!-- Card footer -->
+    <!-- Footer -->
     <div class="proj-card-bottom">
       <span style="font-size:11.5px;color:var(--text3)">
-        📋 <?= $p['total_tasks'] ?> tasks &nbsp;·&nbsp; 👥 <?= $p['member_count'] ?>
+        📋 <?= $p['total_tasks'] ?> task<?= $p['total_tasks']!=1?'s':'' ?> &nbsp;·&nbsp; 👥 <?= $p['member_count'] ?>
       </span>
-      <span style="font-size:11.5px;color:<?= $is_overdue?'var(--red)':'var(--text3)' ?>">
-        <?php if ($p['due_date']): ?>
-          <?= $is_overdue ? '⚠ Overdue' : fDate($p['due_date'],'M j, Y') ?>
-        <?php else: ?>
-          No deadline
-        <?php endif; ?>
+      <span style="font-size:11.5px;font-weight:600;color:<?= $is_overdue?'var(--red)':'var(--text3)' ?>">
+        <?= $p['due_date'] ? ($is_overdue ? '⚠ Overdue' : fDate($p['due_date'],'M j, Y')) : 'No deadline' ?>
       </span>
     </div>
   </div>

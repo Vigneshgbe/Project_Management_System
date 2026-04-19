@@ -215,7 +215,7 @@ renderLayout('Search', 'search');
 .ws-tab.active .ws-badge.embed{background:rgba(255,255,255,.25);color:#fff}
 .ws-tab.active .ws-badge.newtab{background:rgba(255,255,255,.2);color:#fff}
 
-.ext-search-card{
+
   background:var(--bg2);border:1px solid var(--border);
   border-radius:var(--radius-lg);padding:18px 20px;
   margin-top:16px;
@@ -274,7 +274,6 @@ renderLayout('Search', 'search');
   .filter-bar{grid-template-columns:1fr}
   .srch-sidebar{grid-template-columns:1fr}
   .srch-field input{font-size:14px;padding:11px 44px}
-  .ws-tab{min-width:70px;font-size:11px;padding:7px 4px}
 }
 </style>
 
@@ -376,7 +375,7 @@ renderLayout('Search', 'search');
       </div>
     </div>
 
-    <!-- EXTERNAL SEARCH — Privacy-First Web Search -->
+    <!-- EXTERNAL SEARCH — iframe where legally allowed, new-tab otherwise -->
     <div class="ext-search-card" id="ext-card">
 
       <!-- Header -->
@@ -384,36 +383,36 @@ renderLayout('Search', 'search');
         <div class="ext-search-title">🌐 Web Search</div>
         <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3)">
           <span style="color:var(--green);font-size:13px">🔒</span>
-          Zero CRM data • Query-only • Strict referrer policy
+          Your CRM data is never sent to any search engine
         </div>
       </div>
 
       <!-- Engine selector tabs -->
       <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px;flex-wrap:wrap">
-        <!-- EMBEDDABLE (iframe) - Privacy-focused engines -->
+        <!-- INLINE EMBEDDABLE -->
         <button class="ws-tab active" id="tab-bing" onclick="selectEngine('bing')"
-          title="✅ Embeddable • Microsoft Bing Search">
+          title="✅ Bing — loads inline in this page">
           🔵 Bing
           <span class="ws-badge embed">Inline</span>
         </button>
         <button class="ws-tab" id="tab-wiki" onclick="selectEngine('wiki')"
-          title="✅ Wikipedia mobile • Free & Open">
+          title="✅ Wikipedia mobile — CC BY-SA, loads inline">
           📖 Wikipedia
           <span class="ws-badge embed">Inline</span>
         </button>
-        <button class="ws-tab" id="tab-ddg" onclick="selectEngine('ddg')"
-          title="✅ DuckDuckGo Lite • Privacy-focused">
-          🦆 DuckDuckGo
-          <span class="ws-badge embed">Inline</span>
-        </button>
-        <button class="ws-tab" id="tab-perplexity" onclick="selectEngine('perplexity')"
-          title="✅ AI-powered search • Embeddable">
-          🔮 Perplexity
-          <span class="ws-badge embed">Inline</span>
-        </button>
         <!-- NEW TAB ONLY -->
+        <button class="ws-tab" id="tab-brave" onclick="selectEngine('brave')"
+          title="Opens in new tab — SAMEORIGIN header blocks iframe">
+          🦁 Brave
+          <span class="ws-badge newtab">↗ Tab</span>
+        </button>
+        <button class="ws-tab" id="tab-ecosia" onclick="selectEngine('ecosia')"
+          title="Opens in new tab — ToS prohibits framing">
+          🌿 Ecosia
+          <span class="ws-badge newtab">↗ Tab</span>
+        </button>
         <button class="ws-tab" id="tab-google" onclick="selectEngine('google')"
-          title="Opens in new tab • X-Frame-Options blocks embedding">
+          title="Opens in new tab — SAMEORIGIN blocks iframe">
           🔍 Google
           <span class="ws-badge newtab">↗ Tab</span>
         </button>
@@ -429,13 +428,12 @@ renderLayout('Search', 'search');
         <button class="ext-btn primary-ext" onclick="doWebSearch()" style="white-space:nowrap">Search</button>
       </div>
 
-      <!-- Privacy notice -->
       <div id="ws-notice" style="font-size:11.5px;color:var(--text3);margin-bottom:10px;padding:7px 10px;background:var(--bg3);border-radius:var(--radius-sm);border-left:3px solid var(--green)">
         <strong style="color:var(--green)">✅ Inline (Bing):</strong>
-        Embedded via iframe. Only search query sent, no CRM data exposed. Strict referrer policy enforced.
+        Loads directly in this page. Only your search query is sent — no CRM data transmitted.
       </div>
 
-      <!-- IFRAME AREA (for embeddable engines) -->
+      <!-- IFRAME AREA (Startpage + Wikipedia only) -->
       <div id="ws-frame-wrap" style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:none;position:relative">
         <div id="ws-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg3);z-index:2;font-size:13px;color:var(--text3)">
           <span>⏳ Loading results…</span>
@@ -447,20 +445,20 @@ renderLayout('Search', 'search');
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
           referrerpolicy="no-referrer"
           loading="lazy"
-          title="External web search — sandboxed, query-only">
+          title="External web search — sandboxed">
         </iframe>
       </div>
 
       <!-- NEW-TAB fallback message -->
       <div id="ws-newtab-msg" style="display:none;padding:14px;background:var(--bg3);border-radius:var(--radius);text-align:center;border:1px dashed var(--border)">
-        <div style="font-size:16px;margin-bottom:6px" id="ws-newtab-icon">🔍</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px" id="ws-newtab-name">Google Search</div>
+        <div style="font-size:16px;margin-bottom:6px" id="ws-newtab-icon">🦁</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px" id="ws-newtab-name">Brave Search</div>
         <div style="font-size:12px;color:var(--text3);margin-bottom:10px" id="ws-newtab-reason">
-          Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser blocks inline embedding.
+          Uses <code>SAMEORIGIN</code> header — inline embedding is technically blocked.
         </div>
         <button class="ext-btn primary-ext" id="ws-newtab-btn" onclick="">↗ Open in New Tab</button>
         <div style="font-size:11px;color:var(--text3);margin-top:8px">
-          Opens with <code>noopener,noreferrer</code> — CRM session isolated
+          Opens with <code>noopener,noreferrer</code> — your CRM session is fully isolated
         </div>
       </div>
 
@@ -756,71 +754,42 @@ function clearFilters(){
   if(CQ) doSearch();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// WEB SEARCH ENGINE CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════
-
+// ── WEB SEARCH ENGINE CONFIG ──
 var WS_ENGINES = {
-  // ── BING ──
-  // Legal: Microsoft allows iframe embedding of Bing search
-  // Privacy: Clean URL, no tracking params sent from CRM
   bing: {
-    name: 'Bing', 
-    icon: '🔵',
+    name: 'Bing', icon: '🔵',
     iframe: true,
     url: 'https://www.bing.com/search?q=',
-    notice: '<strong style="color:var(--green)">✅ Inline (Bing):</strong> Microsoft search engine. Only query sent via URL, strict no-referrer policy.',
+    notice: '<strong style="color:var(--green)">✅ Inline (Bing):</strong> Loads directly here. Only search query sent — no CRM data transmitted.',
     reason: ''
   },
-
-  // ── WIKIPEDIA ──
-  // Legal: Wikipedia mobile site, CC BY-SA licensed
-  // Privacy: No tracking, open content, mobile-optimized
   wiki: {
-    name: 'Wikipedia', 
-    icon: '📖',
+    name: 'Wikipedia', icon: '📖',
     iframe: true,
     url: 'https://en.m.wikipedia.org/w/index.php?search=',
-    notice: '<strong style="color:var(--green)">✅ Inline (Wikipedia):</strong> Free encyclopedia with CC BY-SA license. Zero tracking, query-only.',
+    notice: '<strong style="color:var(--green)">✅ Inline (Wikipedia):</strong> CC BY-SA licensed, zero tracking. Mobile site loads inline.',
     reason: ''
   },
-
-  // ── DUCKDUCKGO LITE ──
-  // Legal: DuckDuckGo Lite version designed for embedding
-  // Privacy: Privacy-first search engine, no user tracking
-  // Note: Using lite.duckduckgo.com which allows iframe embedding
-  ddg: {
-    name: 'DuckDuckGo', 
-    icon: '🦆',
+  brave: {
+    name: 'Brave Search', icon: '🦁',
     iframe: false,
-    url: 'https://lite.duckduckgo.com/lite/?q=',
-    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> Privacy-focused search with lite interface. No tracking, query-only transmission.',
-    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser security blocks iframe embedding.'
+    url: 'https://search.brave.com/search?q=',
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Brave):</strong> SAMEORIGIN header blocks inline embedding. Opens in an isolated new tab.',
+    reason: 'SAMEORIGIN header — browser blocks iframe. Opens securely in new tab.'
   },
-
-  // ── PERPLEXITY AI ──
-  // Legal: Perplexity.ai allows embedding via their public interface
-  // Privacy: AI-powered search, query transmitted via URL
-  // Note: Using their public search interface
-  perplexity: {
-    name: 'Perplexity', 
-    icon: '🔮',
+  ecosia: {
+    name: 'Ecosia', icon: '🌿',
     iframe: false,
-    url: 'https://www.perplexity.ai/search?q=',
-    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> AI-powered search engine. Query-only, no CRM data shared.',
-    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser security blocks iframe embedding.'
+    url: 'https://www.ecosia.org/search?q=',
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Ecosia):</strong> ToS prohibits framing. Opens in an isolated new tab with noopener,noreferrer.',
+    reason: 'ToS prohibits framing. Opens securely in new tab.'
   },
-
-  // ── GOOGLE (New Tab Only) ──
-  // Legal: Google search, but X-Frame-Options prevents embedding
-  // Privacy: Opens in isolated tab with noopener,noreferrer
   google: {
-    name: 'Google', 
-    icon: '🔍',
+    name: 'Google', icon: '🔍',
     iframe: false,
     url: 'https://www.google.com/search?q=',
-    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> X-Frame-Options prevents embedding. Opens in isolated tab.',
-    reason: 'Uses <code>X-Frame-Options: SAMEORIGIN</code> — browser security blocks iframe embedding.'
+    notice: '<strong style="color:var(--orange)">↗ New Tab (Google):</strong> SAMEORIGIN header blocks inline embedding. Opens in an isolated new tab.',
+    reason: 'SAMEORIGIN header — browser blocks iframe. Opens securely in new tab.'
   }
 };
 
@@ -828,26 +797,21 @@ var WS_ACTIVE = 'bing';
 
 function selectEngine(key) {
   WS_ACTIVE = key;
-  
   // Update tab active state
   Object.keys(WS_ENGINES).forEach(function(k) {
     var btn = document.getElementById('tab-' + k);
     if (btn) btn.classList.toggle('active', k === key);
   });
-  
   // Update notice
   var eng = WS_ENGINES[key];
   document.getElementById('ws-notice').innerHTML = eng.notice;
-  
-  // Update notice border color
+  // Update notice border colour
   var noticeBorder = eng.iframe ? 'var(--green)' : 'var(--orange)';
   document.getElementById('ws-notice').style.borderLeftColor = noticeBorder;
-  
   // If a search has been run, re-run for new engine
   var q = document.getElementById('ext-q').value.trim();
-  if (q) {
-    doWebSearch();
-  } else {
+  if (q) doWebSearch();
+  else {
     // Reset both panels
     document.getElementById('ws-frame-wrap').style.display = 'none';
     document.getElementById('ws-newtab-msg').style.display = 'none';
@@ -856,64 +820,38 @@ function selectEngine(key) {
 
 function doWebSearch() {
   var q = document.getElementById('ext-q').value.trim();
-  if (!q) { 
-    toast('Enter a web search query', 'error'); 
-    return; 
-  }
-  
+  if (!q) { toast('Enter a web search query', 'error'); return; }
   var eng = WS_ENGINES[WS_ACTIVE];
-  
-  // SECURITY: Only query parameter sent, no CRM data
   var fullUrl = eng.url + encodeURIComponent(q);
 
   if (eng.iframe) {
-    // IFRAME MODE (Bing, Wikipedia, DuckDuckGo, Perplexity)
+    // Show iframe panel, hide new-tab panel
     document.getElementById('ws-newtab-msg').style.display = 'none';
     document.getElementById('ws-frame-wrap').style.display = 'block';
     document.getElementById('ws-loading').style.display = 'flex';
-    
     var frame = document.getElementById('ws-frame');
-    
     frame.onload = function() {
       document.getElementById('ws-loading').style.display = 'none';
     };
-    
-    // PRIVACY: referrerpolicy="no-referrer" already set in HTML
-    // This ensures no CRM domain/path information is sent to search engine
     frame.src = fullUrl;
-    
   } else {
-    // NEW TAB MODE (Google, etc.)
+    // Hide iframe, show new-tab panel
     document.getElementById('ws-frame-wrap').style.display = 'none';
     document.getElementById('ws-newtab-msg').style.display = 'block';
-    document.getElementById('ws-newtab-icon').textContent = eng.icon;
-    document.getElementById('ws-newtab-name').textContent = eng.name + ' — "' + q + '"';
-    document.getElementById('ws-newtab-reason').innerHTML = eng.reason;
-    
+    document.getElementById('ws-newtab-icon').textContent  = eng.icon;
+    document.getElementById('ws-newtab-name').textContent  = eng.name + ' — "' + q + '"';
+    document.getElementById('ws-newtab-reason').innerHTML  = eng.reason;
     var openBtn = document.getElementById('ws-newtab-btn');
     openBtn.textContent = '↗ Open "' + q + '" in ' + eng.name;
     openBtn.onclick = function() {
-      // SECURITY: noopener,noreferrer prevents:
-      // • window.opener access (no CRM session access)
-      // • Referrer header (no CRM domain leaked)
       window.open(fullUrl, '_blank', 'noopener,noreferrer');
     };
   }
 }
 
 // ── UTILS ──
-function esc(s){ 
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); 
-}
-function escAttr(s){ 
-  return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); 
-}
-
-// Toast notification (if not defined elsewhere)
-function toast(msg, type) {
-  console.log('[' + type + '] ' + msg);
-  // Implement your toast UI here if needed
-}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 </script>
 
 <?php renderLayoutEnd(); ?>

@@ -388,6 +388,11 @@ function openChannel(cid) {
     });
     document.getElementById('chat-input-area').style.display = '';
     document.getElementById('msg-input').placeholder = 'Message… (@ to mention)';
+    // Clear feed immediately (synchronous) before async load
+    var feed = document.getElementById('msg-feed');
+    feed.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:20px;margin-bottom:6px">⏳</div><div style="font-size:13px">Loading messages…</div></div>';
+    msgIndex = {};
+    serverTime = null; // Reset poll timer for new channel
     // Load messages
     loadMessages(cid, false);
     // Update URL
@@ -401,6 +406,8 @@ function loadMessages(cid, append, before) {
     api(params, 'GET', function(d) {
         if (!d.ok) {
             console.error('get_messages error:', d.error);
+            var feed = document.getElementById('msg-feed');
+            feed.innerHTML = '<div style="text-align:center;padding:30px;color:var(--red)">⚠ ' + (d.error || 'Failed to load messages') + '</div>';
             return;
         }
         var feed = document.getElementById('msg-feed');
@@ -518,6 +525,9 @@ function sendMessage() {
             appendMsg(feed, d.message);
             feed.scrollTop = feed.scrollHeight;
             serverTime = d.message.iso;
+        } else {
+            // Fallback: reload all messages if no message returned
+            loadMessages(CID, false);
         }
     });
 }

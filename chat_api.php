@@ -79,16 +79,16 @@ function renderBody(string $body): string {
 }
 
 // ── parse GROUP_CONCAT reactions string ──
-function parseReactions(string $raw): array {
+function parseReactions(?string $raw): array {
     if (!$raw) return [];
     $out = [];
-    foreach (explode('~', $raw) as $part) {
-        $bits = explode('|', $part);
+    foreach (explode(';;', $raw) as $part) {
+        $bits = explode('||', $part);
         if (count($bits) >= 3) {
             $out[] = [
                 'emoji' => $bits[0],
                 'cnt'   => (int)$bits[1],
-                'mine'  => (bool)$bits[2],
+                'mine'  => (bool)(int)$bits[2],
             ];
         }
     }
@@ -146,19 +146,25 @@ switch ($action) {
             : "m.channel_id=$cid AND m.parent_id IS NULL AND m.deleted=0";
         if ($before) $where .= " AND m.id < $before";
 
-        $rows = $db->query("
-            SELECT m.*, u.name AS user_name,
+        $sql = "
+            SELECT m.id, m.channel_id, m.user_id, m.parent_id, m.body,
+                   m.file_url, m.file_name, m.file_size, m.edited, m.deleted,
+                   m.created_at, m.updated_at,
+                   u.name AS user_name,
                 (SELECT COUNT(*) FROM chat_messages r WHERE r.parent_id=m.id AND r.deleted=0) AS reply_count,
-                (SELECT GROUP_CONCAT(cr.emoji,'|',cnt_tbl.cnt,'|',cnt_tbl.mine ORDER BY cnt_tbl.cnt DESC SEPARATOR '~') FROM (
-                    SELECT cr2.emoji, COUNT(*) AS cnt, MAX(IF(cr2.user_id=$uid,1,0)) AS mine
-                    FROM chat_reactions cr2 WHERE cr2.message_id=m.id GROUP BY cr2.emoji
-                ) cnt_tbl JOIN (SELECT DISTINCT emoji FROM chat_reactions WHERE message_id=m.id) cr ON cr.emoji=cnt_tbl.emoji
+                (SELECT GROUP_CONCAT(emoji,'||',cnt,'||',mine ORDER BY cnt DESC SEPARATOR ';;')
+                 FROM (
+                    SELECT emoji, COUNT(*) AS cnt, MAX(IF(user_id=$uid,1,0)) AS mine
+                    FROM chat_reactions WHERE message_id=m.id GROUP BY emoji
+                 ) react_agg
                 ) AS reactions
             FROM chat_messages m
             JOIN users u ON u.id=m.user_id
             WHERE $where
-            ORDER BY m.created_at DESC LIMIT 40
-        ")->fetch_all(MYSQLI_ASSOC);
+            ORDER BY m.created_at DESC LIMIT 40";
+        $result = $db->query($sql);
+        if (!$result) { err('DB error: ' . $db->error); }
+        $rows = $result->fetch_all(MYSQLI_ASSOC);
 
         // Mark as read
         $db->query("UPDATE chat_members SET last_read=NOW() WHERE channel_id=$cid AND user_id=$uid");

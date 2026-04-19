@@ -12,7 +12,6 @@ function renderLayout(string $pageTitle, string $activePage): void {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= h($pageTitle) ?> — Padak CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="icon" type="image/png" href="https://thepadak.com/index_assets/padak_p.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -243,6 +242,9 @@ select.form-control{cursor:pointer}
     <a href="calendar.php" class="nav-item <?= $activePage==='calendar'?'active':'' ?>">
       <span class="icon">📅</span> Calendar
     </a>
+    <a href="chat.php" class="nav-item <?= $activePage==='chat'?'active':'' ?>">
+      <span class="icon">💬</span> Chat
+    </a>
     <div class="nav-label" style="margin-top:12px">Resources</div>
     <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
       <span class="icon">📄</span> Documents
@@ -253,7 +255,7 @@ select.form-control{cursor:pointer}
     <?php if (isManager()): ?>
     <div class="nav-label" style="margin-top:12px">Business</div>
     <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
-      <span class="icon">🎯</span> Leads
+      <span class="icon">🎯</span> Leads Pipeline
     </a>
     <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
       <span class="icon">💰</span> Expenses

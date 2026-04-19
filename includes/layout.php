@@ -108,25 +108,6 @@ input,select,textarea{font-family:var(--font)}
 .btn-icon{padding:7px;gap:0}
 #hamburger{display:none;background:none;border:none;color:var(--text);font-size:20px;padding:4px;cursor:pointer}
 
-/* GLOBAL SEARCH BAR */
-#global-search-wrap{position:relative;flex:1;max-width:380px}
-#global-search{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 36px 7px 34px;color:var(--text);font-size:13px;font-family:var(--font);transition:border-color .15s;outline:none}
-#global-search:focus{border-color:var(--orange)}
-#global-search::placeholder{color:var(--text3)}
-.gs-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none}
-#gs-kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--text3)}
-#gs-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;display:none;max-height:400px;overflow-y:auto}
-#gs-dropdown.open{display:block}
-.gs-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .1s;text-decoration:none;color:inherit}
-.gs-item:hover,.gs-item.selected{background:var(--bg3)}
-.gs-item-icon{font-size:16px;flex-shrink:0;width:26px;text-align:center}
-.gs-item-label{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gs-item-sub{font-size:11.5px;color:var(--text3);white-space:nowrap}
-.gs-footer{padding:8px 14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3);text-align:center;cursor:pointer}
-.gs-footer:hover{color:var(--orange)}
-.gs-section-lbl{padding:5px 14px 3px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;background:var(--bg3)}
-@media(max-width:900px){#global-search-wrap{max-width:200px}}
-@media(max-width:600px){#global-search-wrap{display:none}}
 
 /* CONTENT */
 #content{padding:24px;flex:1}
@@ -319,15 +300,11 @@ select.form-control{cursor:pointer}
   <header id="header">
     <button id="hamburger" onclick="toggleSidebar()">☰</button>
     <div class="header-title"><?= h($pageTitle) ?> <span><?= SITE_NAME ?></span></div>
-    <!-- GLOBAL SEARCH -->
-    <div id="global-search-wrap">
-      <span class="gs-icon">🔍</span>
-      <input type="text" id="global-search" placeholder="Search… (press /)" autocomplete="off"
-        oninput="gsInput(this)" onkeydown="gsKey(event)">
-      <span id="gs-kbd">/</span>
-      <div id="gs-dropdown"></div>
-    </div>
     <span style="font-size:12px;color:var(--text3)"><?= date('D, M j') ?></span>
+    <a href="search.php" id="header-search-btn" title="Search (press /)" style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text3);font-size:12.5px;text-decoration:none;transition:border-color .15s,color .15s;flex-shrink:0" onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+      🔍 <span style="display:none" id="hs-text">Search</span>
+      <kbd style="font-size:10px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:1px 5px">/</kbd>
+    </a>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
       <span class="icon-dark">🌙</span>
       <span class="icon-light">☀️</span>
@@ -383,58 +360,12 @@ document.querySelectorAll('.modal-overlay').forEach(function(o){
   o.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')});
 });
 
-/* GLOBAL SEARCH */
-var _gsDebounce=null, _gsIdx=-1, _gsSuggs=[];
-function gsInput(el){
-  clearTimeout(_gsDebounce);
-  var q=el.value.trim();
-  var dd=document.getElementById('gs-dropdown');
-  document.getElementById('gs-kbd').style.display=q?'none':'block';
-  if(!q){dd.classList.remove('open');return;}
-  if(q.length<2){return;}
-  _gsDebounce=setTimeout(function(){
-    fetch('search_api.php?action=suggest&q='+encodeURIComponent(q))
-      .then(function(r){return r.json();})
-      .then(function(d){
-        _gsSuggs=d.suggestions||[];
-        _gsIdx=-1;
-        renderGsDrop(q,_gsSuggs);
-      }).catch(function(){});
-  },220);
-}
-function renderGsDrop(q,suggs){
-  var dd=document.getElementById('gs-dropdown');
-  if(!suggs.length){dd.classList.remove('open');return;}
-  var html='';
-  var lastType='';
-  suggs.forEach(function(s,i){
-    if(s.type!==lastType){html+='<div class="gs-section-lbl">'+s.type+'s</div>';lastType=s.type;}
-    html+='<a href="'+s.url+'" class="gs-item" data-idx="'+i+'">'
-      +'<span class="gs-item-icon">'+s.icon+'</span>'
-      +'<span class="gs-item-label">'+escGS(s.label)+'</span>'
-      +'<span class="gs-item-sub">'+escGS(s.sub||'')+'</span>'
-      +'</a>';
-  });
-  html+='<div class="gs-footer" onclick="location.href='search.php?q='+encodeURIComponent(document.getElementById('global-search').value)">See all results →</div>';
-  dd.innerHTML=html;
-  dd.classList.add('open');
-}
-function gsKey(e){
-  var dd=document.getElementById('gs-dropdown');
-  var items=dd.querySelectorAll('.gs-item');
-  if(!dd.classList.contains('open')&&e.key==='Enter'){
-    var q=document.getElementById('global-search').value.trim();
-    if(q)location.href='search.php?q='+encodeURIComponent(q);
-    return;
+/* / key shortcut → search page */
+document.addEventListener('keydown',function(e){
+  if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){
+    e.preventDefault(); location.href='search.php';
   }
-  if(e.key==='ArrowDown'){e.preventDefault();_gsIdx=Math.min(_gsIdx+1,items.length-1);items.forEach(function(el,i){el.classList.toggle('selected',i===_gsIdx);});}
-  else if(e.key==='ArrowUp'){e.preventDefault();_gsIdx=Math.max(_gsIdx-1,0);items.forEach(function(el,i){el.classList.toggle('selected',i===_gsIdx);});}
-  else if(e.key==='Enter'){e.preventDefault();if(_gsIdx>=0&&items[_gsIdx]){location.href=items[_gsIdx].href;}else{var q=document.getElementById('global-search').value.trim();if(q)location.href='search.php?q='+encodeURIComponent(q);}}
-  else if(e.key==='Escape'){dd.classList.remove('open');document.getElementById('global-search').blur();}
-}
-document.addEventListener('click',function(e){if(!e.target.closest('#global-search-wrap'))document.getElementById('gs-dropdown').classList.remove('open');});
-document.addEventListener('keydown',function(e){if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){e.preventDefault();document.getElementById('global-search').focus();}});
-function escGS(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+});
 <?php if (!empty($_SESSION['crm_flash'])): ?>
 toast(<?= json_encode($_SESSION['crm_flash']['msg']) ?>,<?= json_encode($_SESSION['crm_flash']['type']) ?>);
 <?php unset($_SESSION['crm_flash']); endif; ?>

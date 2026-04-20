@@ -25,6 +25,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("ssiiiiss",$title,$desc,$proj,$assign,$uid,$status,$prio,$due);
             $stmt->execute();
             logActivity('created task',$title,$db->insert_id);
+            // Notify assignee
+            if ($assign && $assign !== $user['id']) {
+                require_once 'includes/mailer.php';
+                $proj_row = $project ? $db->query("SELECT title FROM projects WHERE id=$project")->fetch_assoc() : null;
+                pushNotification([
+                    'user_id' => $assign,
+                    'type'    => 'task_assigned',
+                    'title'   => "New task assigned: $title",
+                    'body'    => 'Assigned by '.$user['name'],
+                    'link'    => 'tasks.php',
+                    'vars'    => [
+                        'task'     => $title,
+                        'project'  => $proj_row['title'] ?? 'No Project',
+                        'due_date' => $due ? date('M j, Y',strtotime($due)) : 'No deadline',
+                    ],
+                ], $db);
+            }
             flash('Task created.','success');
         } else {
             $stmt = $db->prepare("UPDATE tasks SET title=?,description=?,project_id=?,assigned_to=?,status=?,priority=?,due_date=?,completed_at=IF(status='done',NOW(),NULL) WHERE id=?");

@@ -78,8 +78,8 @@ $member_tasks = aq($db,"
     LEFT JOIN tasks t ON t.assigned_to=u.id $dct $pct
     WHERE u.status='active'
     GROUP BY u.id,u.name
-    HAVING (open_cnt+done_cnt)>0
-    ORDER BY (open_cnt+done_cnt) DESC LIMIT 10");
+    HAVING (SUM(IF(t.id IS NOT NULL AND t.status!='done',1,0))+SUM(IF(t.id IS NOT NULL AND t.status='done',1,0)))>0
+    ORDER BY (SUM(IF(t.id IS NOT NULL AND t.status!='done',1,0))+SUM(IF(t.id IS NOT NULL AND t.status='done',1,0))) DESC LIMIT 10");
 
 $team_prod = aq($db,"
     SELECT u.name,
@@ -89,8 +89,8 @@ $team_prod = aq($db,"
     LEFT JOIN tasks t ON t.assigned_to=u.id
     WHERE u.status='active'
     GROUP BY u.id,u.name
-    HAVING done>0
-    ORDER BY done DESC LIMIT 8");
+    HAVING SUM(IF(t.id IS NOT NULL AND t.status='done',1,0))>0
+    ORDER BY SUM(IF(t.id IS NOT NULL AND t.status='done',1,0)) DESC LIMIT 8");
 
 // ── CONTACTS / DOCS ──
 $ct=['client'=>0,'lead'=>0,'partner'=>0,'vendor'=>0];

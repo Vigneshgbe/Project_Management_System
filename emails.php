@@ -99,11 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($sid) {
             $q = "UPDATE email_settings SET name=?,from_name=?,from_email=?,host=?,port=?,encryption=?,username=?,is_default=? WHERE id=?";
             $stmt = $db->prepare($q);
-            $stmt->bind_param("ssssisiii",$n,$fn,$fe,$host,$port,$enc,$user,$def,$sid);
+            $stmt->bind_param("ssssissii",$n,$fn,$fe,$host,$port,$enc,$user,$def,$sid);
             if ($pass) { $db->query("UPDATE email_settings SET password='".$db->real_escape_string($pass)."' WHERE id=$sid"); }
         } else {
             $stmt = $db->prepare("INSERT INTO email_settings (name,from_name,from_email,host,port,encryption,username,password,is_default) VALUES (?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("ssssissi",$n,$fn,$fe,$host,$port,$enc,$user,$pass,$def);
+            $stmt->bind_param("ssssisssi",$n,$fn,$fe,$host,$port,$enc,$user,$pass,$def);
         }
         $stmt->execute();
         flash('SMTP settings saved.','success');

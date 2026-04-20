@@ -68,30 +68,51 @@ function crmSendEmail(array $opts, mysqli $db): array {
 }
 
 /**
- * SMTP send using PHP stream sockets — no external lib required.
+ * SMTP send using stream_socket_client — supports SSL/TLS, works with Gmail.
  */
 function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject, string $html, string $text, string $msg_id): array {
-    $host       = $smtp['host'];
+    $host       = $smtp['host']       ?? '';
     $port       = (int)($smtp['port'] ?? 587);
     $enc        = $smtp['encryption'] ?? 'tls';
     $user       = $smtp['username']   ?? '';
     $pass       = $smtp['password']   ?? '';
-    $from_email = $smtp['from_email'];
+    $from_email = $smtp['from_email'] ?? '';
     $from_name  = $smtp['from_name']  ?? 'Padak CRM';
 
-    $conn_host = ($enc === 'ssl') ? "ssl://$host" : $host;
+    if (!$host) return ['ok'=>false,'error'=>'SMTP host not configured'];
 
-    $sock = @fsockopen($conn_host, $port, $errno, $errstr, 15);
-    if (!$sock) return ['ok'=>false,'error'=>"Connection failed: $errstr ($errno)"];
+    // SSL context — verify peer for production certs, disable for self-signed
+    $ctx = stream_context_create([
+        'ssl' => [
+            'verify_peer'       => true,
+            'verify_peer_name'  => true,
+            'allow_self_signed' => false,
+            'cafile'            => defined('OPENSSL_CAFILE') ? OPENSSL_CAFILE : '',
+        ]
+    ]);
 
-    stream_set_timeout($sock, 15);
+    // For SSL (port 465): connect with ssl:// wrapper directly
+    // For TLS (port 587): connect plain, then STARTTLS
+    $conn = ($enc === 'ssl') ? "ssl://$host:$port" : "tcp://$host:$port";
 
-    // SMTP conversation helper
+    $sock = @stream_socket_client($conn, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$sock) {
+        // Retry without peer verification (useful for some hosts)
+        $ctx2 = stream_context_create(['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false,'allow_self_signed'=>true]]);
+        $sock = @stream_socket_client($conn, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx2);
+        if (!$sock) return ['ok'=>false,'error'=>"SMTP connection to $host:$port failed: $errstr ($errno)"];
+    }
+    stream_set_timeout($sock, 30);
+
+    // SMTP read helper — handles multi-line responses (e.g. EHLO 250-)
     $read = function() use ($sock): string {
         $buf = '';
-        while ($line = fgets($sock, 512)) {
+        while (!feof($sock)) {
+            $line = fgets($sock, 512);
+            if ($line === false) break;
             $buf .= $line;
-            if ($line[3] === ' ') break; // last line of multi-line response
+            // Last line of response: 4th char is space, not dash
+            if (strlen($line) >= 4 && $line[3] === ' ') break;
         }
         return $buf;
     };
@@ -100,55 +121,60 @@ function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject
         return $read();
     };
 
-    $r = $read(); // greeting
-    if (substr($r,0,3) !== '220') { fclose($sock); return ['ok'=>false,'error'=>"Bad greeting: $r"]; }
+    $r = $read(); // Server greeting
+    if (substr($r,0,3) !== '220') { fclose($sock); return ['ok'=>false,'error'=>"Bad greeting: ".trim($r)]; }
 
-    $r = $cmd("EHLO ".($_SERVER['HTTP_HOST']??'padak.local'));
-    if (substr($r,0,3) !== '250') { fclose($sock); return ['ok'=>false,'error'=>"EHLO failed: $r"]; }
+    $ehlo = $_SERVER['SERVER_NAME'] ?? gethostname() ?: 'padak.local';
+    $r = $cmd("EHLO $ehlo");
+    if (substr($r,0,3) !== '250') { fclose($sock); return ['ok'=>false,'error'=>"EHLO failed: ".trim($r)]; }
 
-    // STARTTLS upgrade
+    // STARTTLS upgrade for port 587
     if ($enc === 'tls') {
         $r = $cmd("STARTTLS");
-        if (substr($r,0,3) !== '220') { fclose($sock); return ['ok'=>false,'error'=>"STARTTLS failed: $r"]; }
-        stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-        $r = $cmd("EHLO ".($_SERVER['HTTP_HOST']??'padak.local'));
+        if (substr($r,0,3) !== '220') { fclose($sock); return ['ok'=>false,'error'=>"STARTTLS failed: ".trim($r)]; }
+        $ctx3 = stream_context_create(['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false,'allow_self_signed'=>true]]);
+        stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT, $ctx3);
+        $r = $cmd("EHLO $ehlo");
+        if (substr($r,0,3) !== '250') { fclose($sock); return ['ok'=>false,'error'=>"EHLO after STARTTLS failed: ".trim($r)]; }
     }
 
     // AUTH LOGIN
     if ($user && $pass) {
         $r = $cmd("AUTH LOGIN");
-        if (substr($r,0,3) !== '334') { fclose($sock); return ['ok'=>false,'error'=>"AUTH failed: $r"]; }
+        if (substr($r,0,3) !== '334') { fclose($sock); return ['ok'=>false,'error'=>"AUTH LOGIN not accepted: ".trim($r)]; }
         $cmd(base64_encode($user));
         $r = $cmd(base64_encode($pass));
-        if (substr($r,0,3) !== '235') { fclose($sock); return ['ok'=>false,'error'=>"Auth credentials rejected"]; }
+        if (substr($r,0,3) !== '235') { fclose($sock); return ['ok'=>false,'error'=>"Authentication failed — check username/password. Gmail requires an App Password."]; }
     }
 
     // MAIL FROM
     $r = $cmd("MAIL FROM:<$from_email>");
-    if (substr($r,0,3) !== '250') { fclose($sock); return ['ok'=>false,'error'=>"MAIL FROM rejected: $r"]; }
+    if (substr($r,0,3) !== '250') { fclose($sock); return ['ok'=>false,'error'=>"MAIL FROM rejected: ".trim($r)]; }
 
-    // RCPT TO — all recipients
-    $all_rcpt = array_merge($to, $cc, $bcc);
-    foreach ($all_rcpt as $addr) {
+    // RCPT TO
+    foreach (array_merge($to, $cc, $bcc) as $addr) {
         $addr = extractEmail($addr);
         $r = $cmd("RCPT TO:<$addr>");
-        if (substr($r,0,1) !== '2') { fclose($sock); return ['ok'=>false,'error'=>"RCPT rejected for $addr: $r"]; }
+        if (substr($r,0,1) !== '2') { fclose($sock); return ['ok'=>false,'error'=>"Recipient $addr rejected: ".trim($r)]; }
     }
 
     // DATA
     $r = $cmd("DATA");
-    if (substr($r,0,3) !== '354') { fclose($sock); return ['ok'=>false,'error'=>"DATA rejected: $r"]; }
+    if (substr($r,0,3) !== '354') { fclose($sock); return ['ok'=>false,'error'=>"DATA command rejected: ".trim($r)]; }
 
     $boundary = 'crm_'.md5(uniqid());
     $headers  = buildMimeHeaders($from_name, $from_email, $to, $cc, $subject, $msg_id, $boundary);
-    $body     = buildMimeBody($html, $text, $boundary);
-    $message  = $headers."\r\n".$body."\r\n.";
-    $r = $cmd($message);
+    $body_msg = buildMimeBody($html, $text, $boundary);
+    // Dot-stuffing: lines starting with . must be doubled
+    $data = $headers."\r\n".$body_msg;
+    $data = preg_replace('/^\./m', '..', $data);
+    fwrite($sock, $data."\r\n.\r\n");
+    $r = $read();
 
-    fwrite($sock, "QUIT\r\n");
+    $cmd("QUIT");
     fclose($sock);
 
-    if (substr($r,0,3) !== '250') return ['ok'=>false,'error'=>"Message rejected: $r"];
+    if (substr($r,0,3) !== '250') return ['ok'=>false,'error'=>"Server rejected message: ".trim($r)];
     return ['ok'=>true,'error'=>''];
 }
 

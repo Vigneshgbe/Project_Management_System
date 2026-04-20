@@ -8,19 +8,20 @@ require_once 'includes/layout.php';
 requireLogin();
 requireRole(['admin','manager']);
 $db = getCRMDB();
+mysqli_report(MYSQLI_REPORT_OFF); // Use return values, not exceptions
 
 // ── SAFE QUERY HELPERS (defined first, used everywhere) ──
 function aq(mysqli $db, string $sql): array {
-    $r = @$db->query($sql);
+    try { $r = $db->query($sql); } catch (\Throwable $e) { return []; }
     return ($r && !is_bool($r)) ? $r->fetch_all(MYSQLI_ASSOC) : [];
 }
 function ar(mysqli $db, string $sql, array $def = []): array {
-    $r = @$db->query($sql);
+    try { $r = $db->query($sql); } catch (\Throwable $e) { return $def; }
     if (!$r || is_bool($r)) return $def;
     return $r->fetch_assoc() ?: $def;
 }
 function av(mysqli $db, string $sql, $def = 0) {
-    $r = @$db->query($sql);
+    try { $r = $db->query($sql); } catch (\Throwable $e) { return $def; }
     if (!$r || is_bool($r)) return $def;
     $row = $r->fetch_row();
     return $row[0] ?? $def;
@@ -39,7 +40,7 @@ $dct = $period !== 'all' ? "AND t.created_at >= DATE_SUB(NOW(),INTERVAL {$period
 // ── CORE STATS ──
 $total_projects  = (int)av($db,"SELECT COUNT(*) FROM projects");
 $active_projects = (int)av($db,"SELECT COUNT(*) FROM projects WHERE status='active'");
-$total_tasks     = (int)av($db,"SELECT COUNT(*) FROM tasks $pc");
+$total_tasks     = (int)av($db,"SELECT COUNT(*) FROM tasks WHERE 1=1 $pc");
 $done_tasks      = (int)av($db,"SELECT COUNT(*) FROM tasks WHERE status='done' $pc");
 $overdue_tasks   = (int)av($db,"SELECT COUNT(*) FROM tasks WHERE due_date<CURDATE() AND status!='done' $pc");
 $total_contacts  = (int)av($db,"SELECT COUNT(*) FROM contacts");

@@ -218,6 +218,41 @@ select.form-control{cursor:pointer}
   .btn span{display:none}
   .header-title span{display:none}
 }
+
+/* ── NOTIFICATION BELL ── */
+#notif-btn{position:relative;background:none;border:none;cursor:pointer;padding:7px 8px;border-radius:var(--radius-sm);color:var(--text2);font-size:20px;line-height:1;transition:color .15s,background .15s;flex-shrink:0}
+#notif-btn:hover{background:var(--bg3);color:var(--text)}
+#notif-badge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:9px;font-weight:800;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 3px;line-height:1;pointer-events:none}
+#notif-badge.show{display:flex}
+#notif-panel{position:absolute;top:calc(var(--header-h) - 4px);right:12px;width:380px;max-width:calc(100vw - 24px);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:500;display:none;flex-direction:column;max-height:520px}
+#notif-panel.open{display:flex}
+.notif-panel-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.notif-panel-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.notif-panel-title{font-size:14px;font-weight:700;font-family:var(--font-display);color:var(--text)}
+.notif-filters{display:flex;gap:4px;flex-wrap:wrap}
+.nf-btn{padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text3);transition:all .12s}
+.nf-btn.active{background:var(--orange);border-color:var(--orange);color:#fff}
+.nf-btn:hover:not(.active){background:var(--bg3);color:var(--text)}
+.notif-list{flex:1;overflow-y:auto;padding:6px 0}
+.notif-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s;position:relative;border-bottom:1px solid var(--border)}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:var(--bg3)}
+.notif-item.unread{background:var(--orange-bg)}
+.notif-item.unread:hover{background:rgba(249,115,22,.15)}
+.notif-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-item.unread .notif-title{font-weight:700}
+.notif-msg{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.notif-age{font-size:10.5px;color:var(--text3);margin-top:2px;flex-shrink:0}
+.notif-unread-dot{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:7px;height:7px;background:var(--orange);border-radius:50%}
+.notif-del{display:none;position:absolute;right:28px;top:50%;transform:translateY(-50%);background:var(--bg4);border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;color:var(--text3);font-size:12px;align-items:center;justify-content:center}
+.notif-item:hover .notif-del{display:flex}
+.notif-item:hover .notif-unread-dot{display:none}
+.notif-panel-foot{padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.notif-empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.notif-empty-icon{font-size:32px;margin-bottom:8px}
+.notif-loading{text-align:center;padding:24px;color:var(--text3);font-size:13px}
 </style>
 <script>(function(){var t=localStorage.getItem('padak_theme')||'dark';document.documentElement.setAttribute('data-theme',t)})();</script>
 </head>
@@ -252,13 +287,6 @@ select.form-control{cursor:pointer}
     <div class="nav-label" style="margin-top:12px">Resources</div>
     <a href="emails.php" class="nav-item <?= $activePage==='emails'?'active':'' ?>">
       <span class="icon">📬</span> Email Hub
-      <?php
-      static $_notif_count=null;
-      if($_notif_count===null&&isset($_SESSION['crm_user_id'])){
-          $nb=getCRMDB()->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id=".(int)$_SESSION['crm_user_id']." AND is_read=0");
-          $_notif_count=$nb?(int)$nb->fetch_assoc()['c']:0;
-      }
-      if(!empty($_notif_count)): ?><span style="background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:99px;margin-left:auto"><?= $_notif_count ?></span><?php endif; ?>
     </a>
     <a href="email_template.php" class="nav-item <?= $activePage==='email_template'?'active':'' ?>">
       <span class="icon">📧</span> Email Template
@@ -324,6 +352,38 @@ select.form-control{cursor:pointer}
       🔍 <span style="display:none" id="hs-text">Search</span>
       <kbd style="font-size:10px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:1px 5px">/</kbd>
     </a>
+    <!-- NOTIFICATION BELL -->
+    <button id="notif-btn" onclick="toggleNotifPanel()" title="Notifications" aria-label="Notifications">
+      🔔
+      <span id="notif-badge"></span>
+    </button>
+    <!-- NOTIFICATION PANEL (rendered here, positioned absolute) -->
+    <div id="notif-panel">
+      <div class="notif-panel-head">
+        <div class="notif-panel-head-row">
+          <span class="notif-panel-title">🔔 Notifications</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button onclick="markAllRead()" style="font-size:11.5px;background:none;border:none;cursor:pointer;color:var(--orange);font-weight:600" id="notif-mark-all">Mark all read</button>
+            <button onclick="clearRead()" style="font-size:11.5px;background:none;border:none;cursor:pointer;color:var(--text3)">Clear read</button>
+          </div>
+        </div>
+        <div class="notif-filters" id="notif-filters">
+          <button class="nf-btn active" data-filter="all"     onclick="setFilter('all')">All</button>
+          <button class="nf-btn"        data-filter="unread"  onclick="setFilter('unread')">Unread</button>
+          <button class="nf-btn"        data-filter="task"    onclick="setFilter('task')">Tasks</button>
+          <button class="nf-btn"        data-filter="project" onclick="setFilter('project')">Projects</button>
+          <button class="nf-btn"        data-filter="lead"    onclick="setFilter('lead')">Leads</button>
+          <button class="nf-btn"        data-filter="invoice" onclick="setFilter('invoice')">Invoices</button>
+        </div>
+      </div>
+      <div class="notif-list" id="notif-list">
+        <div class="notif-loading">Loading…</div>
+      </div>
+      <div class="notif-panel-foot">
+        <span style="font-size:11.5px;color:var(--text3)" id="notif-foot-count"></span>
+        <a href="emails.php?tab=notifications" style="font-size:12px;color:var(--orange);font-weight:600">View all →</a>
+      </div>
+    </div>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
       <span class="icon-dark">🌙</span>
       <span class="icon-light">☀️</span>
@@ -384,7 +444,151 @@ document.addEventListener('keydown',function(e){
   if(e.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){
     e.preventDefault(); location.href='search.php';
   }
+  if(e.key==='Escape'){closeNotifPanel();}
 });
+
+/* ══ NOTIFICATIONS ══ */
+var _nFilter='all', _nPollTimer=null, _nPanelOpen=false, _nLoaded=false;
+
+var NOTIF_ICONS={
+  task_assigned:'📋',task_due:'⏰',invoice_sent:'🧾',invoice_paid:'✅',
+  lead_update:'🎯',mention:'@',comment_added:'💬',project_update:'📁',
+  info:'ℹ',task_due_today:'🔴',default:'🔔'
+};
+var NOTIF_COLORS={
+  task_assigned:'rgba(99,102,241,.18)',task_due:'rgba(239,68,68,.15)',
+  invoice_sent:'rgba(249,115,22,.15)',invoice_paid:'rgba(16,185,129,.15)',
+  lead_update:'rgba(16,185,129,.15)',mention:'rgba(139,92,246,.15)',
+  comment_added:'rgba(96,165,250,.15)',project_update:'rgba(99,102,241,.15)',
+  default:'rgba(148,163,184,.12)'
+};
+
+function toggleNotifPanel(){
+  _nPanelOpen=!_nPanelOpen;
+  var p=document.getElementById('notif-panel');
+  p.classList.toggle('open',_nPanelOpen);
+  if(_nPanelOpen){
+    if(!_nLoaded){loadNotifs(true);}
+    document.addEventListener('click',_notifOutsideClick,{once:false});
+  } else {
+    document.removeEventListener('click',_notifOutsideClick);
+  }
+}
+function closeNotifPanel(){
+  _nPanelOpen=false;
+  document.getElementById('notif-panel').classList.remove('open');
+  document.removeEventListener('click',_notifOutsideClick);
+}
+function _notifOutsideClick(e){
+  if(!e.target.closest('#notif-panel')&&!e.target.closest('#notif-btn')){closeNotifPanel();}
+}
+
+function setFilter(f){
+  _nFilter=f;
+  document.querySelectorAll('.nf-btn').forEach(function(b){b.classList.toggle('active',b.dataset.filter===f);});
+  loadNotifs(true);
+}
+
+function loadNotifs(showLoader){
+  var list=document.getElementById('notif-list');
+  if(showLoader)list.innerHTML='<div class="notif-loading">Loading…</div>';
+  fetch('notif_api.php?action=list&filter='+_nFilter+'&limit=30')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.ok)return;
+      _nLoaded=true;
+      renderNotifs(d.notifications,d.unread,d.total);
+    })
+    .catch(function(){list.innerHTML='<div class="notif-loading" style="color:var(--red)">Failed to load</div>';});
+}
+
+function renderNotifs(items,unread,total){
+  updateBadge(unread);
+  var foot=document.getElementById('notif-foot-count');
+  if(foot)foot.textContent=total+' notification'+(total!==1?'s':'')+' · '+unread+' unread';
+
+  var list=document.getElementById('notif-list');
+  if(!items||!items.length){
+    list.innerHTML='<div class="notif-empty"><div class="notif-empty-icon">🔔</div><div style="font-size:13px;color:var(--text2);font-weight:600">All caught up!</div><div style="font-size:12px;margin-top:4px">No notifications</div></div>';
+    return;
+  }
+  var html='';
+  items.forEach(function(n){
+    var ic=NOTIF_ICONS[n.type]||NOTIF_ICONS.default;
+    var bg=NOTIF_COLORS[n.type]||NOTIF_COLORS.default;
+    var url=n.link?n.link:'#';
+    html+='<div class="notif-item'+(n.is_read?'':' unread')+'" data-id="'+n.id+'" data-url="'+escHtml(url)+'" onclick="notifClick(this)">'
+      +'<div class="notif-icon" style="background:'+bg+'">'+ic+'</div>'
+      +'<div class="notif-body">'
+        +'<div class="notif-title">'+escHtml(n.title)+'</div>'
+        +(n.body?'<div class="notif-msg">'+escHtml(n.body)+'</div>':'')
+        +'<div class="notif-age">'+n.age+'</div>'
+      +'</div>'
+      +'<button class="notif-del" onclick="event.stopPropagation();deleteNotif(this,'+n.id+')" title="Dismiss">✕</button>'
+      +(!n.is_read?'<div class="notif-unread-dot"></div>':'')
+    +'</div>';
+  });
+  list.innerHTML=html;
+}
+
+function notifClick(el){
+  var id=parseInt(el.dataset.id);
+  var url=el.dataset.url;
+  // Mark read via API
+  fetch('notif_api.php?action=mark_read&id='+id,{method:'POST'});
+  el.classList.remove('unread');
+  el.querySelector('.notif-unread-dot')&&el.querySelector('.notif-unread-dot').remove();
+  // Update badge
+  var badge=document.getElementById('notif-badge');
+  if(badge.textContent>0){var c=parseInt(badge.textContent)-1;updateBadge(c);}
+  // Navigate
+  if(url&&url!=='#'){closeNotifPanel();location.href=url;}
+}
+
+function deleteNotif(btn,id){
+  fetch('notif_api.php?action=delete',{method:'POST',body:new URLSearchParams({id:id})});
+  btn.closest('.notif-item').remove();
+  // refresh count from remaining items
+  var remaining=document.querySelectorAll('.notif-item.unread').length;
+  updateBadge(remaining);
+}
+
+function markAllRead(){
+  fetch('notif_api.php?action=mark_all',{method:'POST',body:new URLSearchParams({filter:_nFilter})})
+    .then(function(r){return r.json();})
+    .then(function(d){updateBadge(d.unread||0);loadNotifs(false);});
+}
+
+function clearRead(){
+  fetch('notif_api.php?action=clear_read',{method:'POST'})
+    .then(function(){loadNotifs(true);});
+}
+
+function updateBadge(count){
+  var b=document.getElementById('notif-badge');
+  if(!b)return;
+  if(count>0){b.textContent=count>99?'99+':count;b.classList.add('show');}
+  else{b.textContent='';b.classList.remove('show');}
+}
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── POLL every 30 seconds ──
+function pollNotifCount(){
+  fetch('notif_api.php?action=count')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      updateBadge(d.count||0);
+      if(_nPanelOpen)loadNotifs(false);
+    })
+    .catch(function(){});
+}
+// Initial load of badge count
+pollNotifCount();
+// Poll every 30 seconds
+_nPollTimer=setInterval(pollNotifCount,30000);
 <?php if (!empty($_SESSION['crm_flash'])): ?>
 toast(<?= json_encode($_SESSION['crm_flash']['msg']) ?>,<?= json_encode($_SESSION['crm_flash']['type']) ?>);
 <?php unset($_SESSION['crm_flash']); endif; ?>

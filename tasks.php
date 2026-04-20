@@ -30,11 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 require_once 'includes/mailer.php';
                 $proj_row = $project ? $db->query("SELECT title FROM projects WHERE id=$project")->fetch_assoc() : null;
                 pushNotification([
-                    'user_id' => $assign,
-                    'type'    => 'task_assigned',
-                    'title'   => "New task assigned: $title",
-                    'body'    => 'Assigned by '.$user['name'],
-                    'link'    => 'tasks.php',
+                    'user_id'     => $assign,
+                    'type'        => 'task_assigned',
+                    'entity_type' => 'task',
+                    'entity_id'   => $db->insert_id,
+                    'title'       => "New task assigned: $title",
+                    'body'        => 'Assigned by '.$user['name'],
+                    'link'        => 'tasks.php',
                     'vars'    => [
                         'task'     => $title,
                         'project'  => $proj_row['title'] ?? 'No Project',

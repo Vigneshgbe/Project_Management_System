@@ -272,6 +272,9 @@ select.form-control{cursor:pointer}
     <a href="dashboard.php" class="nav-item <?= $activePage==='dashboard'?'active':'' ?>">
       <span class="icon">⬛</span> Dashboard
     </a>
+    <a href="mywork.php" class="nav-item <?= $activePage==='mywork'?'active':'' ?>">
+      <span class="icon">👤</span> My Work
+    </a>
     <a href="projects.php" class="nav-item <?= $activePage==='projects'?'active':'' ?>">
       <span class="icon">📁</span> Projects
     </a>

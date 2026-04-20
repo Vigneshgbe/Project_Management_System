@@ -30,26 +30,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $smtp = $db->query("SELECT from_email,from_name FROM email_settings WHERE is_default=1 AND is_active=1 LIMIT 1")->fetch_assoc();
 
-        $result = sendAndLog([
-            'to'          => $to,
-            'cc'          => $cc,
-            'subject'     => $subject,
-            'html'        => $html,
-            'text'        => strip_tags($html),
-            'from_email'  => $smtp['from_email'] ?? 'noreply@thepadak.com',
-            'from_name'   => $smtp['from_name']  ?? 'Padak CRM',
-            'sent_by'     => $uid,
-            'contact_id'  => $cid,
-            'lead_id'     => $lid,
-            'invoice_id'  => $inv_id,
-            'project_id'  => $pid,
-        ], $db);
-
-        if ($result['ok']) {
-            flash('Email sent successfully.', 'success');
-        } else {
-            $short = strlen($result['error']) > 120 ? substr($result['error'],0,120).'...' : $result['error'];
-            flash('Email saved to log. Send error: '.$short, 'error');
+        try {
+            $result = sendAndLog([
+                'to'          => $to,
+                'cc'          => $cc,
+                'subject'     => $subject,
+                'html'        => $html,
+                'text'        => strip_tags($html),
+                'from_email'  => $smtp['from_email'] ?? 'noreply@thepadak.com',
+                'from_name'   => $smtp['from_name']  ?? 'Padak CRM',
+                'sent_by'     => $uid,
+                'contact_id'  => $cid,
+                'lead_id'     => $lid,
+                'invoice_id'  => $inv_id,
+                'project_id'  => $pid,
+            ], $db);
+            if ($result['ok']) {
+                flash('Email sent successfully.', 'success');
+            } else {
+                $short = strlen($result['error']) > 150 ? substr($result['error'],0,150).'...' : $result['error'];
+                flash('Email queued (send error: '.$short.')', 'error');
+            }
+        } catch (\Throwable $e) {
+            flash('Critical error: '.$e->getMessage(), 'error');
         }
         ob_end_clean(); header('Location: emails.php?tab=sent'); exit;
     }
@@ -119,11 +122,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── TEST SMTP ──
     if ($action === 'test_smtp' && isAdmin()) {
-        $test_to = trim($_POST['test_to'] ?? $user['email']);
+        $test_to  = trim($_POST['test_to'] ?? $user['email']);
         $smtp_row = $db->query("SELECT * FROM email_settings WHERE id=".(int)$_POST['smtp_id'])->fetch_assoc();
         if ($smtp_row) {
-            $res = smtpSend($smtp_row, [$test_to], [], [], 'Padak CRM SMTP Test', '<h3>✅ SMTP is working correctly!</h3><p>This is a test from Padak CRM.</p>', 'SMTP test from Padak CRM.', '<test@padak.local>');
-            flash($res['ok'] ? 'Test email sent to '.$test_to : 'Test failed: '.$res['error'], $res['ok']?'success':'error');
+            try {
+                $res = smtpSend($smtp_row, [$test_to], [], [], 'Padak CRM SMTP Test',
+                    '<div style="font-family:Arial,sans-serif;padding:20px"><h3 style="color:#f97316">✅ SMTP Working!</h3><p>This test confirms your SMTP is configured correctly in Padak CRM.</p></div>',
+                    'SMTP test from Padak CRM.',
+                    '<test.'.time().'@padak.local>');
+                flash($res['ok'] ? '✅ Test email sent to '.$test_to : '❌ Test failed: '.$res['error'],
+                      $res['ok'] ? 'success' : 'error');
+            } catch (\Throwable $e) {
+                flash('❌ SMTP error: '.$e->getMessage(), 'error');
+            }
+        } else {
+            flash('SMTP account not found.', 'error');
         }
         ob_end_clean(); header('Location: emails.php?tab=settings'); exit;
     }

@@ -81,6 +81,7 @@ function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject
 
     if (!$host) return ['ok'=>false,'error'=>'SMTP host not configured'];
 
+    try {
     // SSL context — verify peer for production certs, disable for self-signed
     $ctx = stream_context_create([
         'ssl' => [
@@ -176,6 +177,9 @@ function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject
 
     if (substr($r,0,3) !== '250') return ['ok'=>false,'error'=>"Server rejected message: ".trim($r)];
     return ['ok'=>true,'error'=>''];
+    } catch (\Throwable $e) {
+        return ['ok'=>false,'error'=>'SMTP error: '.$e->getMessage()];
+    }
 }
 
 /**
@@ -262,7 +266,7 @@ function logEmail(array $opts, string $status, string $error, string $msg_id, my
         (direction,subject,from_email,from_name,to_email,cc_email,bcc_email,body_html,body_text,
          status,error_msg,message_id,tracking_token,sent_by,sent_at,contact_id,lead_id,invoice_id,project_id,task_id)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-    $stmt->bind_param("sssssssssssssissiiii",
+    $stmt->bind_param("sssssssssssssisiiiii",
         $dir,$subject,$from_e,$from_n,$to,$cc,$bcc,$html,$txt,
         $status,$error,$msg_id,$token,$sent_by,$sent_at,
         $cid,$lid,$invid,$pid,$tid);
@@ -285,10 +289,21 @@ function renderEmailTemplate(string $html, array $vars): string {
 // ══════════════════════════════════════════════════════
 function sendAndLog(array $opts, mysqli $db): array {
     $opts['tracking_token'] = $opts['tracking_token'] ?? bin2hex(random_bytes(16));
-    $result = crmSendEmail($opts, $db);
-    $status = $result['ok'] ? 'sent' : 'failed';
-    $lid    = logEmail($opts, $status, $result['error']??'', $result['message_id']??'', $db);
-    $result['log_id'] = $lid;
+    $result = ['ok'=>false,'error'=>'','message_id'=>'','log_id'=>0];
+    try {
+        $result = crmSendEmail($opts, $db);
+    } catch (\Throwable $e) {
+        $result['ok']    = false;
+        $result['error'] = 'Internal error: '.$e->getMessage();
+    }
+    // Always log — even on exception
+    try {
+        $status = $result['ok'] ? 'sent' : 'failed';
+        $lid    = logEmail($opts, $status, $result['error']??'', $result['message_id']??'', $db);
+        $result['log_id'] = $lid;
+    } catch (\Throwable $e) {
+        error_log('logEmail failed: '.$e->getMessage());
+    }
     return $result;
 }
 

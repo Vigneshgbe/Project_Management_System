@@ -82,13 +82,12 @@ function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject
     if (!$host) return ['ok'=>false,'error'=>'SMTP host not configured'];
 
     try {
-    // SSL context — verify peer for production certs, disable for self-signed
+    // SSL context
     $ctx = stream_context_create([
         'ssl' => [
-            'verify_peer'       => true,
-            'verify_peer_name'  => true,
-            'allow_self_signed' => false,
-            'cafile'            => defined('OPENSSL_CAFILE') ? OPENSSL_CAFILE : '',
+            'verify_peer'       => false,
+            'verify_peer_name'  => false,
+            'allow_self_signed' => true,
         ]
     ]);
 
@@ -97,12 +96,7 @@ function smtpSend(array $smtp, array $to, array $cc, array $bcc, string $subject
     $conn = ($enc === 'ssl') ? "ssl://$host:$port" : "tcp://$host:$port";
 
     $sock = @stream_socket_client($conn, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx);
-    if (!$sock) {
-        // Retry without peer verification (useful for some hosts)
-        $ctx2 = stream_context_create(['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false,'allow_self_signed'=>true]]);
-        $sock = @stream_socket_client($conn, $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $ctx2);
-        if (!$sock) return ['ok'=>false,'error'=>"SMTP connection to $host:$port failed: $errstr ($errno)"];
-    }
+    if (!$sock) return ['ok'=>false,'error'=>"Cannot connect to $host:$port — $errstr ($errno). Check host/port and firewall."];
     stream_set_timeout($sock, 30);
 
     // SMTP read helper — handles multi-line responses (e.g. EHLO 250-)

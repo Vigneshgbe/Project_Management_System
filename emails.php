@@ -141,6 +141,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: emails.php?tab=settings'); exit;
     }
 
+    // ── DELETE LOG ENTRY ──
+    if ($action === 'delete_log') {
+        $lid = (int)($_POST['log_id'] ?? 0);
+        $db->query("DELETE FROM email_log WHERE id=$lid");
+        flash('Email log entry deleted.','success');
+        ob_end_clean(); header('Location: emails.php?tab=sent'); exit;
+    }
+
+    // ── RETRY FAILED EMAIL ──
+    if ($action === 'retry_email') {
+        $lid  = (int)($_POST['log_id'] ?? 0);
+        $orig = $db->query("SELECT * FROM email_log WHERE id=$lid")->fetch_assoc();
+        if ($orig) {
+            $to_arr = json_decode($orig['to_email'] ?? '[]', true) ?: [];
+            try {
+                $result = sendAndLog([
+                    'to'          => $to_arr,
+                    'cc'          => json_decode($orig['cc_email']  ?? '[]', true) ?: [],
+                    'subject'     => $orig['subject'],
+                    'html'        => $orig['body_html'],
+                    'text'        => $orig['body_text'] ?? strip_tags($orig['body_html']),
+                    'from_email'  => $orig['from_email'],
+                    'from_name'   => $orig['from_name'],
+                    'sent_by'     => $uid,
+                    'contact_id'  => $orig['contact_id'],
+                    'project_id'  => $orig['project_id'],
+                    'invoice_id'  => $orig['invoice_id'],
+                ], $db);
+                flash($result['ok'] ? '✅ Email resent successfully.' : '❌ Retry failed: '.substr($result['error'],0,120),
+                      $result['ok'] ? 'success' : 'error');
+            } catch (\Throwable $e) {
+                flash('Retry error: '.$e->getMessage(), 'error');
+            }
+        }
+        ob_end_clean(); header('Location: emails.php?tab=sent'); exit;
+    }
+
     // ── MARK NOTIFICATION READ ──
     if ($action === 'mark_read') {
         $nid = (int)$_POST['nid'];
@@ -495,15 +532,29 @@ elseif ($tab === 'sent'):
   $to_str  = implode(', ', array_map(function($a){ return preg_match('/<([^>]+)>/',$a,$m)?$m[1]:$a; }, (array)$to_list));
   $sc      = $em['status']==='sent' ? 'var(--green)' : ($em['status']==='failed'?'var(--red)':'var(--text3)');
 ?>
-<div class="em-row" onclick="location.href='emails.php?tab=sent&view=<?= $em['id'] ?>'">
-  <div class="em-from"><?= h($em['sender_name'] ?? 'System') ?></div>
-  <div class="em-subj">
+<div class="em-row" style="cursor:default">
+  <div class="em-from" style="cursor:pointer" onclick="location.href='emails.php?tab=sent&view=<?= $em['id'] ?>'"><?= h($em['sender_name'] ?? 'System') ?></div>
+  <div class="em-subj" style="cursor:pointer" onclick="location.href='emails.php?tab=sent&view=<?= $em['id'] ?>'">
     <div class="em-subj-text"><?= h($em['subject']) ?></div>
-    <div class="em-subj-preview">To: <?= h(mb_substr($to_str,0,60)) ?><?= $em['contact_name']?' · '.h($em['contact_name']):'' ?></div>
+    <div class="em-subj-preview">To: <?= h(mb_substr($to_str,0,55)) ?><?= $em['contact_name']?' · '.h($em['contact_name']):'' ?></div>
   </div>
-  <?php if ($em['opened_count'] > 0): ?><span title="Opened <?= $em['opened_count'] ?>x" style="font-size:12px;color:var(--green)">👁</span><?php endif; ?>
-  <span style="font-size:11px;font-weight:700;color:<?= $sc ?>"><?= ucfirst($em['status']) ?></span>
+  <?php if ($em['opened_count'] > 0): ?><span title="Opened <?= $em['opened_count'] ?>x" style="font-size:12px;color:var(--green);flex-shrink:0">👁</span><?php endif; ?>
+  <span style="font-size:11px;font-weight:700;color:<?= $sc ?>;flex-shrink:0"><?= ucfirst($em['status']) ?></span>
   <div class="em-date"><?= date('M j, g:ia', strtotime($em['created_at'])) ?></div>
+  <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+    <?php if ($em['status'] === 'failed'): ?>
+    <form method="POST" style="display:inline">
+      <input type="hidden" name="action"  value="retry_email">
+      <input type="hidden" name="log_id"  value="<?= $em['id'] ?>">
+      <button class="btn btn-ghost btn-sm btn-icon" title="Retry sending" style="color:var(--orange)">↺</button>
+    </form>
+    <?php endif; ?>
+    <form method="POST" onsubmit="return confirm('Delete this log entry?')" style="display:inline">
+      <input type="hidden" name="action"  value="delete_log">
+      <input type="hidden" name="log_id"  value="<?= $em['id'] ?>">
+      <button class="btn btn-danger btn-sm btn-icon" title="Delete">🗑</button>
+    </form>
+  </div>
 </div>
 <?php endforeach; ?>
 <?php endif; ?>

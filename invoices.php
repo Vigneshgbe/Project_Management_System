@@ -114,6 +114,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'mark_sent' && isManager()) {
         $id = (int)$_POST['inv_id'];
         $db->query("UPDATE invoices SET status='sent',sent_at=NOW() WHERE id=$id AND status='draft'");
+        // Notify contact via email
+        require_once 'includes/mailer.php';
+        $inv_row = $db->query("SELECT i.*,c.name AS cn,c.email AS ce FROM invoices i LEFT JOIN contacts c ON c.id=i.contact_id WHERE i.id=$id")->fetch_assoc();
+        if ($inv_row && $inv_row['ce']) {
+            $tmpl = $db->query("SELECT body_html FROM email_templates WHERE name='Invoice Sent' LIMIT 1")->fetch_assoc();
+            $html = $tmpl ? renderEmailTemplate($tmpl['body_html'], [
+                'name'       => $inv_row['cn'],
+                'invoice_no' => $inv_row['invoice_no'],
+                'amount'     => 'Rs. '.number_format($inv_row['total'],2),
+                'due_date'   => $inv_row['due_date'] ? date('M j, Y',strtotime($inv_row['due_date'])) : 'On receipt',
+                'link'       => BASE_URL.'/client_portal.php?page=invoices',
+            ]) : '<p>Invoice '.$inv_row['invoice_no'].' — Rs. '.number_format($inv_row['total'],2).'</p>';
+            $smtp = $db->query("SELECT from_email,from_name FROM email_settings WHERE is_default=1 LIMIT 1")->fetch_assoc();
+            sendAndLog([
+                'to'         => [$inv_row['cn'].' <'.$inv_row['ce'].'>'],
+                'subject'    => 'Invoice '.$inv_row['invoice_no'].' — Rs. '.number_format($inv_row['total'],2),
+                'html'       => $html,
+                'text'       => 'Invoice '.$inv_row['invoice_no'].'. Amount: Rs.'.number_format($inv_row['total'],2),
+                'from_email' => $smtp['from_email'] ?? 'noreply@thepadak.com',
+                'from_name'  => $smtp['from_name']  ?? 'Padak',
+                'invoice_id' => $id,
+                'contact_id' => $inv_row['contact_id'],
+                'sent_by'    => $uid,
+            ], $db);
+        }
         flash('Invoice marked as sent.','success');
         ob_end_clean(); header('Location: invoices.php?view='.$id); exit;
     }

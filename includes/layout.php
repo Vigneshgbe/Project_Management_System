@@ -250,6 +250,16 @@ select.form-control{cursor:pointer}
       <span class="icon">💬</span> Chat
     </a>
     <div class="nav-label" style="margin-top:12px">Resources</div>
+    <a href="emails.php" class="nav-item <?= $activePage==='emails'?'active':'' ?>">
+      <span class="icon">📬</span> Email Hub
+      <?php
+      static $_notif_count=null;
+      if($_notif_count===null&&isset($_SESSION['crm_user_id'])){
+          $nb=getCRMDB()->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id=".(int)$_SESSION['crm_user_id']." AND is_read=0");
+          $_notif_count=$nb?(int)$nb->fetch_assoc()['c']:0;
+      }
+      if(!empty($_notif_count)): ?><span style="background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:99px;margin-left:auto"><?= $_notif_count ?></span><?php endif; ?>
+    </a>
     <a href="email_template.php" class="nav-item <?= $activePage==='email_template'?'active':'' ?>">
       <span class="icon">📧</span> Email Template
     </a>

@@ -24,69 +24,90 @@ $total_contacts  = $db->query("SELECT COUNT(*) FROM contacts")->fetch_row()[0];
 $total_docs      = $db->query("SELECT COUNT(*) FROM documents")->fetch_row()[0];
 $task_completion_rate = $total_tasks > 0 ? round($done_tasks/$total_tasks*100) : 0;
 
-// ── INVOICE / REVENUE STATS (new) ──
-$inv_stats = $db->query("
+// ── SAFE QUERY HELPER ──
+function safeQuery(mysqli $db, string $sql, $default = null) {
+    $r = @$db->query($sql);
+    if (!$r || $r === false) return $default;
+    return is_bool($r) ? $default : $r;
+}
+function safeRow(mysqli $db, string $sql, array $default = []): array {
+    $r = safeQuery($db, $sql);
+    return ($r && !is_bool($r)) ? ($r->fetch_assoc() ?: $default) : $default;
+}
+function safeAll(mysqli $db, string $sql): array {
+    $r = safeQuery($db, $sql);
+    return ($r && !is_bool($r)) ? $r->fetch_all(MYSQLI_ASSOC) : [];
+}
+function safeVal(mysqli $db, string $sql, $default = 0) {
+    $r = safeQuery($db, $sql);
+    if (!$r || is_bool($r)) return $default;
+    $row = $r->fetch_row();
+    return $row ? $row[0] : $default;
+}
+
+// ── INVOICE / REVENUE STATS ──
+$inv_stats = safeRow($db, "
     SELECT
-        COALESCE(SUM(CASE WHEN status NOT IN('cancelled','draft') THEN total ELSE 0 END),0)      AS total_invoiced,
-        COALESCE(SUM(amount_paid),0)                                                               AS total_collected,
-        COALESCE(SUM(CASE WHEN status='overdue' THEN total-amount_paid ELSE 0 END),0)             AS total_overdue,
-        COALESCE(SUM(CASE WHEN status='paid' THEN total ELSE 0 END),0)                            AS total_paid,
-        COUNT(CASE WHEN status NOT IN('cancelled','draft') THEN 1 END)                            AS inv_count,
-        COUNT(CASE WHEN status='paid' THEN 1 END)                                                 AS inv_paid,
-        COUNT(CASE WHEN status='overdue' THEN 1 END)                                              AS inv_overdue
+        COALESCE(SUM(CASE WHEN status NOT IN('cancelled','draft') THEN total ELSE 0 END),0)  AS total_invoiced,
+        COALESCE(SUM(amount_paid),0)                                                          AS total_collected,
+        COALESCE(SUM(CASE WHEN status='overdue' THEN total-amount_paid ELSE 0 END),0)        AS total_overdue,
+        COALESCE(SUM(CASE WHEN status='paid' THEN total ELSE 0 END),0)                       AS total_paid,
+        COUNT(CASE WHEN status NOT IN('cancelled','draft') THEN 1 END)                       AS inv_count,
+        COUNT(CASE WHEN status='paid' THEN 1 END)                                            AS inv_paid,
+        COUNT(CASE WHEN status='overdue' THEN 1 END)                                         AS inv_overdue
     FROM invoices
-")->fetch_assoc();
+", ['total_invoiced'=>0,'total_collected'=>0,'total_overdue'=>0,'total_paid'=>0,'inv_count'=>0,'inv_paid'=>0,'inv_overdue'=>0]);
 
 // Revenue collected per month (last 6 months)
-$revenue_months = $db->query("
+$revenue_months = safeAll($db, "
     SELECT DATE_FORMAT(paid_at,'%b %Y') AS mo, DATE_FORMAT(paid_at,'%Y-%m') AS sort_mo,
            SUM(amount) AS collected
     FROM invoice_payments
     WHERE paid_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
     GROUP BY mo, sort_mo
     ORDER BY sort_mo ASC
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // ── LEADS PIPELINE (new) ──
-$lead_stages = $db->query("
+$lead_stages = safeAll($db, "
     SELECT stage, COUNT(*) AS cnt,
            COALESCE(SUM(budget_est),0) AS pipeline_val
     FROM leads
     GROUP BY stage
     ORDER BY FIELD(stage,'new','contacted','qualified','proposal','negotiation','won','lost')
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 $lead_total      = array_sum(array_column($lead_stages,'cnt'));
-$lead_won        = $db->query("SELECT COUNT(*) AS c, COALESCE(SUM(budget_est),0) AS v FROM leads WHERE stage='won'")->fetch_assoc();
-$lead_lost       = $db->query("SELECT COUNT(*) AS c FROM leads WHERE stage='lost'")->fetch_row()[0] ?? 0;
-$lead_active     = $db->query("SELECT COUNT(*) FROM leads WHERE stage NOT IN('won','lost')")->fetch_row()[0];
+$lead_won    = safeRow($db,"SELECT COUNT(*) AS c, COALESCE(SUM(budget_est),0) AS v FROM leads WHERE stage='won'",['c'=>0,'v'=>0]);
+$lead_lost   = safeVal($db,"SELECT COUNT(*) AS c FROM leads WHERE stage='lost'",0);
+$lead_active = safeVal($db,"SELECT COUNT(*) FROM leads WHERE stage NOT IN('won','lost')",0);
 $conv_rate       = ($lead_total > 0) ? round($lead_won['c']/$lead_total*100,1) : 0;
 
 // Lead source breakdown
-$lead_sources = $db->query("
+$lead_sources = safeAll($db, "
     SELECT source, COUNT(*) AS cnt,
            COALESCE(SUM(CASE WHEN stage='won' THEN 1 ELSE 0 END),0) AS won_cnt
     FROM leads GROUP BY source ORDER BY cnt DESC LIMIT 7
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // ── EXPENSES (new) ──
-$expense_stats = $db->query("
+$expense_stats = safeRow($db, "
     SELECT
-        COALESCE(SUM(own_spend+office_spend),0)   AS total_spend,
-        COALESCE(SUM(own_spend),0)                AS own_spend,
-        COALESCE(SUM(office_spend),0)             AS office_spend
+        COALESCE(SUM(own_spend+office_spend),0) AS total_spend,
+        COALESCE(SUM(own_spend),0)              AS own_spend,
+        COALESCE(SUM(office_spend),0)           AS office_spend
     FROM expense_entries
     WHERE created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
-")->fetch_assoc();
+", ['total_spend'=>0,'own_spend'=>0,'office_spend'=>0]);
 
-$expense_by_cat = $db->query("
+$expense_by_cat = safeAll($db, "
     SELECT category, COALESCE(SUM(own_spend+office_spend),0) AS total
     FROM expense_entries
     WHERE created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
     GROUP BY category ORDER BY total DESC LIMIT 8
-")->fetch_all(MYSQLI_ASSOC);
+");
 
-$expense_by_month = $db->query("
+$expense_by_month = safeAll($db, "
     SELECT DATE_FORMAT(em.month_year,'%b %Y') AS mo,
            DATE_FORMAT(em.month_year,'%Y-%m') AS sort_mo,
            COALESCE(SUM(ee.own_spend+ee.office_spend),0) AS total,
@@ -96,25 +117,25 @@ $expense_by_month = $db->query("
     WHERE em.month_year >= DATE_FORMAT(DATE_SUB(CURDATE(),INTERVAL 5 MONTH),'%Y-%m')
     GROUP BY em.id, mo, sort_mo, em.revenue
     ORDER BY sort_mo ASC
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // ── TASK INTELLIGENCE (new) ──
 // Avg completion time in days (tasks with due_date and completed_at)
-$avg_complete = $db->query("
+$avg_complete = safeRow($db, "
     SELECT ROUND(AVG(DATEDIFF(completed_at, created_at)),1) AS avg_days
     FROM tasks WHERE status='done' AND completed_at IS NOT NULL AND created_at IS NOT NULL
     $proj_cond
-")->fetch_assoc()['avg_days'] ?? '—';
+", ['avg_days'=>null])['avg_days'] ?? '—';
 
 // Task comments activity (most active tasks)
-$comment_activity = $db->query("
+$comment_activity = safeAll($db, "
     SELECT t.title, COUNT(tc.id) AS cnt, MAX(tc.created_at) AS last_comment
     FROM task_comments tc
     JOIN tasks t ON t.id=tc.task_id
     $proj_cond_t
     GROUP BY tc.task_id, t.title
     ORDER BY cnt DESC LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // Tasks created vs completed over time (existing, refined)
 $days_back = in_array($period,['7','30','90','365']) ? (int)$period : 30;
@@ -178,21 +199,21 @@ $top_projects = $db->query("
 $doc_cats = $db->query("SELECT category,COUNT(*) AS cnt FROM documents GROUP BY category ORDER BY cnt DESC LIMIT 8")->fetch_all(MYSQLI_ASSOC);
 
 // ── EMAIL LOG STATS (new) ──
-$email_stats = $db->query("
+$email_stats = safeRow($db, "
     SELECT
         COUNT(*) AS total,
         SUM(status='sent') AS sent,
         SUM(status='failed') AS failed,
         SUM(opened_count>0) AS opened
     FROM email_log WHERE direction='out'
-")->fetch_assoc();
+", ['total'=>0,'sent'=>0,'failed'=>0,'opened'=>0]);
 
-$email_by_day = $db->query("
+$email_by_day = safeAll($db, "
     SELECT DATE(created_at) AS d, COUNT(*) AS total, SUM(status='sent') AS sent
     FROM email_log WHERE direction='out'
       AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
     GROUP BY DATE(created_at) ORDER BY d ASC
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 // ── ACTIVITY HEATMAP DATA (new) ──
 $activity_by_hour = $db->query("
@@ -205,7 +226,7 @@ $hour_data = array_fill(0,24,0);
 foreach ($activity_by_hour as $r) $hour_data[(int)$r['hr']]=(int)$r['cnt'];
 
 // ── TEAM PRODUCTIVITY SCORE (new) ──
-$team_productivity = $db->query("
+$team_productivity = safeAll($db, "
     SELECT u.name,
         SUM(t.status='done') AS done,
         SUM(t.status='done' AND t.due_date IS NOT NULL AND t.completed_at <= t.due_date) AS on_time,
@@ -216,7 +237,7 @@ $team_productivity = $db->query("
     GROUP BY u.id,u.name
     HAVING done>0
     ORDER BY done DESC LIMIT 8
-")->fetch_all(MYSQLI_ASSOC);
+");
 
 $all_projects = $db->query("SELECT id,title FROM projects ORDER BY title")->fetch_all(MYSQLI_ASSOC);
 

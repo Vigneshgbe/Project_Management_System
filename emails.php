@@ -45,8 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'project_id'  => $pid,
         ], $db);
 
-        flash($result['ok'] ? 'Email sent.' : 'Queued (send error: '.$result['error'].')',
-              $result['ok'] ? 'success' : 'info');
+        if ($result['ok']) {
+            flash('Email sent successfully.', 'success');
+        } else {
+            $short = strlen($result['error']) > 120 ? substr($result['error'],0,120).'...' : $result['error'];
+            flash('Email saved to log. Send error: '.$short, 'error');
+        }
         ob_end_clean(); header('Location: emails.php?tab=sent'); exit;
     }
 
@@ -176,10 +180,11 @@ $notifs = $db->query("
 ")->fetch_all(MYSQLI_ASSOC);
 $unread_notif = (int)$db->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id=$uid AND is_read=0")->fetch_assoc()['c'];
 
-// Contacts + leads + projects for compose dropdowns
+// Contacts + leads + projects + invoices for compose dropdowns
 $contacts = $db->query("SELECT id,name,email,company FROM contacts WHERE email IS NOT NULL AND email!='' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $leads    = $db->query("SELECT id,name,email,company FROM leads WHERE email IS NOT NULL AND email!='' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $projects = $db->query("SELECT id,title FROM projects WHERE status NOT IN('cancelled') ORDER BY title")->fetch_all(MYSQLI_ASSOC);
+$compose_invoices = $db->query("SELECT id,invoice_no,title FROM invoices WHERE status NOT IN('cancelled','paid') ORDER BY created_at DESC LIMIT 50")->fetch_all(MYSQLI_ASSOC);
 
 // Edit template
 $edit_tmpl = null;
@@ -314,6 +319,9 @@ if ($tab === 'compose'): ?>
             </select>
             <select name="invoice_id" class="form-control">
               <option value="">— Invoice —</option>
+              <?php foreach ($compose_invoices as $ci): ?>
+              <option value="<?= $ci['id'] ?>"><?= h($ci['invoice_no']) ?> — <?= h(mb_substr($ci['title'],0,30)) ?></option>
+              <?php endforeach; ?>
             </select>
           </div>
         </div>
@@ -340,7 +348,7 @@ if ($tab === 'compose'): ?>
           <div style="font-size:13px;font-weight:600;color:var(--text)"><?= h($t['name']) ?></div>
           <div style="font-size:11px;color:var(--text3)"><?= h($t['category']) ?></div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick='loadTemplate(<?= json_encode($t) ?>)'>Use</button>
+        <button class="btn btn-ghost btn-sm js-load-tmpl" data-tmpl='<?= htmlspecialchars(json_encode($t), ENT_QUOTES) ?>'>Use</button>
       </div>
       <?php endforeach; ?>
     </div>
@@ -515,7 +523,7 @@ foreach ($grouped as $cat => $tmpl_list):
       <div style="display:flex;gap:6px;margin-top:auto">
         <a href="emails.php?tab=compose&tmpl=<?= $t['id'] ?>" class="btn btn-ghost btn-sm">Use ↗</a>
         <?php if (!$t['is_system']): ?>
-        <button class="btn btn-ghost btn-sm" onclick='editTemplate(<?= json_encode($t) ?>)'>✎ Edit</button>
+        <button class="btn btn-ghost btn-sm js-edit-tmpl" data-tmpl='<?= htmlspecialchars(json_encode($t), ENT_QUOTES) ?>'>✎ Edit</button>
         <form method="POST" onsubmit="return confirm('Delete template?')" style="display:inline">
           <input type="hidden" name="action" value="delete_template">
           <input type="hidden" name="tmpl_id" value="<?= $t['id'] ?>">
@@ -559,12 +567,24 @@ foreach ($grouped as $cat => $tmpl_list):
 function editTemplate(t) {
   document.getElementById('tmpl-modal-title').textContent = 'Edit Template';
   document.getElementById('tmpl-edit-id').value = t.id;
-  document.getElementById('tmpl-name').value    = t.name;
-  document.getElementById('tmpl-cat').value     = t.category;
-  document.getElementById('tmpl-subject').value = t.subject;
-  document.getElementById('tmpl-body').value    = t.body_html;
+  document.getElementById('tmpl-name').value    = t.name    || '';
+  document.getElementById('tmpl-cat').value     = t.category || '';
+  document.getElementById('tmpl-subject').value = t.subject  || '';
+  document.getElementById('tmpl-body').value    = t.body_html || '';
   openModal('modal-tmpl');
 }
+// Event delegation for data-tmpl and data-tmpl edit buttons
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.js-load-tmpl');
+  if (btn) {
+    try { loadTemplate(JSON.parse(btn.dataset.tmpl)); } catch(ex) { console.error('Template parse error', ex); }
+    return;
+  }
+  btn = e.target.closest('.js-edit-tmpl');
+  if (btn) {
+    try { editTemplate(JSON.parse(btn.dataset.tmpl)); } catch(ex) { console.error('Template parse error', ex); }
+  }
+});
 </script>
 
 
@@ -642,7 +662,7 @@ elseif ($tab === 'settings' && isAdmin()): ?>
       <div style="font-size:12px;color:var(--text3);margin-top:3px"><?= $s['host'] ? h($s['host']).':'.$s['port'].' ('.strtoupper($s['encryption']).')' : 'PHP mail() fallback' ?></div>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0">
-      <button class="btn btn-ghost btn-sm" onclick='editSmtp(<?= json_encode($s) ?>)'>✎</button>
+      <button class="btn btn-ghost btn-sm js-edit-smtp" data-smtp='<?= htmlspecialchars(json_encode($s), ENT_QUOTES) ?>'>✎</button>
       <!-- Test -->
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('test-smtp-id').value='<?= $s['id'] ?>';openModal('modal-test')">Test</button>
       <form method="POST" onsubmit="return confirm('Delete SMTP account?')" style="display:inline">
@@ -655,13 +675,20 @@ elseif ($tab === 'settings' && isAdmin()): ?>
 <?php endforeach; ?>
 <?php endif; ?>
 
+<!-- Quick Gmail Setup -->
+<div class="card" style="border-color:var(--orange);background:var(--orange-bg);margin-bottom:14px">
+  <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px">⚡ Quick Gmail Setup</div>
+  <div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">Use a Gmail account with an <strong>App Password</strong> (not your regular password). <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--orange)">Generate App Password →</a></div>
+  <button class="btn btn-primary btn-sm" onclick="prefillGmail()">🚀 Configure Gmail SMTP</button>
+</div>
+
 <!-- Info box -->
 <div class="card" style="border-color:var(--blue);background:rgba(99,102,241,.05)">
   <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px">ℹ Automated Email Triggers</div>
   <div style="font-size:12.5px;color:var(--text2);line-height:1.8">
     <div>📋 <strong>Task Assigned</strong> — triggered automatically when a task is assigned in tasks.php</div>
-    <div>⏰ <strong>Task Due Reminders</strong> — run via cron: <code style="background:var(--bg4);padding:1px 6px;border-radius:3px">php /path/to/padak-crm/cron_reminders.php</code></div>
-    <div>🧾 <strong>Invoice Sent</strong> — triggered when invoice status changed to "sent" in invoices.php</div>
+    <div>⏰ <strong>Task Due Reminders</strong> — cron: <code style="background:var(--bg4);padding:1px 6px;border-radius:3px">php cron_reminders.php</code></div>
+    <div>🧾 <strong>Invoice Sent</strong> — triggered when invoice status changed to "sent"</div>
     <div>🔔 <strong>Notifications</strong> — all triggers create in-app + email notifications</div>
   </div>
 </div>
@@ -719,6 +746,27 @@ elseif ($tab === 'settings' && isAdmin()): ?>
   </div>
 </div>
 <script>
+// Event delegation for SMTP edit buttons
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.js-edit-smtp');
+  if (btn) {
+    try { editSmtp(JSON.parse(btn.dataset.smtp)); } catch(ex) { console.error('SMTP parse error', ex); }
+  }
+});
+function prefillGmail() {
+  document.getElementById('smtp-modal-title').textContent = 'Configure Gmail SMTP';
+  document.getElementById('smtp-edit-id').value = 0;
+  document.getElementById('smtp-name').value    = 'Gmail';
+  document.getElementById('smtp-fname').value   = 'Padak CRM';
+  document.getElementById('smtp-femail').value  = '';
+  document.getElementById('smtp-host').value    = 'smtp.gmail.com';
+  document.getElementById('smtp-port').value    = 465;
+  document.getElementById('smtp-enc').value     = 'ssl';
+  document.getElementById('smtp-user').value    = '';
+  document.getElementById('smtp-pass').value    = '';
+  document.getElementById('smtp-def').checked   = true;
+  openModal('modal-smtp');
+}
 function editSmtp(s) {
   document.getElementById('smtp-modal-title').textContent = 'Edit SMTP Account';
   document.getElementById('smtp-edit-id').value = s.id;

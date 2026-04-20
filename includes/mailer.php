@@ -25,9 +25,28 @@ function crmSendEmail(array $opts, mysqli $db): array {
 
     if (!$to) return ['ok'=>false,'error'=>'No recipients'];
 
-    // Load SMTP settings
+    // Load SMTP settings from DB
     $smtp = $db->query("SELECT * FROM email_settings WHERE is_default=1 AND is_active=1 LIMIT 1")->fetch_assoc();
     if (!$smtp) $smtp = $db->query("SELECT * FROM email_settings WHERE is_active=1 LIMIT 1")->fetch_assoc();
+
+    // Fallback: read MAIL_* from .env or environment variables if no DB config
+    if (!$smtp) {
+        $env_host = getenv('MAIL_HOST') ?: ($_ENV['MAIL_HOST'] ?? '');
+        $env_user = getenv('MAIL_USERNAME') ?: ($_ENV['MAIL_USERNAME'] ?? '');
+        $env_pass = getenv('MAIL_PASSWORD') ?: ($_ENV['MAIL_PASSWORD'] ?? '');
+        $env_port = (int)(getenv('MAIL_PORT') ?: ($_ENV['MAIL_PORT'] ?? 465));
+        if ($env_host && $env_user) {
+            $smtp = [
+                'host'       => $env_host,
+                'port'       => $env_port,
+                'encryption' => $env_port === 465 ? 'ssl' : 'tls',
+                'username'   => $env_user,
+                'password'   => $env_pass,
+                'from_email' => $env_user,
+                'from_name'  => defined('SITE_NAME') ? SITE_NAME : 'Padak CRM',
+            ];
+        }
+    }
 
     // Inject open tracking pixel into HTML
     if ($token && $html) {
@@ -155,7 +174,16 @@ function phpMailFallback(?array $smtp, array $to, array $cc, array $bcc, string 
     $body .= "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$html\r\n--$boundary--";
 
     $ok = @mail($to_str, $subject, $body, $headers);
-    return ['ok'=>(bool)$ok, 'error'=>$ok ? '' : error_get_last()['message'] ?? 'mail() failed'];
+    $err = '';
+    if (!$ok) {
+        $last = error_get_last();
+        $err  = $last['message'] ?? 'mail() failed';
+        // Give actionable hint
+        if (str_contains($err, 'localhost') || str_contains($err, 'mailserver')) {
+            $err .= ' — Configure SMTP in Emails → SMTP Settings to fix this.';
+        }
+    }
+    return ['ok'=>(bool)$ok, 'error'=>$err];
 }
 
 // ── MIME helpers ──

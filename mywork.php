@@ -151,23 +151,91 @@ $my_projects = $db->query("
     LIMIT 6
 ")->fetch_all(MYSQLI_ASSOC);
 
-// My recent activity (last 20 actions by me)
+// My recent activity (last 5 actions by me)
 $my_activity = $db->query("
     SELECT action, entity_type, entity_id, details, created_at
     FROM activity_log
     WHERE user_id = $uid
     ORDER BY created_at DESC
-    LIMIT 20
+    LIMIT 5
 ")->fetch_all(MYSQLI_ASSOC);
+
+// ── EXTRA PERSONAL DATA (no new tables) ──
+
+// My assigned leads (active pipeline)
+$my_leads = $db->query("
+    SELECT id, name, company, stage, priority, budget_est, budget_currency, expected_close
+    FROM leads
+    WHERE assigned_to = $uid AND stage NOT IN ('won','lost')
+    ORDER BY FIELD(priority,'urgent','high','medium','low'), expected_close ASC
+    LIMIT 5
+")->fetch_all(MYSQLI_ASSOC);
+
+// My expense spend this month
+$month_start = date('Y-m-01');
+$my_expense_month = $db->query("
+    SELECT COALESCE(SUM(ee.own_spend),0) AS total, COUNT(*) AS count, ee.currency
+    FROM expense_entries ee
+    JOIN expense_months em ON em.id = ee.month_id
+    WHERE ee.created_by = $uid AND em.month_year = '".date('Y-m')."'
+    GROUP BY ee.currency ORDER BY total DESC LIMIT 1
+")->fetch_assoc();
+
+// My invoices summary (created by me)
+$my_invoices = $db->query("
+    SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END) AS paid_count,
+        SUM(CASE WHEN status IN('sent','partial','overdue') THEN total-amount_paid ELSE 0 END) AS outstanding,
+        currency
+    FROM invoices
+    WHERE created_by = $uid AND status != 'cancelled'
+    GROUP BY currency ORDER BY outstanding DESC LIMIT 1
+")->fetch_assoc();
+
+// Tasks I created assigned to others (delegation view)
+$delegated_tasks = $db->query("
+    SELECT t.id, t.title, t.status, t.priority, t.due_date,
+           u.name AS assignee_name, p.title AS proj_title
+    FROM tasks t
+    JOIN users u ON u.id = t.assigned_to
+    LEFT JOIN projects p ON p.id = t.project_id
+    WHERE t.created_by = $uid AND t.assigned_to != $uid AND t.status != 'done'
+    ORDER BY FIELD(t.priority,'urgent','high','medium','low'), t.due_date ASC
+    LIMIT 5
+")->fetch_all(MYSQLI_ASSOC);
+
+// Unread client messages on my projects
+$unread_client_msgs = $db->query("
+    SELECT cm.id, cm.subject, cm.body, cm.created_at,
+           c.name AS client_name, p.title AS proj_title, p.id AS proj_id
+    FROM client_messages cm
+    JOIN contacts c ON c.id = cm.contact_id
+    LEFT JOIN projects p ON p.id = cm.project_id
+    WHERE cm.sender_type = 'client' AND cm.is_read = 0
+      AND (p.created_by = $uid OR cm.project_id IN (
+          SELECT project_id FROM project_members WHERE user_id = $uid
+      ))
+    ORDER BY cm.created_at DESC
+    LIMIT 3
+")->fetch_all(MYSQLI_ASSOC);
+
+// My productivity: tasks completed this week vs last week
+$week_done = (int)$db->query("SELECT COUNT(*) AS c FROM tasks WHERE assigned_to=$uid AND completed_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetch_assoc()['c'];
+$prev_week_done = (int)$db->query("SELECT COUNT(*) AS c FROM tasks WHERE assigned_to=$uid AND completed_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE())+7 DAY) AND completed_at < DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)")->fetch_assoc()['c'];
 
 // Quick stats
 $stats = [
-    'overdue'    => count($tasks_overdue),
-    'todo'       => count($tasks_todo),
-    'inprog'     => count($tasks_inprog),
-    'done_today' => $done_today,
-    'projects'   => count($my_projects),
-    'events_today'=> count($today_events),
+    'overdue'      => count($tasks_overdue),
+    'todo'         => count($tasks_todo),
+    'inprog'       => count($tasks_inprog),
+    'done_today'   => $done_today,
+    'projects'     => count($my_projects),
+    'events_today' => count($today_events),
+    'my_leads'     => count($my_leads),
+    'delegated'    => count($delegated_tasks),
+    'unread_client'=> count($unread_client_msgs),
+    'week_done'    => $week_done,
 ];
 
 // Projects for quick-task dropdown
@@ -186,7 +254,7 @@ renderLayout('My Work', 'mywork');
 .mw-grid{display:grid;grid-template-columns:1fr 1fr 340px;gap:16px;align-items:start}
 
 /* KPI strip */
-.mw-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px}
+.mw-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
 .mw-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;text-align:center;transition:border-color .15s}
 .mw-kpi:hover{border-color:var(--border2)}
 .mw-kpi-val{font-size:22px;font-weight:800;font-family:var(--font-display);line-height:1}
@@ -272,13 +340,14 @@ renderLayout('My Work', 'mywork');
 <!-- ── KPI STRIP ── -->
 <div class="mw-kpis">
   <?php
+  $trend = $week_done > $prev_week_done ? '↑' : ($week_done < $prev_week_done ? '↓' : '→');
+  $trend_c = $week_done > $prev_week_done ? 'var(--green)' : ($week_done < $prev_week_done ? 'var(--red)' : 'var(--text3)');
   $kpis = [
-    [$stats['overdue'],   'Overdue',       $stats['overdue']>0 ? 'var(--red)':'var(--text)', '#1d0505'],
-    [$stats['todo'],      'To Do',         'var(--blue)',  'rgba(99,102,241,.1)'],
-    [$stats['inprog'],    'In Progress',   'var(--yellow)','rgba(245,158,11,.1)'],
-    [$stats['done_today'],'Done Today',    'var(--green)', 'rgba(16,185,129,.1)'],
-    [$stats['projects'],  'My Projects',   'var(--orange)','var(--orange-bg)'],
-    [$stats['events_today'],'Events Today','var(--purple)','rgba(139,92,246,.1)'],
+    [$stats['overdue'],   'Overdue',        $stats['overdue']>0?'var(--red)':'var(--text)',  $stats['overdue']>0?'rgba(239,68,68,.08)':'var(--bg2)'],
+    [$stats['inprog'],    'In Progress',    'var(--yellow)',  'rgba(245,158,11,.08)'],
+    [$stats['done_today'],'Done Today',     'var(--green)',   'rgba(16,185,129,.08)'],
+    [$stats['projects'],  'My Projects',    'var(--orange)',  'var(--orange-bg)'],
+    [$stats['events_today'],'Events Today', 'var(--purple)',  'rgba(139,92,246,.08)'],
   ];
   foreach ($kpis as [$v,$l,$c,$bg]):?>
   <div class="mw-kpi" style="background:<?= $bg ?>">
@@ -286,6 +355,18 @@ renderLayout('My Work', 'mywork');
     <div class="mw-kpi-lbl"><?= $l ?></div>
   </div>
   <?php endforeach; ?>
+  <!-- Productivity trend -->
+  <div class="mw-kpi" style="background:rgba(99,102,241,.08);grid-column:span 2">
+    <div class="mw-kpi-val" style="display:flex;align-items:baseline;gap:6px;justify-content:center">
+      <span style="color:var(--blue)"><?= $week_done ?></span>
+      <span style="font-size:14px;color:<?= $trend_c ?>"><?= $trend ?></span>
+    </div>
+    <div class="mw-kpi-lbl">Tasks done this week <span style="color:var(--text3);font-size:9px">(<?= $prev_week_done ?> last week)</span></div>
+  </div>
+  <div class="mw-kpi" style="background:rgba(249,115,22,.06)">
+    <div class="mw-kpi-val" style="color:var(--orange)"><?= $stats['my_leads'] ?></div>
+    <div class="mw-kpi-lbl">My Leads</div>
+  </div>
 </div>
 
 <div class="mw-grid">
@@ -478,6 +559,61 @@ renderLayout('My Work', 'mywork');
         <?php endif; ?>
       </div>
     </div>
+
+    <!-- ── Delegated Tasks ── -->
+    <?php if ($delegated_tasks): ?>
+    <div class="mw-card" style="margin-top:14px">
+      <div class="mw-card-head">
+        <div class="mw-card-title">📤 Tasks I Delegated</div>
+        <a href="tasks.php" style="font-size:11.5px;color:var(--orange);font-weight:600">All tasks →</a>
+      </div>
+      <div class="mw-card-body" style="padding:10px 14px">
+        <?php foreach ($delegated_tasks as $t):
+          $sc = statusColor($t['status']);
+          $overdue_d = $t['due_date'] && $t['due_date'] < date('Y-m-d');
+        ?>
+        <div class="mw-task" style="margin-bottom:5px">
+          <span style="font-size:13px"><?= priorityIcon($t['priority']) ?></span>
+          <div class="mw-task-body">
+            <div class="mw-task-title"><?= h($t['title']) ?></div>
+            <div class="mw-task-meta">
+              <span>→ <?= h($t['assignee_name']) ?></span>
+              <?php if ($t['proj_title']): ?><span>📁 <?= h($t['proj_title']) ?></span><?php endif; ?>
+              <?php if ($t['due_date']): ?>
+              <span <?= $overdue_d?'style="color:var(--red);font-weight:700"':'' ?>><?= $overdue_d?'⚠ overdue':date('M j',strtotime($t['due_date'])) ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:<?= $sc ?>20;color:<?= $sc ?>"><?= ucfirst(str_replace('_',' ',$t['status'])) ?></span>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- ── Unread client messages ── -->
+    <?php if ($unread_client_msgs): ?>
+    <div class="mw-card" style="margin-top:14px;border-color:var(--orange)">
+      <div class="mw-card-head" style="background:var(--orange-bg)">
+        <div class="mw-card-title" style="color:var(--orange)">💬 Client Messages <span style="background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:99px;margin-left:4px"><?= count($unread_client_msgs) ?></span></div>
+        <a href="portal_admin.php?tab=messages" style="font-size:11.5px;color:var(--orange);font-weight:600">Reply →</a>
+      </div>
+      <div class="mw-card-body" style="padding:10px 14px">
+        <?php foreach ($unread_client_msgs as $m): ?>
+        <div style="padding:8px 10px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;border:1px solid var(--border)"
+             onclick="location.href='portal_admin.php?tab=messages&cid=<?= $m['proj_id'] ?>'">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <span style="font-size:12.5px;font-weight:700;color:var(--text)"><?= h($m['client_name']) ?></span>
+            <span style="font-size:10.5px;color:var(--text3)"><?= date('M j, g:ia',strtotime($m['created_at'])) ?></span>
+          </div>
+          <?php if ($m['subject']): ?><div style="font-size:11.5px;font-weight:600;color:var(--text2);margin-bottom:2px"><?= h($m['subject']) ?></div><?php endif; ?>
+          <div style="font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h(mb_substr(strip_tags($m['body']),0,70)) ?>…</div>
+          <?php if ($m['proj_title']): ?><div style="font-size:10.5px;color:var(--orange);margin-top:2px">📁 <?= h($m['proj_title']) ?></div><?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
   </div>
 
   <!-- ══ COLUMN 3: QUICK ACTIONS + MY PROJECTS ══ -->
@@ -574,6 +710,71 @@ renderLayout('My Work', 'mywork');
         </div>
       </div>
     </div>
+
+    <!-- My Leads Pipeline -->
+    <?php if ($my_leads): ?>
+    <div class="mw-card" style="margin-bottom:14px">
+      <div class="mw-card-head">
+        <div class="mw-card-title">🎯 My Leads Pipeline</div>
+        <a href="leads.php" style="font-size:11.5px;color:var(--orange);font-weight:600">Pipeline →</a>
+      </div>
+      <?php
+      $stage_colors = [
+        'new'=>'#94a3b8','contacted'=>'#6366f1','qualified'=>'#3b82f6',
+        'proposal'=>'#f59e0b','negotiation'=>'#f97316','won'=>'#10b981','lost'=>'#ef4444'
+      ];
+      foreach ($my_leads as $lead):
+        $sc = $stage_colors[$lead['stage']] ?? '#94a3b8';
+        $ec = $lead['expected_close'] && $lead['expected_close'] < date('Y-m-d') ? 'var(--red)' : 'var(--text3)';
+      ?>
+      <div style="padding:9px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .1s"
+           onmouseenter="this.style.background='var(--bg3)'" onmouseleave="this.style.background=''"
+           onclick="location.href='leads.php?view=<?= $lead['id'] ?>'">
+        <span style="font-size:13px"><?= priorityIcon($lead['priority']) ?></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h($lead['name']) ?><?= $lead['company']?' <span style="color:var(--text3);font-size:11px">· '.h($lead['company']).'</span>':'' ?></div>
+          <?php if ($lead['expected_close']): ?>
+          <div style="font-size:11px;color:<?= $ec ?>">Close: <?= date('M j',strtotime($lead['expected_close'])) ?></div>
+          <?php endif; ?>
+        </div>
+        <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:<?= $sc ?>20;color:<?= $sc ?>;flex-shrink:0"><?= ucfirst($lead['stage']) ?></span>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Expense & Invoice Snapshot -->
+    <?php if ($my_expense_month || $my_invoices): ?>
+    <div class="mw-card" style="margin-bottom:14px">
+      <div class="mw-card-head">
+        <div class="mw-card-title">💰 Financial Snapshot</div>
+      </div>
+      <div class="mw-card-body" style="padding:12px 14px">
+        <?php if ($my_expense_month && $my_expense_month['total'] > 0): ?>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12.5px;color:var(--text2)">My spend this month</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text)"><?= h($my_expense_month['currency']) ?> <?= number_format($my_expense_month['total'],2) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ($my_invoices && $my_invoices['outstanding'] > 0): ?>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12.5px;color:var(--text2)">Outstanding to collect</span>
+          <span style="font-size:14px;font-weight:700;color:var(--red)"><?= h($my_invoices['currency']??'') ?> <?= number_format($my_invoices['outstanding']??0,2) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ($my_invoices): ?>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+          <span style="font-size:12.5px;color:var(--text2)">Invoices paid / total</span>
+          <span style="font-size:13px;font-weight:700;color:var(--green)"><?= (int)($my_invoices['paid_count']??0) ?> / <?= (int)($my_invoices['total']??0) ?></span>
+        </div>
+        <?php endif; ?>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <a href="expenses.php" style="flex:1;text-align:center;padding:7px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);text-decoration:none;border:1px solid var(--border)">Expenses →</a>
+          <a href="invoices.php" style="flex:1;text-align:center;padding:7px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);text-decoration:none;border:1px solid var(--border)">Invoices →</a>
+        </div>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- My Projects -->
     <div class="mw-card">

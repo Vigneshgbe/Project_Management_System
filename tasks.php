@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'includes/layout.php';
+require_once 'includes/attach_widget.php';
 requireLogin();
 $db = getCRMDB();
 $user = currentUser();
@@ -288,6 +289,10 @@ renderLayout('Tasks', 'tasks');
             <button type="button" class="btn btn-ghost btn-sm" onclick="submitComment()">Send</button>
           </div>
         </div>
+        <!-- Task Attachments (edit mode only) -->
+        <div id="task-attach-section" style="display:none">
+          <?php if ($edit_id): renderAttachWidget('task', $edit_id); endif; ?>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-task')">Cancel</button>
@@ -320,6 +325,7 @@ function openEditTask(t){
   currentTaskId=t.id;
   // Load comments via fetch
   document.getElementById('comments-section').style.display='block';
+    document.getElementById('task-attach-section').style.display='block';
   loadComments(t.id);
   openModal('modal-task');
 }
@@ -330,6 +336,7 @@ function resetTaskModal(){
   document.getElementById('task-form').reset();
   document.getElementById('task-submit-btn').textContent='Create Task';
   document.getElementById('comments-section').style.display='none';
+  document.getElementById('task-attach-section').style.display='none';
 }
 document.querySelector('[onclick="openModal(\'modal-task\')"]')?.addEventListener('click',resetTaskModal);
 

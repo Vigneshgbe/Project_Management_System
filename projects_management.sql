@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 20, 2026 at 05:03 PM
+-- Generation Time: Apr 21, 2026 at 06:01 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -36,6 +36,13 @@ CREATE TABLE `activity_log` (
   `details` text DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `activity_log`
+--
+
+INSERT INTO `activity_log` (`id`, `user_id`, `action`, `entity_type`, `entity_id`, `details`, `created_at`) VALUES
+(1, 3, 'login', 'user', 3, '', '2026-04-21 08:42:18');
 
 -- --------------------------------------------------------
 
@@ -120,7 +127,7 @@ CREATE TABLE `chat_members` (
 INSERT INTO `chat_members` (`id`, `channel_id`, `user_id`, `last_read`) VALUES
 (1, 1, 1, NULL),
 (2, 1, 2, '2026-04-19 22:24:39'),
-(3, 1, 3, '2026-04-20 19:59:38'),
+(3, 1, 3, '2026-04-21 09:30:44'),
 (22, 2, 3, '2026-04-19 22:23:59'),
 (23, 2, 1, NULL),
 (37, 3, 3, '2026-04-19 22:34:08'),
@@ -266,6 +273,8 @@ CREATE TABLE `documents` (
   `file_type` varchar(100) DEFAULT NULL,
   `project_id` int(11) DEFAULT NULL,
   `contact_id` int(11) DEFAULT NULL,
+  `task_id` int(11) DEFAULT NULL,
+  `lead_id` int(11) DEFAULT NULL,
   `category` varchar(100) DEFAULT 'General',
   `access` enum('all','admin','manager') DEFAULT 'all',
   `uploaded_by` int(11) NOT NULL,
@@ -276,9 +285,9 @@ CREATE TABLE `documents` (
 -- Dumping data for table `documents`
 --
 
-INSERT INTO `documents` (`id`, `title`, `description`, `filename`, `original_name`, `file_size`, `file_type`, `project_id`, `contact_id`, `category`, `access`, `uploaded_by`, `created_at`) VALUES
-(1, 'Agreement Hypernova', 'This is my resume file', 'doc_69e445c51158a4.84392903.pdf', 'VigneshG_Software_Engineer_Resume.pdf', 54995, '0', 1, NULL, 'Development', 'manager', 1, '2026-04-19 08:32:29'),
-(2, 'CRM AGREEMENT', 'Canada crm project agreement', 'doc_69e50c0bb80be1.07252161.pdf', 'CRM SOFTWARE DEVELOPMENT AGREEMENT.pdf', 155717, 'application/pdf', 2, NULL, 'Agreement', 'all', 3, '2026-04-19 22:38:27');
+INSERT INTO `documents` (`id`, `title`, `description`, `filename`, `original_name`, `file_size`, `file_type`, `project_id`, `contact_id`, `task_id`, `lead_id`, `category`, `access`, `uploaded_by`, `created_at`) VALUES
+(1, 'Agreement Hypernova', 'This is my resume file', 'doc_69e445c51158a4.84392903.pdf', 'VigneshG_Software_Engineer_Resume.pdf', 54995, '0', 1, NULL, NULL, NULL, 'Development', 'manager', 1, '2026-04-19 08:32:29'),
+(2, 'CRM AGREEMENT', 'Canada crm project agreement', 'doc_69e50c0bb80be1.07252161.pdf', 'CRM SOFTWARE DEVELOPMENT AGREEMENT.pdf', 155717, 'application/pdf', 2, NULL, NULL, NULL, 'Agreement', 'all', 3, '2026-04-19 22:38:27');
 
 -- --------------------------------------------------------
 
@@ -859,7 +868,7 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `avatar`, `phone`, `department`, `status`, `last_login`, `created_at`) VALUES
 (1, 'Admin', 'admin@thepadak.com', '$2y$10$3.5QhvfumMj.22FYneOAnOu1ZsF6yg0iIqKausdogECfEacsX3x12', 'manager', NULL, '', 'Management', 'active', '2026-04-19 08:27:01', '2026-04-14 09:10:22'),
 (2, 'Thiki', 'thiki@thepadak.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'member', NULL, '', 'Leadership', 'active', '2026-04-19 22:24:36', '2026-04-14 09:10:22'),
-(3, 'Vignesh', 'vignesh@thepadak.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, '', 'Development', 'active', '2026-04-20 19:59:13', '2026-04-14 09:10:22');
+(3, 'Vignesh', 'vignesh@thepadak.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, '', 'Development', 'active', '2026-04-21 08:42:18', '2026-04-14 09:10:22');
 
 --
 -- Indexes for dumped tables
@@ -1141,7 +1150,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_log`
 --
 ALTER TABLE `activity_log`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `calendar_attendees`
@@ -1165,7 +1174,7 @@ ALTER TABLE `chat_channels`
 -- AUTO_INCREMENT for table `chat_members`
 --
 ALTER TABLE `chat_members`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=156;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=176;
 
 --
 -- AUTO_INCREMENT for table `chat_messages`

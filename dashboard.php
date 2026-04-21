@@ -43,7 +43,8 @@ $total_t = array_sum($tcounts);
 $projects = $db->query("
     SELECT p.*, c.name AS client_name,
         (SELECT COUNT(*) FROM tasks WHERE project_id=p.id AND status='done') AS done_tasks,
-        (SELECT COUNT(*) FROM tasks WHERE project_id=p.id) AS total_tasks
+        (SELECT COUNT(*) FROM tasks WHERE project_id=p.id) AS total_tasks,
+        p.progress
     FROM projects p
     LEFT JOIN contacts c ON c.id=p.contact_id
     ORDER BY p.updated_at DESC LIMIT 5
@@ -226,7 +227,7 @@ if (isManager()) {
       <div class="empty-state" style="padding:28px 20px"><div class="icon">📁</div><p>No projects yet.</p></div>
     <?php else: ?>
       <?php foreach ($projects as $p):
-        $prog = $p['total_tasks'] > 0 ? round($p['done_tasks']/$p['total_tasks']*100) : (int)$p['progress'];
+        $prog = (int)$p['progress'];
         $sc   = statusColor($p['status']);
         $pcol = $prog >= 75 ? '#10b981' : ($prog >= 40 ? '#f59e0b' : '#f97316');
       ?>

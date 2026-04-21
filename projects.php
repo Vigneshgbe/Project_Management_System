@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'includes/layout.php';
+require_once 'includes/attach_widget.php';
 requireLogin();
 $db = getCRMDB();
 $user = currentUser();
@@ -347,8 +348,9 @@ function currSymbol(string $c): string {
         <div class="card-title">Documents <span style="font-size:13px;color:var(--text3);font-weight:400">(<?= count($proj_docs) ?>)</span></div>
         <a href="documents.php?project_id=<?= $single['id'] ?>&new=1" class="btn btn-ghost btn-sm">↑ Upload</a>
       </div>
+      <?php renderAttachWidget('project', $single['id']); ?>
       <?php if (empty($proj_docs)): ?>
-        <div class="empty-state"><div class="icon">📄</div><p>No documents attached.</p></div>
+        <div class="empty-state"><div class="icon">📄</div><p>No documents attached. Use ↑ Upload above for full documents, or drag &amp; drop below for quick attachments.</p></div>
       <?php else: ?>
         <div style="display:flex;flex-direction:column;gap:8px">
           <?php foreach ($proj_docs as $d):

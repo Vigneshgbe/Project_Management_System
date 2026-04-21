@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'includes/layout.php';
+require_once 'includes/attach_widget.php';
 requireLogin();
 requireRole(['admin','manager']);
 $db = getCRMDB();
@@ -179,6 +180,7 @@ renderLayout('Leads Pipeline', 'leads');
         <div class="ld-box"><div class="ld-lbl"><?= $l ?></div><div class="ld-val"><?= $v ?></div></div>
         <?php endforeach; ?>
       </div>
+      <?php renderAttachWidget('lead', $single['id']); ?>
       <?php if ($single['service_interest']): ?>
       <div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase">Service Interest</div><div style="font-size:13.5px;color:var(--text2)"><?= h($single['service_interest']) ?></div></div>
       <?php endif; ?>

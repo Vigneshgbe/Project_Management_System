@@ -229,6 +229,11 @@ renderLayout('Contacts', 'contacts');
           <textarea name="notes" id="c-notes" class="form-control"><?= h($edit_contact['notes']??'') ?></textarea>
         </div>
       </div>
+      <?php if ($edit_id): ?>
+      <div style="border-top:1px solid var(--border);padding:14px 16px 0">
+        <?php renderAttachWidget('contact', $edit_id); ?>
+      </div>
+      <?php endif; ?>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-contact');<?= $edit_id?"location.href='contacts.php'":'' ?>">Cancel</button>
         <button type="submit" id="contact-submit" class="btn btn-primary"><?= $edit_id?'Save Changes':'Add Contact' ?></button>

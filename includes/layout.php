@@ -12,7 +12,6 @@ function renderLayout(string $pageTitle, string $activePage): void {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= h($pageTitle) ?> — Padak CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="icon" type="image/x-icon" href="https://thepadak.com/index_assets/padak_p.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -305,6 +304,9 @@ select.form-control{cursor:pointer}
     <div class="nav-label" style="margin-top:12px">Business</div>
     <a href="invoices.php" class="nav-item <?= $activePage==='invoices'?'active':'' ?>">
       <span class="icon">🧾</span> Invoices
+    </a>
+    <a href="lead_generator.php" class="nav-item <?= $activePage==='lead_generator'?'active':'' ?>">
+      <span class="icon">🔍</span> Lead Generator
     </a>
     <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
       <span class="icon">🎯</span> Leads Pipeline

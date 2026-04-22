@@ -2,664 +2,436 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-$db   = getCRMDB();
-$user = currentUser();
-$uid  = (int)$user['id'];
-
+$db = getCRMDB(); $user = currentUser(); $uid = (int)$user['id'];
 renderLayout('Lead Generator', 'lead_generator');
 ?>
 <style>
-/* ── LEAD GENERATOR STYLES ── */
-.lg-grid{display:grid;grid-template-columns:300px 1fr 280px;gap:18px;margin-bottom:20px}
-.lg-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
-
-/* Usage ring */
-.lg-ring-card{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border:none;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px}
-.lg-ring-wrap{position:relative;width:110px;height:110px;margin:10px auto}
+.lg-grid{display:grid;grid-template-columns:280px 1fr 260px;gap:16px;margin-bottom:18px}
+.lg-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.lg-ring-card{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border:none;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:170px}
+.lg-ring-wrap{position:relative;width:100px;height:100px;margin:8px auto}
 .lg-ring-svg{transform:rotate(-90deg)}
 .lg-ring-bg{fill:none;stroke:rgba(255,255,255,.2);stroke-width:8}
 .lg-ring-fill{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
-.lg-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2}
-.lg-ring-pct{font-size:22px;font-weight:800;color:#fff}
+.lg-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.lg-ring-pct{font-size:20px;font-weight:800;color:#fff}
 .lg-ring-sub{font-size:11px;color:rgba(255,255,255,.7)}
-.lg-ring-title{font-size:12px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
-
-/* Trend chart card */
-.lg-chart-title{font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:12px}
-
-/* Recent activity card */
-.lg-act-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.lg-ring-title{font-size:11px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.lg-chart-title{font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:10px}
+.lg-act-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
 .lg-act-item:last-child{border-bottom:none}
-.lg-act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.lg-act-text{font-size:12.5px;color:var(--text2);line-height:1.4}
-.lg-act-time{font-size:10.5px;color:var(--text3);margin-top:2px}
-
-/* Generator form */
-.lg-form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px}
-.lg-form-title{font-size:15px;font-weight:700;font-family:var(--font-display);margin-bottom:16px}
-.lg-form-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:12px;align-items:end}
-.lg-input{padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13.5px;font-family:var(--font);transition:border-color .15s;width:100%}
+.lg-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.lg-act-text{font-size:12px;color:var(--text2)}
+.lg-act-time{font-size:10px;color:var(--text3);margin-top:1px}
+.lg-form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:18px}
+.lg-form-title{font-size:14px;font-weight:700;font-family:var(--font-display);margin-bottom:14px}
+.lg-row{display:grid;grid-template-columns:1fr 1fr 90px auto;gap:10px;align-items:end}
+.lg-input{padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:var(--font);width:100%;transition:border-color .15s}
 .lg-input:focus{outline:none;border-color:var(--orange)}
 .lg-input::placeholder{color:var(--text3)}
-.lg-count-input{width:80px}
-.lg-gen-btn{padding:10px 28px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
-.lg-gen-btn:hover{opacity:.88}
-.lg-gen-btn:disabled{opacity:.5;cursor:not-allowed}
-
-/* Results table */
-.lg-results-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.lg-btn{padding:9px 22px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.lg-btn:hover{opacity:.88} .lg-btn:disabled{opacity:.5;cursor:not-allowed}
+.lg-results{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
 .lg-results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 .lg-results-title{font-size:14px;font-weight:700;font-family:var(--font-display)}
 .lg-tbl{width:100%;border-collapse:collapse}
-.lg-tbl th{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
-.lg-tbl td{padding:10px 10px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);vertical-align:middle}
+.lg-tbl th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
+.lg-tbl td{padding:9px 8px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--text2);vertical-align:middle}
 .lg-tbl tr:last-child td{border-bottom:none}
 .lg-tbl tr:hover td{background:var(--bg3)}
 .lg-name{font-weight:600;color:var(--text)}
-.lg-phone{color:var(--text2);font-family:monospace}
-.lg-addr{color:var(--text3);font-size:12px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lg-rating{color:var(--yellow);font-size:12px}
-.lg-actions{display:flex;gap:6px;align-items:center}
-.lg-btn-call{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:#10b981;color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:14px;text-decoration:none;flex-shrink:0;transition:opacity .15s}
-.lg-btn-call:hover{opacity:.8}
-.lg-btn-imp{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--orange);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:12px;flex-shrink:0;transition:opacity .15s}
-.lg-btn-imp:hover{opacity:.8}
-.lg-btn-imp:disabled{background:var(--bg4);cursor:default;opacity:1}
-.lg-imp-badge{font-size:10px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);border-radius:99px;padding:2px 8px;white-space:nowrap}
-.lg-empty{text-align:center;padding:40px 20px;color:var(--text3)}
-.lg-loading{text-align:center;padding:36px;color:var(--text3)}
-.lg-spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:lgspin .7s linear infinite;margin-bottom:10px}
+.lg-phone{font-family:monospace;font-size:12px}
+.lg-addr{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text3)}
+.lg-acts{display:flex;gap:5px;align-items:center}
+.lg-call{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#10b981;color:#fff;border-radius:50%;text-decoration:none;font-size:13px;border:none;cursor:pointer;flex-shrink:0}
+.lg-call:hover{opacity:.8}
+.lg-imp{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:var(--orange);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:11px;flex-shrink:0}
+.lg-imp:hover{opacity:.8} .lg-imp:disabled{background:var(--bg4);cursor:default}
+.lg-done{font-size:10.5px;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.lg-empty{text-align:center;padding:36px;color:var(--text3)}
+.lg-spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:lgspin .7s linear infinite;margin-bottom:8px}
 @keyframes lgspin{to{transform:rotate(360deg)}}
-
-/* Settings panel */
-.lg-settings{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:20px;display:none}
+.lg-setup-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.3);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.7;color:var(--text2)}
+.lg-setup-box strong{color:var(--text)}
+.lg-setup-box a{color:var(--orange);font-weight:600}
+.lg-warn-box{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;color:var(--text2);margin-bottom:12px;line-height:1.7}
+.lg-settings{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:none}
 .lg-settings.open{display:block}
-.lg-api-warn{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text2);line-height:1.6}
-.lg-api-link{color:var(--orange);font-weight:600}
-
-/* Quota bar */
-.lg-quota-bar{height:6px;background:var(--bg4);border-radius:99px;overflow:hidden;margin-top:8px}
-.lg-quota-fill{height:100%;background:var(--orange);border-radius:99px;transition:width .4s}
-
-/* No-API placeholder */
-.lg-noapi{text-align:center;padding:48px 24px}
-.lg-noapi-icon{font-size:48px;margin-bottom:12px}
-.lg-noapi h3{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px}
-.lg-noapi p{font-size:13px;color:var(--text3);max-width:420px;margin:0 auto 16px;line-height:1.6}
-
-@media(max-width:1100px){.lg-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:800px){.lg-grid{grid-template-columns:1fr}.lg-form-row{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.lg-form-row{grid-template-columns:1fr}}
+.prov-tab{padding:8px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;cursor:pointer;background:none;color:var(--text2);transition:all .12s}
+.prov-tab.active{background:var(--orange);border-color:var(--orange);color:#fff}
+@media(max-width:1000px){.lg-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.lg-grid{grid-template-columns:1fr}.lg-row{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.lg-row{grid-template-columns:1fr}}
 </style>
 
-<!-- Stats cards row -->
-<div class="lg-grid" id="lg-stats-row">
-  <!-- Usage ring -->
+<!-- STATS ROW -->
+<div class="lg-grid">
   <div class="lg-card lg-ring-card">
-    <div class="lg-ring-title">Usage Progress</div>
+    <div class="lg-ring-title">Usage This Month</div>
     <div class="lg-ring-wrap">
-      <svg class="lg-ring-svg" viewBox="0 0 110 110" width="110" height="110">
-        <circle class="lg-ring-bg" cx="55" cy="55" r="46"/>
-        <circle class="lg-ring-fill" cx="55" cy="55" r="46" id="lg-ring-fill"
-          stroke-dasharray="289"
-          stroke-dashoffset="289"/>
+      <svg class="lg-ring-svg" viewBox="0 0 100 100" width="100" height="100">
+        <circle class="lg-ring-bg" cx="50" cy="50" r="42"/>
+        <circle class="lg-ring-fill" id="lg-ring-fill" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
       </svg>
       <div class="lg-ring-text">
         <div class="lg-ring-pct" id="lg-ring-pct">0%</div>
-        <div class="lg-ring-sub" id="lg-ring-sub">0 / 200</div>
+        <div class="lg-ring-sub" id="lg-ring-sub">0 / 2500</div>
       </div>
     </div>
   </div>
-
-  <!-- Monthly trend chart -->
   <div class="lg-card">
     <div class="lg-chart-title">Monthly Usage Trend</div>
-    <div style="height:140px;position:relative"><canvas id="lg-trend-chart"></canvas></div>
+    <div style="height:130px"><canvas id="lg-trend"></canvas></div>
   </div>
-
-  <!-- Recent activity -->
   <div class="lg-card">
     <div class="lg-chart-title">Recent Searches</div>
-    <div id="lg-recent-list">
-      <div class="lg-act-item"><div style="color:var(--text3);font-size:12.5px;padding:8px 0">No searches yet</div></div>
-    </div>
+    <div id="lg-recent"><div style="color:var(--text3);font-size:12px;padding:6px 0">No searches yet</div></div>
   </div>
 </div>
 
-<!-- API key warning banner (shown if not configured) -->
-<div id="lg-noapi-banner" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+<!-- NO API BANNER -->
+<div id="lg-no-api" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
   <div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:20px">🔑</span>
-    <div>
-      <div style="font-size:13px;font-weight:700;color:var(--orange)">Google Places API key required</div>
-      <div style="font-size:12px;color:var(--text2)">Configure your API key to start generating real business leads.</div>
-    </div>
+    <span style="font-size:18px">🔑</span>
+    <div><div style="font-size:13px;font-weight:700;color:var(--orange)">API key not configured</div>
+    <div style="font-size:12px;color:var(--text2)">Set up TomTom free API key to start generating leads.</div></div>
   </div>
-  <button onclick="toggleSettings()" class="btn btn-sm" style="background:var(--orange);color:#fff;border:none;flex-shrink:0">⚙ Configure</button>
+  <button onclick="openSettings()" class="btn btn-sm" style="background:var(--orange);color:#fff;border:none;flex-shrink:0">⚙ Setup (Free)</button>
 </div>
 
-<!-- Settings panel (admin only) -->
-<?php if (isAdmin()): ?>
-<div class="lg-settings" id="lg-settings-panel">
+<!-- SETTINGS PANEL -->
+<?php if(isAdmin()): ?>
+<div id="lg-settings" class="lg-settings">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div style="font-size:13px;font-weight:700;color:var(--text)">⚙ Lead Generator Settings</div>
-    <button onclick="toggleSettings()" class="btn btn-ghost btn-sm">✕ Close</button>
-  </div>
-  <!-- Provider selector -->
-  <div style="margin-bottom:14px">
-    <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:6px">API Provider</label>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:var(--bg2);border:2px solid var(--orange);border-radius:var(--radius-sm);font-size:13px;font-weight:600">
-        <input type="radio" name="lg-provider" id="lg-prov-fsq" value="foursquare" checked style="accent-color:var(--orange)"> 🟢 Foursquare <span style="font-size:11px;color:var(--green);font-weight:700">FREE · No credit card</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600">
-        <input type="radio" name="lg-provider" id="lg-prov-goog" value="google" style="accent-color:var(--orange)"> 🌏 Google Places <span style="font-size:11px;color:var(--text3);font-weight:400">Paid · Better coverage</span>
-      </label>
-    </div>
+    <div style="font-size:13px;font-weight:700">⚙ Lead Generator Settings</div>
+    <button onclick="closeSettings()" class="btn btn-ghost btn-sm">✕</button>
   </div>
 
-  <!-- Foursquare setup (shown by default) -->
-  <div id="lg-fsq-setup">
-    <div class="lg-api-warn" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)">
-      <strong style="color:var(--green)">✅ Foursquare is 100% FREE — no credit card ever needed</strong><br>
-      <strong>How to get your FREE Foursquare API key (exactly as shown in your dashboard):</strong><br>
-      1. Go to <a href="https://foursquare.com/developer" target="_blank" class="lg-api-link">foursquare.com/developer</a> → Login to your account<br>
-      2. Open your project (e.g. "Lead Generator") → Click <strong>Settings</strong> in left sidebar<br>
-      3. Scroll to <strong>"Service API Key"</strong> section → you see a key named e.g. "Leads"<br>
-      4. Click the key name <strong>"Leads"</strong> to reveal/copy the full key<br>
-      &nbsp;&nbsp;&nbsp;⚠️ <strong>Do NOT use "Client Id" or "Client Secret"</strong> — those are OAuth keys, won't work here<br>
-      &nbsp;&nbsp;&nbsp;✅ Use only the <strong>Service API Key</strong> (under "Service API Key Name" column)<br>
-      5. Paste it below → Save. Done! ✅<br>
-      <span style="color:var(--green);font-weight:600">Free limit: 1,000 searches/day · Works great for Sri Lanka &amp; India</span>
+  <!-- Provider tabs -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="prov-tab active" id="tab-tomtom"     onclick="switchProv('tomtom')">🗺 TomTom <span style="font-size:10px;opacity:.8">FREE · Recommended</span></button>
+    <button class="prov-tab"        id="tab-foursquare" onclick="switchProv('foursquare')">📍 Foursquare <span style="font-size:10px;opacity:.8">FREE</span></button>
+    <button class="prov-tab"        id="tab-google"     onclick="switchProv('google')">🌏 Google <span style="font-size:10px;opacity:.8">Paid</span></button>
+  </div>
+
+  <!-- TomTom setup -->
+  <div id="setup-tomtom">
+    <div class="lg-setup-box">
+      <strong>✅ TomTom — 2,500 free searches/day · No credit card · No domain restrictions</strong><br><br>
+      <strong>Get your free key in 2 minutes:</strong><br>
+      1. Go to <a href="https://developer.tomtom.com/" target="_blank">developer.tomtom.com</a> → click <strong>"Get Free API Key"</strong><br>
+      2. Sign up with email (free, no card)<br>
+      3. After signup, your API key is shown immediately on the dashboard<br>
+      4. Copy it → paste below → Save → Test
     </div>
-    <div style="display:grid;grid-template-columns:1fr 110px auto;gap:10px;align-items:end">
+    <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:end">
       <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Foursquare API Key</label>
-        <input type="password" id="lg-fsq-key" class="lg-input" placeholder="fsq3..." autocomplete="off">
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">TomTom API Key</label>
+        <input type="password" id="tt-key" class="lg-input" placeholder="Paste your TomTom API key here..." autocomplete="off">
       </div>
       <div>
         <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
-        <input type="number" id="lg-quota" class="lg-input" value="500" min="10" max="50000">
+        <input type="number" id="lg-quota" class="lg-input" value="2500" min="100">
       </div>
-      <button onclick="saveSettings()" class="btn btn-primary">Save</button>
-      <button onclick="testKey()" class="btn btn-ghost btn-sm" id="lg-test-btn" style="white-space:nowrap">🔌 Test Key</button>
     </div>
-    <div id="lg-test-result" style="margin-top:10px;font-size:13px;display:none;padding:10px 12px;border-radius:var(--radius-sm)"></div>
   </div>
 
-  <!-- Google setup (hidden by default) -->
-  <div id="lg-goog-setup" style="display:none">
-    <div class="lg-api-warn">
-      <strong>⚠ Google Places requires a credit card for verification</strong><br>
-      The ₹2 charges you saw are <strong>refundable verification holds</strong> — not actual charges.<br>
-      Google gives $200 free credit/month but billing setup is mandatory.<br>
-      <strong>Recommendation: Use Foursquare instead (completely free)</strong>
+  <!-- Foursquare setup -->
+  <div id="setup-foursquare" style="display:none">
+    <div class="lg-setup-box">
+      <strong>📍 Foursquare — Free BUT requires allowlist fix first</strong><br><br>
+      <strong>Why "Invalid token" error happens:</strong><br>
+      Foursquare blocks requests from unlisted servers by default.<br><br>
+      <strong>Fix (30 seconds):</strong><br>
+      1. Go to <a href="https://foursquare.com/developer" target="_blank">foursquare.com/developer</a> → your project → <strong>Settings</strong><br>
+      2. Find <strong>"Allowed Hosts"</strong> section<br>
+      3. Add <strong>*</strong> (just an asterisk) → Save<br>
+      4. Then copy your <strong>Service API Key</strong> (NOT Client ID or Client Secret) and paste below
     </div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Google Places API Key</label>
-        <input type="password" id="lg-goog-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
-      </div>
-      <button onclick="saveSettings()" class="btn btn-primary">Save</button>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Foursquare Service API Key</label>
+      <input type="password" id="fsq-key" class="lg-input" placeholder="fsq3..." autocomplete="off">
     </div>
+  </div>
+
+  <!-- Google setup -->
+  <div id="setup-google" style="display:none">
+    <div class="lg-warn-box">
+      ⚠ <strong>Google requires billing setup</strong> — the ₹2 charges and redirect loop you experienced are a known Google issue for India/Sri Lanka accounts. <strong>We recommend TomTom instead.</strong>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Google Places API Key</label>
+      <input type="password" id="goog-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
+    <button onclick="saveSettings()" class="btn btn-primary">💾 Save Settings</button>
+    <button onclick="testKey()" class="btn btn-ghost btn-sm" id="lg-test-btn">🔌 Test Connection</button>
+    <div id="lg-test-result" style="font-size:12.5px;display:none;padding:6px 10px;border-radius:var(--radius-sm);flex:1;white-space:pre-line"></div>
   </div>
 </div>
-<?php else: ?>
-<div id="lg-settings-panel"></div>
 <?php endif; ?>
 
-<!-- Generator form -->
+<!-- SEARCH FORM -->
 <div class="lg-form-card">
-  <div class="lg-form-title">🔍 Generate Leads</div>
-  <div class="lg-form-row">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div class="lg-form-title">🔍 Generate Leads</div>
+    <?php if(isAdmin()): ?>
+    <button onclick="openSettings()" class="btn btn-ghost btn-sm" style="font-size:12px">⚙ Settings</button>
+    <?php endif; ?>
+  </div>
+  <div class="lg-row">
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Location / City</label>
-      <input type="text" id="lg-location" class="lg-input" placeholder="e.g. Colombo, Batticaloa, Chennai">
+      <input type="text" id="lg-loc" class="lg-input" placeholder="e.g. Colombo, Batticaloa, Chennai">
     </div>
     <div>
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Industry / Service</label>
-      <input type="text" id="lg-industry" class="lg-input" placeholder="e.g. Web development, Restaurant, Law firm">
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Industry / Business Type</label>
+      <input type="text" id="lg-ind" class="lg-input" placeholder="e.g. Restaurant, Web development, Hotel">
     </div>
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Count</label>
-      <input type="number" id="lg-count" class="lg-input lg-count-input" value="5" min="1" max="20">
+      <input type="number" id="lg-cnt" class="lg-input" value="5" min="1" max="20">
     </div>
     <div>
-      <label style="display:block;margin-bottom:4px;opacity:0">&nbsp;</label>
-      <button class="lg-gen-btn" id="lg-gen-btn" onclick="generateLeads()">Generate</button>
+      <label style="display:block;margin-bottom:4px;opacity:0">_</label>
+      <button class="lg-btn" id="lg-gen-btn" onclick="doSearch()">Generate</button>
     </div>
   </div>
-  <div id="lg-quota-info" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>
+  <div id="lg-quota-info" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
 </div>
 
-<!-- Results table -->
-<div class="lg-results-card" id="lg-results-section" style="display:none">
+<!-- LOADING -->
+<div id="lg-loading" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;text-align:center">
+  <div class="lg-spinner"></div>
+  <div style="font-size:13px;color:var(--text3)" id="lg-load-txt">Searching...</div>
+</div>
+
+<!-- RESULTS -->
+<div id="lg-results-wrap" style="display:none" class="lg-results">
   <div class="lg-results-head">
-    <div class="lg-results-title">Generated Leads <span id="lg-result-count" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="importAll()" class="btn btn-sm" id="lg-import-all-btn"
-        style="background:var(--orange);color:#fff;border:none">⬇ Import All to CRM</button>
-      <button onclick="exportExcel()" class="btn btn-ghost btn-sm">⬇ Download CSV</button>
+    <div class="lg-results-title">Generated Leads <span id="lg-res-count" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="importAll()" class="btn btn-sm" id="lg-imp-all" style="background:var(--orange);color:#fff;border:none">⬇ Import All to CRM</button>
+      <button onclick="doExport()"  class="btn btn-ghost btn-sm">⬇ Download CSV</button>
     </div>
   </div>
   <div style="overflow-x:auto">
     <table class="lg-tbl">
-      <thead>
-        <tr>
-          <th>#</th><th>Business Name</th><th>Phone</th><th>Address</th><th>Rating</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="lg-results-body"></tbody>
+      <thead><tr><th>#</th><th>Business Name</th><th>Phone</th><th>Address</th><th>Actions</th></tr></thead>
+      <tbody id="lg-tbody"></tbody>
     </table>
-  </div>
-</div>
-
-<!-- Loading state -->
-<div id="lg-loading" style="display:none" class="lg-form-card" style="text-align:center">
-  <div class="lg-loading">
-    <div class="lg-spinner"></div>
-    <div style="font-size:13px;color:var(--text3)" id="lg-loading-text">Searching for businesses…</div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-var lgCurrentIds  = [];
-var lgTrendChart  = null;
-var lgApiConfigured = false;
+var lgIds=[], lgChart=null, lgProv='tomtom', lgApiOk=false;
 
-// ── LOAD STATS ON PAGE LOAD ──
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded',function(){
     loadStats();
-
-    // Enter key on inputs
-    ['lg-location','lg-industry','lg-count'].forEach(function(id) {
-        document.getElementById(id)?.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') generateLeads();
-        });
+    ['lg-loc','lg-ind','lg-cnt'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el)el.addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
     });
 });
 
-function loadStats() {
+function loadStats(){
     fetch('lead_generator_api.php?action=get_stats')
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            if (!d.ok) {
-                if (d.error && d.error.includes('migration')) {
-                    toast('Please run migration_v11.sql first', 'error');
-                }
-                return;
-            }
-
-            lgApiConfigured = d.api_set;
-
-            // Show no-API banner if needed
-            var banner = document.getElementById('lg-noapi-banner');
-            if (!d.api_set && banner) banner.style.display = 'flex';
-            else if (banner) banner.style.display = 'none';
-
-            // Update ring
-            var pct = d.quota > 0 ? Math.round(d.used / d.quota * 100) : 0;
-            document.getElementById('lg-ring-pct').textContent = pct + '%';
-            document.getElementById('lg-ring-sub').textContent = d.used + ' / ' + d.quota;
-            var circ = 2 * Math.PI * 46; // r=46
-            var offset = circ - (pct / 100 * circ);
-            document.getElementById('lg-ring-fill').setAttribute('stroke-dasharray', circ.toFixed(1));
-            document.getElementById('lg-ring-fill').setAttribute('stroke-dashoffset', offset.toFixed(1));
-
-            // Quota info
-            var qi = document.getElementById('lg-quota-info');
-            if (qi) qi.textContent = 'Used this month: ' + d.used + ' / ' + d.quota + ' leads. ' +
-                (d.quota - d.used) + ' remaining.';
-
-            // Trend chart
-            renderTrend(d.trend || []);
-
-            // Recent activity
-            renderRecent(d.recent || []);
-
-            // Settings prefill (admin)
-            if (d.api_key) document.getElementById('lg-api-key') && (document.getElementById('lg-api-key').value = '');
-            if (d.quota)  document.getElementById('lg-quota')   && (document.getElementById('lg-quota').value   = d.quota);
-        })
-        .catch(function(e) { console.log('stats error', e); });
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(!d.ok)return;
+        lgApiOk=d.api_set; lgProv=d.provider||'tomtom';
+        var banner=document.getElementById('lg-no-api');
+        if(banner)banner.style.display=d.api_set?'none':'flex';
+        var pct=d.quota>0?Math.round(d.used/d.quota*100):0;
+        document.getElementById('lg-ring-pct').textContent=pct+'%';
+        document.getElementById('lg-ring-sub').textContent=d.used+' / '+d.quota;
+        var circ=2*Math.PI*42;
+        document.getElementById('lg-ring-fill').setAttribute('stroke-dasharray',circ.toFixed(1));
+        document.getElementById('lg-ring-fill').setAttribute('stroke-dashoffset',(circ-(pct/100*circ)).toFixed(1));
+        var qi=document.getElementById('lg-quota-info');
+        if(qi)qi.textContent='Provider: '+(lgProv==='tomtom'?'TomTom':lgProv==='foursquare'?'Foursquare':'Google')+' · Used: '+d.used+'/'+d.quota+' this month · '+Math.max(0,d.quota-d.used)+' remaining';
+        renderTrend(d.trend||[]);
+        renderRecent(d.recent||[]);
+    }).catch(function(){});
 }
 
-function renderTrend(data) {
-    var ctx = document.getElementById('lg-trend-chart');
-    if (!ctx) return;
-    if (lgTrendChart) { lgTrendChart.destroy(); lgTrendChart = null; }
+function renderTrend(data){
+    var ctx=document.getElementById('lg-trend');
+    if(!ctx)return;
+    if(lgChart){lgChart.destroy();lgChart=null;}
+    var labels=data.map(function(r){return r.mo;});
+    var vals=data.map(function(r){return parseInt(r.cnt)||0;});
+    if(!labels.length){labels=['Jan','Feb','Mar','Apr','May','Jun'];vals=[0,0,0,0,0,0];}
+    lgChart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{data:vals,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#4f46e5',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#94a3b8',font:{size:10}}},y:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#94a3b8',precision:0},beginAtZero:true}}}});
+}
 
-    var labels = data.map(function(r){return r.mo;});
-    var vals   = data.map(function(r){return parseInt(r.cnt)||0;});
+function renderRecent(data){
+    var el=document.getElementById('lg-recent');if(!el)return;
+    if(!data.length){el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:6px 0">No searches yet</div>';return;}
+    var cols=['#4f46e5','#10b981','#8b5cf6','#f97316','#f59e0b'];
+    el.innerHTML=data.map(function(r,i){
+        return '<div class="lg-act-item"><div class="lg-act-dot" style="background:'+cols[i%cols.length]+'"></div>'
+            +'<div><div class="lg-act-text">'+r.result_count+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
+            +'<div class="lg-act-time">'+fmtAgo(r.created_at)+'</div></div></div>';
+    }).join('');
+}
 
-    // Fill last 6 months if empty
-    if (!labels.length) {
-        var months = ['Jan','Feb','Mar','Apr','May','Jun'];
-        labels = months;
-        vals   = [0,0,0,0,0,0];
-    }
+function doSearch(){
+    var loc=document.getElementById('lg-loc').value.trim();
+    var ind=document.getElementById('lg-ind').value.trim();
+    var cnt=parseInt(document.getElementById('lg-cnt').value)||5;
+    if(!loc){toast('Enter a location','error');document.getElementById('lg-loc').focus();return;}
+    if(!ind){toast('Enter an industry','error');document.getElementById('lg-ind').focus();return;}
+    if(!lgApiOk){toast('Configure API key first — click ⚙ Settings','error');openSettings();return;}
 
-    lgTrendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: vals,
-                borderColor: '#4f46e5',
-                backgroundColor: 'rgba(79,70,229,.08)',
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: '#4f46e5',
-                borderWidth: 2,
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: 'rgba(148,163,184,.12)' }, ticks: { color: '#94a3b8', font:{size:11} } },
-                y: { grid: { color: 'rgba(148,163,184,.12)' }, ticks: { color: '#94a3b8', precision: 0 }, beginAtZero: true }
-            }
+    var btn=document.getElementById('lg-gen-btn');
+    btn.disabled=true;btn.textContent='Generating…';
+    document.getElementById('lg-loading').style.display='block';
+    document.getElementById('lg-results-wrap').style.display='none';
+    document.getElementById('lg-load-txt').textContent='Searching for '+ind+' in '+loc+'…';
+
+    var fd=new FormData();
+    fd.append('action','search');fd.append('location',loc);fd.append('industry',ind);fd.append('count',cnt);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        btn.disabled=false;btn.textContent='Generate';
+        document.getElementById('lg-loading').style.display='none';
+        if(!d.ok){toast(d.error||'Generation failed','error');return;}
+        if(!d.leads||!d.leads.length){toast(d.message||'No results found. Try different keywords.','info');return;}
+        renderResults(d.leads,ind,loc);
+        if(d.used!==undefined){
+            var qi=document.getElementById('lg-quota-info');
+            if(qi)qi.textContent='Provider: '+(lgProv==='tomtom'?'TomTom':'Foursquare')+' · Used: '+d.used+'/'+d.quota+' · '+(d.quota-d.used)+' remaining';
         }
+        loadStats();
+    })
+    .catch(function(e){
+        btn.disabled=false;btn.textContent='Generate';
+        document.getElementById('lg-loading').style.display='none';
+        toast('Network error — check console','error');console.error(e);
     });
 }
 
-function renderRecent(data) {
-    var list = document.getElementById('lg-recent-list');
-    if (!list) return;
-    if (!data.length) {
-        list.innerHTML = '<div class="lg-act-item"><div style="color:var(--text3);font-size:12.5px;padding:8px 0">No searches yet</div></div>';
-        return;
-    }
-    var colors = ['#4f46e5','#10b981','#8b5cf6','#f97316','#f59e0b','#14b8a6','#6366f1','#ef4444'];
-    list.innerHTML = data.map(function(r, i) {
-        var ago = fmtAgo(r.created_at);
-        return '<div class="lg-act-item">' +
-            '<div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>' +
-            '<div>' +
-                '<div class="lg-act-text">' + escH(r.result_count) + ' leads — ' + escH(r.industry) + ' in ' + escH(r.location) + '</div>' +
-                '<div class="lg-act-time">' + ago + '</div>' +
-            '</div>' +
-        '</div>';
+function renderResults(leads,ind,loc){
+    lgIds=leads.map(function(l){return l.id;});
+    document.getElementById('lg-res-count').textContent='('+leads.length+' results for '+ind+', '+loc+')';
+    var tbody=document.getElementById('lg-tbody');
+    tbody.innerHTML=leads.map(function(l,i){
+        var phone_link=l.phone?'<a href="tel:'+esc(l.phone)+'" class="lg-call" title="Call">📞</a>':'<span style="width:30px;display:inline-block"></span>';
+        var imp=l.imported?'<span class="lg-done">✓ In CRM</span>':'<button class="lg-imp" onclick="impOne('+l.id+',this)" title="Import to CRM">⬇</button>';
+        var web=l.website?'<div style="font-size:10.5px;margin-top:2px"><a href="'+esc(l.website)+'" target="_blank" style="color:var(--orange)">🌐 Website</a></div>':'';
+        return '<tr id="lr-'+l.id+'"><td style="color:var(--text3);font-size:11px">'+(i+1)+'</td>'
+            +'<td><div class="lg-name">'+esc(l.name)+'</div>'+web+'</td>'
+            +'<td class="lg-phone">'+(l.phone?esc(l.phone):'<span style="color:var(--text3)">—</span>')+'</td>'
+            +'<td><div class="lg-addr" title="'+esc(l.address)+'">'+esc(l.address||'—')+'</div></td>'
+            +'<td><div class="lg-acts">'+phone_link+'&nbsp;'+imp+'</div></td></tr>';
     }).join('');
+    document.getElementById('lg-results-wrap').style.display='block';
+    document.getElementById('lg-results-wrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// ── GENERATE LEADS ──
-function generateLeads() {
-    var location = document.getElementById('lg-location').value.trim();
-    var industry = document.getElementById('lg-industry').value.trim();
-    var count    = parseInt(document.getElementById('lg-count').value) || 5;
-
-    if (!location) { toast('Please enter a location', 'error'); document.getElementById('lg-location').focus(); return; }
-    if (!industry) { toast('Please enter an industry', 'error'); document.getElementById('lg-industry').focus(); return; }
-
-    if (!lgApiConfigured) {
-        toast('Google API key not configured. Click Configure.', 'error');
-        toggleSettings();
-        return;
-    }
-
-    var btn = document.getElementById('lg-gen-btn');
-    var loading = document.getElementById('lg-loading');
-    var results = document.getElementById('lg-results-section');
-    btn.disabled = true;
-    btn.textContent = 'Generating…';
-    loading.style.display = 'block';
-    if (results) results.style.display = 'none';
-
-    document.getElementById('lg-loading-text').textContent =
-        'Searching for ' + industry + ' businesses in ' + location + '…';
-
-    var fd = new FormData();
-    fd.append('action', 'search');
-    fd.append('location', location);
-    fd.append('industry', industry);
-    fd.append('count', count);
-
-    fetch('lead_generator_api.php', { method: 'POST', body: fd })
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            btn.disabled = false;
-            btn.textContent = 'Generate';
-            loading.style.display = 'none';
-
-            if (!d.ok) {
-                toast(d.error || 'Generation failed', 'error');
-                return;
-            }
-
-            if (d.message && (!d.leads || !d.leads.length)) {
-                toast(d.message, 'info');
-                return;
-            }
-
-            renderResults(d.leads, location, industry);
-            loadStats(); // refresh ring + trend
-
-            // Update quota info
-            if (d.used !== undefined) {
-                document.getElementById('lg-quota-info').textContent =
-                    'Used this month: ' + d.used + ' / ' + d.quota + ' leads. ' + (d.quota - d.used) + ' remaining.';
-            }
-        })
-        .catch(function(e) {
-            btn.disabled = false;
-            btn.textContent = 'Generate';
-            loading.style.display = 'none';
-            toast('Network error. Check console.', 'error');
-            console.error(e);
-        });
-}
-
-function renderResults(leads, location, industry) {
-    var section = document.getElementById('lg-results-section');
-    var body    = document.getElementById('lg-results-body');
-    var count   = document.getElementById('lg-result-count');
-
-    lgCurrentIds = leads.map(function(l){return l.id;});
-
-    if (count) count.textContent = '(' + leads.length + ' found in ' + industry + ', ' + location + ')';
-
-    body.innerHTML = leads.map(function(lead, i) {
-        var phone_link = lead.phone ? '<a href="tel:' + escH(lead.phone) + '" class="lg-btn-call" title="Call ' + escH(lead.name) + '">📞</a>' : '<span style="width:32px;height:32px;display:inline-block"></span>';
-        var imp_btn = lead.imported
-            ? '<span class="lg-imp-badge">✓ Imported</span>'
-            : '<button class="lg-btn-imp" onclick="importLead('+lead.id+',this)" title="Import to CRM leads">⬇</button>';
-        var stars = lead.rating ? '⭐ ' + lead.rating : '';
-        var website_link = lead.website ? '<div style="font-size:11px;margin-top:2px"><a href="'+escH(lead.website)+'" target="_blank" style="color:var(--orange)">🌐 Website</a></div>' : '';
-
-        return '<tr id="lg-row-'+lead.id+'">' +
-            '<td style="color:var(--text3);font-size:12px">'+(i+1)+'</td>' +
-            '<td><div class="lg-name">'+escH(lead.name)+'</div>'+website_link+'</td>' +
-            '<td class="lg-phone">'+(lead.phone ? escH(lead.phone) : '<span style="color:var(--text3)">—</span>')+'</td>' +
-            '<td><div class="lg-addr" title="'+escH(lead.address||'')+'">'+escH(lead.address||'—')+'</div></td>' +
-            '<td class="lg-rating">'+stars+'</td>' +
-            '<td><div class="lg-actions">'+phone_link+'&nbsp;'+imp_btn+'</div></td>' +
-        '</tr>';
-    }).join('');
-
-    section.style.display = 'block';
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// ── IMPORT SINGLE LEAD ──
-function importLead(resultId, btn) {
-    btn.disabled = true;
-    btn.textContent = '…';
-
-    var fd = new FormData();
-    fd.append('action', 'import_lead');
-    fd.append('result_id', resultId);
-
-    fetch('lead_generator_api.php', { method: 'POST', body: fd })
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            if (d.ok) {
-                btn.replaceWith(Object.assign(document.createElement('span'), {
-                    className: 'lg-imp-badge', textContent: '✓ Imported'
-                }));
-                toast(d.message || 'Imported!', 'success');
-            } else {
-                btn.disabled = false;
-                btn.textContent = '⬇';
-                toast(d.error || 'Import failed', 'error');
-            }
-        });
-}
-
-// ── IMPORT ALL ──
-function importAll() {
-    var pending = lgCurrentIds.filter(function(id) {
-        var btn = document.querySelector('#lg-row-' + id + ' .lg-btn-imp');
-        return btn && !btn.disabled;
+function impOne(id,btn){
+    btn.disabled=true;btn.textContent='…';
+    var fd=new FormData();fd.append('action','import_lead');fd.append('result_id',id);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){btn.replaceWith(Object.assign(document.createElement('span'),{className:'lg-done',textContent:'✓ In CRM'}));toast(d.message,'success');}
+        else{btn.disabled=false;btn.textContent='⬇';toast(d.error||'Failed','error');}
     });
-
-    if (!pending.length) { toast('All leads already imported', 'info'); return; }
-    if (!confirm('Import ' + pending.length + ' leads to CRM pipeline?')) return;
-
-    var btn = document.getElementById('lg-import-all-btn');
-    btn.disabled = true; btn.textContent = 'Importing…';
-
-    var fd = new FormData();
-    fd.append('action', 'import_all');
-    fd.append('ids', pending.join(','));
-
-    fetch('lead_generator_api.php', { method: 'POST', body: fd })
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            btn.disabled = false; btn.textContent = '⬇ Import All to CRM';
-            if (d.ok) {
-                toast(d.imported + ' leads imported to CRM!', 'success');
-                // Update UI — mark all as imported
-                pending.forEach(function(id) {
-                    var b = document.querySelector('#lg-row-' + id + ' .lg-btn-imp');
-                    if (b) b.replaceWith(Object.assign(document.createElement('span'), {
-                        className: 'lg-imp-badge', textContent: '✓ Imported'
-                    }));
-                });
-            } else {
-                toast(d.error || 'Import failed', 'error');
-            }
-        });
 }
 
-// ── EXPORT CSV ──
-function exportExcel() {
-    if (!lgCurrentIds.length) { toast('No data to export', 'error'); return; }
-    var fd = new FormData();
-    fd.append('action', 'export_excel');
-    fd.append('ids', lgCurrentIds.join(','));
-
-    fetch('lead_generator_api.php', { method: 'POST', body: fd })
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            if (!d.ok || !d.csv) { toast('Export failed', 'error'); return; }
-            var blob = new Blob([d.csv], { type: 'text/csv' });
-            var url  = URL.createObjectURL(blob);
-            var a    = document.createElement('a');
-            a.href = url;
-            a.download = 'leads_' + new Date().toISOString().slice(0,10) + '.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-}
-
-// ── SETTINGS ──
-function toggleSettings() {
-    var p = document.getElementById('lg-settings-panel');
-    if (!p) return;
-    p.classList.toggle('open');
-}
-
-// Toggle provider panels
-document.querySelectorAll('input[name="lg-provider"]').forEach(function(r) {
-    r.addEventListener('change', function() {
-        var isFsq = this.value === 'foursquare';
-        var fsqSetup  = document.getElementById('lg-fsq-setup');
-        var googSetup = document.getElementById('lg-goog-setup');
-        var fsqLabel  = document.getElementById('lg-prov-fsq')?.closest('label');
-        var gLabel    = document.getElementById('lg-prov-goog')?.closest('label');
-        if (fsqSetup)  fsqSetup.style.display  = isFsq ? 'block' : 'none';
-        if (googSetup) googSetup.style.display  = isFsq ? 'none'  : 'block';
-        if (fsqLabel)  fsqLabel.style.borderColor  = isFsq ? 'var(--orange)' : 'var(--border)';
-        if (gLabel)    gLabel.style.borderColor     = isFsq ? 'var(--border)' : 'var(--orange)';
+function importAll(){
+    var pending=lgIds.filter(function(id){var b=document.querySelector('#lr-'+id+' .lg-imp');return b&&!b.disabled;});
+    if(!pending.length){toast('All leads already imported','info');return;}
+    if(!confirm('Import '+pending.length+' leads to CRM?'))return;
+    var btn=document.getElementById('lg-imp-all');
+    btn.disabled=true;btn.textContent='Importing…';
+    var fd=new FormData();fd.append('action','import_all');fd.append('ids',pending.join(','));
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        btn.disabled=false;btn.textContent='⬇ Import All to CRM';
+        if(d.ok){toast(d.imported+' leads added to CRM!','success');
+            pending.forEach(function(id){var b=document.querySelector('#lr-'+id+' .lg-imp');if(b)b.replaceWith(Object.assign(document.createElement('span'),{className:'lg-done',textContent:'✓ In CRM'}));});}
+        else toast(d.error||'Failed','error');
     });
-});
-
-function testKey() {
-    var btn = document.getElementById('lg-test-btn');
-    var res = document.getElementById('lg-test-result');
-    btn.disabled = true; btn.textContent = 'Testing…';
-    if (res) { res.style.display='none'; res.textContent=''; }
-
-    var fd = new FormData();
-    fd.append('action', 'test_key');
-    fetch('lead_generator_api.php', {method:'POST', body:fd})
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            btn.disabled = false; btn.textContent = '🔌 Test Key';
-            if (res) {
-                res.style.display = 'block';
-                res.style.background = d.ok ? 'rgba(16,185,129,.1)' : 'rgba(239,68,68,.1)';
-                res.style.border = d.ok ? '1px solid rgba(16,185,129,.3)' : '1px solid rgba(239,68,68,.3)';
-                res.style.color = d.ok ? 'var(--green)' : 'var(--red)';
-                res.style.whiteSpace = 'pre-line';
-                res.textContent = d.ok ? d.message : d.error;
-            }
-        })
-        .catch(function(){
-            btn.disabled=false; btn.textContent='🔌 Test Key';
-            toast('Test failed — network error','error');
-        });
 }
 
-function saveSettings() {
-    var provider = document.querySelector('input[name="lg-provider"]:checked')?.value || 'foursquare';
-    var fsq_key  = document.getElementById('lg-fsq-key')?.value.trim() || '';
-    var goog_key = document.getElementById('lg-goog-key')?.value.trim() || '';
-    var quota    = document.getElementById('lg-quota')?.value || 500;
-
-    if (provider === 'foursquare' && !fsq_key) { toast('Enter your Foursquare API key', 'error'); return; }
-    if (provider === 'google' && !goog_key)    { toast('Enter your Google API key', 'error'); return; }
-
-    var fd = new FormData();
-    fd.append('action', 'save_settings');
-    fd.append('provider', provider);
-    fd.append('foursquare_key', fsq_key);
-    fd.append('google_key', goog_key);
-    fd.append('quota', quota);
-
-    fetch('lead_generator_api.php', { method: 'POST', body: fd })
-        .then(function(r){return r.json();})
-        .then(function(d) {
-            if (d.ok) {
-                toast('Settings saved! Lead Generator is ready.', 'success');
-                lgApiConfigured = true;
-                document.getElementById('lg-noapi-banner').style.display = 'none';
-                document.getElementById('lg-settings-panel').classList.remove('open');
-                document.getElementById('lg-fsq-key') && (document.getElementById('lg-fsq-key').value = '');
-                document.getElementById('lg-goog-key') && (document.getElementById('lg-goog-key').value = '');
-                loadStats();
-            } else {
-                toast(d.error || 'Save failed', 'error');
-            }
-        });
+function doExport(){
+    if(!lgIds.length){toast('No data','error');return;}
+    var fd=new FormData();fd.append('action','export_excel');fd.append('ids',lgIds.join(','));
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(!d.ok||!d.csv){toast('Export failed','error');return;}
+        var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv'}));
+        a.download='leads_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+    });
 }
 
-// ── HELPERS ──
-function escH(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function openSettings(){var p=document.getElementById('lg-settings');if(p)p.classList.add('open');}
+function closeSettings(){var p=document.getElementById('lg-settings');if(p)p.classList.remove('open');}
+
+function switchProv(p){
+    lgProv=p;
+    ['tomtom','foursquare','google'].forEach(function(k){
+        var tab=document.getElementById('tab-'+k);
+        var setup=document.getElementById('setup-'+k);
+        if(tab)tab.classList.toggle('active',k===p);
+        if(setup)setup.style.display=k===p?'block':'none';
+    });
 }
-function fmtAgo(dt) {
-    if (!dt) return '';
-    var diff = Math.floor((Date.now() - new Date(dt).getTime()) / 1000);
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-    return Math.floor(diff/86400) + 'd ago';
+
+function testKey(){
+    var btn=document.getElementById('lg-test-btn');
+    var res=document.getElementById('lg-test-result');
+    btn.disabled=true;btn.textContent='Testing…';
+    if(res){res.style.display='none';}
+    var fd=new FormData();fd.append('action','test_key');
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        btn.disabled=false;btn.textContent='🔌 Test Connection';
+        if(res){
+            res.style.display='block';
+            res.style.background=d.ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.08)';
+            res.style.border=d.ok?'1px solid rgba(16,185,129,.3)':'1px solid rgba(239,68,68,.25)';
+            res.style.color=d.ok?'var(--green)':'var(--red)';
+            res.textContent=d.ok?d.message:d.error;
+        }
+    })
+    .catch(function(){btn.disabled=false;btn.textContent='🔌 Test Connection';toast('Network error','error');});
 }
+
+function saveSettings(){
+    var prov=lgProv;
+    var tk=document.getElementById('tt-key')?.value.trim()||'';
+    var fk=document.getElementById('fsq-key')?.value.trim()||'';
+    var gk=document.getElementById('goog-key')?.value.trim()||'';
+    var quota=document.getElementById('lg-quota')?.value||2500;
+    if(prov==='tomtom'&&!tk){toast('Paste your TomTom API key','error');return;}
+    if(prov==='foursquare'&&!fk){toast('Paste your Foursquare Service API Key','error');return;}
+    if(prov==='google'&&!gk){toast('Paste your Google API key','error');return;}
+    var fd=new FormData();
+    fd.append('action','save_settings');fd.append('provider',prov);
+    fd.append('tomtom_key',tk);fd.append('foursquare_key',fk);fd.append('google_key',gk);fd.append('quota',quota);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){toast('Settings saved! Click "Test Connection" to verify.','success');lgApiOk=true;
+            document.getElementById('lg-no-api').style.display='none';
+            ['tt-key','fsq-key','goog-key'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            loadStats();
+        }else toast(d.error||'Save failed','error');
+    });
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtAgo(dt){if(!dt)return'';var diff=Math.floor((Date.now()-new Date(dt).getTime())/1000);if(diff<60)return'just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';}
 </script>
-
 <?php renderLayoutEnd(); ?>

@@ -162,11 +162,14 @@ renderLayout('Lead Generator', 'lead_generator');
   <div id="lg-fsq-setup">
     <div class="lg-api-warn" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)">
       <strong style="color:var(--green)">✅ Foursquare is 100% FREE — no credit card ever needed</strong><br>
-      <strong>How to get your FREE Foursquare API key (2 minutes):</strong><br>
-      1. Go to <a href="https://foursquare.com/developer" target="_blank" class="lg-api-link">foursquare.com/developer</a> → Sign up free<br>
-      2. Click <strong>Create a New Project</strong> → give it any name<br>
-      3. You'll see an <strong>API Key</strong> — copy it<br>
-      4. Paste it below → Save. Done! ✅<br>
+      <strong>How to get your FREE Foursquare API key (exactly as shown in your dashboard):</strong><br>
+      1. Go to <a href="https://foursquare.com/developer" target="_blank" class="lg-api-link">foursquare.com/developer</a> → Login to your account<br>
+      2. Open your project (e.g. "Lead Generator") → Click <strong>Settings</strong> in left sidebar<br>
+      3. Scroll to <strong>"Service API Key"</strong> section → you see a key named e.g. "Leads"<br>
+      4. Click the key name <strong>"Leads"</strong> to reveal/copy the full key<br>
+      &nbsp;&nbsp;&nbsp;⚠️ <strong>Do NOT use "Client Id" or "Client Secret"</strong> — those are OAuth keys, won't work here<br>
+      &nbsp;&nbsp;&nbsp;✅ Use only the <strong>Service API Key</strong> (under "Service API Key Name" column)<br>
+      5. Paste it below → Save. Done! ✅<br>
       <span style="color:var(--green);font-weight:600">Free limit: 1,000 searches/day · Works great for Sri Lanka &amp; India</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 110px auto;gap:10px;align-items:end">

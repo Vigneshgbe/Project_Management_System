@@ -182,7 +182,9 @@ renderLayout('Lead Generator', 'lead_generator');
         <input type="number" id="lg-quota" class="lg-input" value="500" min="10" max="50000">
       </div>
       <button onclick="saveSettings()" class="btn btn-primary">Save</button>
+      <button onclick="testKey()" class="btn btn-ghost btn-sm" id="lg-test-btn" style="white-space:nowrap">🔌 Test Key</button>
     </div>
+    <div id="lg-test-result" style="margin-top:10px;font-size:13px;display:none;padding:10px 12px;border-radius:var(--radius-sm)"></div>
   </div>
 
   <!-- Google setup (hidden by default) -->
@@ -585,6 +587,33 @@ document.querySelectorAll('input[name="lg-provider"]').forEach(function(r) {
         if (gLabel)    gLabel.style.borderColor     = isFsq ? 'var(--border)' : 'var(--orange)';
     });
 });
+
+function testKey() {
+    var btn = document.getElementById('lg-test-btn');
+    var res = document.getElementById('lg-test-result');
+    btn.disabled = true; btn.textContent = 'Testing…';
+    if (res) { res.style.display='none'; res.textContent=''; }
+
+    var fd = new FormData();
+    fd.append('action', 'test_key');
+    fetch('lead_generator_api.php', {method:'POST', body:fd})
+        .then(function(r){return r.json();})
+        .then(function(d) {
+            btn.disabled = false; btn.textContent = '🔌 Test Key';
+            if (res) {
+                res.style.display = 'block';
+                res.style.background = d.ok ? 'rgba(16,185,129,.1)' : 'rgba(239,68,68,.1)';
+                res.style.border = d.ok ? '1px solid rgba(16,185,129,.3)' : '1px solid rgba(239,68,68,.3)';
+                res.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+                res.style.whiteSpace = 'pre-line';
+                res.textContent = d.ok ? d.message : d.error;
+            }
+        })
+        .catch(function(){
+            btn.disabled=false; btn.textContent='🔌 Test Key';
+            toast('Test failed — network error','error');
+        });
+}
 
 function saveSettings() {
     var provider = document.querySelector('input[name="lg-provider"]:checked')?.value || 'foursquare';

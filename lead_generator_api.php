@@ -115,7 +115,7 @@ function searchFoursquare(string $key, string $location, string $industry, int $
     if (!isset($data['results'])) {
         $msg = $data['message'] ?? ($data['detail'] ?? ($data['error'] ?? ''));
         if (!$msg && isset($data['code'])) $msg = 'HTTP ' . $data['code'];
-        if (empty($msg)) $msg = 'Unexpected response. Raw: ' . substr($raw, 0, 200);
+        if (empty($msg)) $msg = 'Unexpected API response. Please check your key is the Service API Key (not Client ID/Secret). Raw: ' . substr($raw, 0, 300);
 
         // Common error patterns
         if (strpos($raw, 'Unauthorized') !== false || strpos($raw, 'Invalid auth') !== false) {
@@ -242,9 +242,14 @@ if ($action === 'search') {
     }
 
     if ($provider === 'foursquare') {
-        $k = lgSetting($db, 'foursquare_key');
+        $k = trim(lgSetting($db, 'foursquare_key'));
         if (!$k) {
             echo json_encode(['ok' => false, 'error' => 'Foursquare API key not set. Click ⚙ Settings.']);
+            exit;
+        }
+        // Warn if key looks like Client ID (long uppercase) instead of Service API Key
+        if (strlen($k) > 60 && ctype_upper(str_replace('0123456789', '', $k))) {
+            echo json_encode(['ok'=>false,'error'=>'This looks like a Client ID or Client Secret, not a Service API Key. In your Foursquare project → Settings → click "Generate Service API Key" and use that key instead.']);
             exit;
         }
         $result = searchFoursquare($k, $location, $industry, $count);
@@ -413,6 +418,36 @@ if ($action === 'save_settings' && isAdmin()) {
 // ════════════════════════════════════════════════════════
 // ACTION: EXPORT CSV
 // ════════════════════════════════════════════════════════
+// ── ACTION: TEST KEY ──
+if ($action === 'test_key' && isAdmin()) {
+    $provider = lgSetting($db, 'api_provider', 'foursquare');
+    $k = trim(lgSetting($db, $provider === 'foursquare' ? 'foursquare_key' : 'google_api_key'));
+    if (!$k) { echo json_encode(['ok'=>false,'error'=>'No API key saved. Save your key first then test.']); exit; }
+
+    if ($provider === 'foursquare') {
+        $raw = lgHttp('https://api.foursquare.com/v3/places/search?query=coffee&near=London&limit=1',
+            ["Authorization: $k", "Accept: application/json"]);
+        if (!$raw) { echo json_encode(['ok'=>false,'error'=>'Cannot reach Foursquare — check server internet connection.']); exit; }
+        $data = json_decode($raw, true);
+        if (!empty($data['results'])) {
+            echo json_encode(['ok'=>true,'message'=>'✅ Key works! API is connected. Lead Generator is ready to use.']);
+        } else {
+            $raw_excerpt = substr($raw, 0, 400);
+            if (strpos($raw,'Unauthorized')!==false||strpos($raw,'Invalid')!==false||strpos($raw,'token')!==false) {
+                echo json_encode(['ok'=>false,'error'=>"❌ Foursquare rejected the key.\n\nYou likely saved the Client ID or Client Secret — those don't work here.\n\nTo get the correct key:\n1. Go to foursquare.com/developer\n2. Open your project → Settings\n3. In 'Service API Key' section, click the key name 'Leads'\n4. Copy the actual key value that appears\n5. Paste it in the Foursquare API Key field and Save again."]);
+            } else {
+                echo json_encode(['ok'=>false,'error'=>'Foursquare response: '.$raw_excerpt]);
+            }
+        }
+    } else {
+        $raw  = lgHttp("https://maps.googleapis.com/maps/api/place/textsearch/json?query=coffee&key=$k");
+        $data = json_decode($raw??'{}', true);
+        if (!empty($data['results'])) { echo json_encode(['ok'=>true,'message'=>'✅ Google API key works!']); }
+        else { echo json_encode(['ok'=>false,'error'=>'Google: '.($data['status']??'error').' '.($data['error_message']??'')]); }
+    }
+    exit;
+}
+
 if ($action === 'export_excel') {
     $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
     if (!$ids) { echo json_encode(['ok' => false, 'error' => 'No data to export']); exit; }

@@ -145,24 +145,58 @@ renderLayout('Lead Generator', 'lead_generator');
     <div style="font-size:13px;font-weight:700;color:var(--text)">⚙ Lead Generator Settings</div>
     <button onclick="toggleSettings()" class="btn btn-ghost btn-sm">✕ Close</button>
   </div>
-  <div class="lg-api-warn">
-    <strong>How to get a Google Places API key:</strong><br>
-    1. Go to <a href="https://console.cloud.google.com/" target="_blank" class="lg-api-link">console.cloud.google.com</a><br>
-    2. Create a project → Enable <strong>Places API</strong><br>
-    3. Go to <strong>Credentials → Create API Key</strong><br>
-    4. Restrict the key to Places API only (recommended)<br>
-    5. Note: Google gives $200 free credit/month (~4,000 lead searches free)
+  <!-- Provider selector -->
+  <div style="margin-bottom:14px">
+    <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:6px">API Provider</label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:var(--bg2);border:2px solid var(--orange);border-radius:var(--radius-sm);font-size:13px;font-weight:600">
+        <input type="radio" name="lg-provider" id="lg-prov-fsq" value="foursquare" checked style="accent-color:var(--orange)"> 🟢 Foursquare <span style="font-size:11px;color:var(--green);font-weight:700">FREE · No credit card</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:600">
+        <input type="radio" name="lg-provider" id="lg-prov-goog" value="google" style="accent-color:var(--orange)"> 🌏 Google Places <span style="font-size:11px;color:var(--text3);font-weight:400">Paid · Better coverage</span>
+      </label>
+    </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 120px auto;gap:10px;align-items:end">
-    <div>
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Google Places API Key</label>
-      <input type="password" id="lg-api-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
+
+  <!-- Foursquare setup (shown by default) -->
+  <div id="lg-fsq-setup">
+    <div class="lg-api-warn" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3)">
+      <strong style="color:var(--green)">✅ Foursquare is 100% FREE — no credit card ever needed</strong><br>
+      <strong>How to get your FREE Foursquare API key (2 minutes):</strong><br>
+      1. Go to <a href="https://foursquare.com/developer" target="_blank" class="lg-api-link">foursquare.com/developer</a> → Sign up free<br>
+      2. Click <strong>Create a New Project</strong> → give it any name<br>
+      3. You'll see an <strong>API Key</strong> — copy it<br>
+      4. Paste it below → Save. Done! ✅<br>
+      <span style="color:var(--green);font-weight:600">Free limit: 1,000 searches/day · Works great for Sri Lanka &amp; India</span>
     </div>
-    <div>
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
-      <input type="number" id="lg-quota" class="lg-input" value="200" min="10" max="10000">
+    <div style="display:grid;grid-template-columns:1fr 110px auto;gap:10px;align-items:end">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Foursquare API Key</label>
+        <input type="password" id="lg-fsq-key" class="lg-input" placeholder="fsq3..." autocomplete="off">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
+        <input type="number" id="lg-quota" class="lg-input" value="500" min="10" max="50000">
+      </div>
+      <button onclick="saveSettings()" class="btn btn-primary">Save</button>
     </div>
-    <button onclick="saveSettings()" class="btn btn-primary" style="margin-bottom:0">Save</button>
+  </div>
+
+  <!-- Google setup (hidden by default) -->
+  <div id="lg-goog-setup" style="display:none">
+    <div class="lg-api-warn">
+      <strong>⚠ Google Places requires a credit card for verification</strong><br>
+      The ₹2 charges you saw are <strong>refundable verification holds</strong> — not actual charges.<br>
+      Google gives $200 free credit/month but billing setup is mandatory.<br>
+      <strong>Recommendation: Use Foursquare instead (completely free)</strong>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Google Places API Key</label>
+        <input type="password" id="lg-goog-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
+      </div>
+      <button onclick="saveSettings()" class="btn btn-primary">Save</button>
+    </div>
   </div>
 </div>
 <?php else: ?>
@@ -534,25 +568,47 @@ function toggleSettings() {
     p.classList.toggle('open');
 }
 
+// Toggle provider panels
+document.querySelectorAll('input[name="lg-provider"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+        var isFsq = this.value === 'foursquare';
+        var fsqSetup  = document.getElementById('lg-fsq-setup');
+        var googSetup = document.getElementById('lg-goog-setup');
+        var fsqLabel  = document.getElementById('lg-prov-fsq')?.closest('label');
+        var gLabel    = document.getElementById('lg-prov-goog')?.closest('label');
+        if (fsqSetup)  fsqSetup.style.display  = isFsq ? 'block' : 'none';
+        if (googSetup) googSetup.style.display  = isFsq ? 'none'  : 'block';
+        if (fsqLabel)  fsqLabel.style.borderColor  = isFsq ? 'var(--orange)' : 'var(--border)';
+        if (gLabel)    gLabel.style.borderColor     = isFsq ? 'var(--border)' : 'var(--orange)';
+    });
+});
+
 function saveSettings() {
-    var key   = document.getElementById('lg-api-key')?.value.trim();
-    var quota = document.getElementById('lg-quota')?.value;
-    if (!key) { toast('Enter your API key', 'error'); return; }
+    var provider = document.querySelector('input[name="lg-provider"]:checked')?.value || 'foursquare';
+    var fsq_key  = document.getElementById('lg-fsq-key')?.value.trim() || '';
+    var goog_key = document.getElementById('lg-goog-key')?.value.trim() || '';
+    var quota    = document.getElementById('lg-quota')?.value || 500;
+
+    if (provider === 'foursquare' && !fsq_key) { toast('Enter your Foursquare API key', 'error'); return; }
+    if (provider === 'google' && !goog_key)    { toast('Enter your Google API key', 'error'); return; }
 
     var fd = new FormData();
     fd.append('action', 'save_settings');
-    fd.append('api_key', key);
-    fd.append('quota', quota || 200);
+    fd.append('provider', provider);
+    fd.append('foursquare_key', fsq_key);
+    fd.append('google_key', goog_key);
+    fd.append('quota', quota);
 
     fetch('lead_generator_api.php', { method: 'POST', body: fd })
         .then(function(r){return r.json();})
         .then(function(d) {
             if (d.ok) {
-                toast('Settings saved!', 'success');
+                toast('Settings saved! Lead Generator is ready.', 'success');
                 lgApiConfigured = true;
                 document.getElementById('lg-noapi-banner').style.display = 'none';
                 document.getElementById('lg-settings-panel').classList.remove('open');
-                document.getElementById('lg-api-key').value = '';
+                document.getElementById('lg-fsq-key') && (document.getElementById('lg-fsq-key').value = '');
+                document.getElementById('lg-goog-key') && (document.getElementById('lg-goog-key').value = '');
                 loadStats();
             } else {
                 toast(d.error || 'Save failed', 'error');

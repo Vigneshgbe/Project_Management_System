@@ -392,7 +392,13 @@ function testKey(){
     var res=document.getElementById('lg-test-result');
     btn.disabled=true;btn.textContent='Testing…';
     if(res){res.style.display='none';}
-    var fd=new FormData();fd.append('action','test_key');
+    // Send current provider + key (even if not yet saved, so user can test before saving)
+    var fd=new FormData();
+    fd.append('action','test_key');
+    fd.append('provider', lgProv);
+    var keyMap={'tomtom':'tt-key','foursquare':'fsq-key','google':'goog-key'};
+    var keyEl=document.getElementById(keyMap[lgProv]);
+    if(keyEl&&keyEl.value.trim()) fd.append('api_key', keyEl.value.trim());
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
@@ -410,6 +416,8 @@ function testKey(){
 
 function saveSettings(){
     var prov=lgProv;
+    // Update lgProv in DB and locally
+    lgApiOk=false; // reset until test confirms
     var tk=document.getElementById('tt-key')?.value.trim()||'';
     var fk=document.getElementById('fsq-key')?.value.trim()||'';
     var gk=document.getElementById('goog-key')?.value.trim()||'';

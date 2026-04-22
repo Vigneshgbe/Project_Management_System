@@ -204,8 +204,13 @@ if($action==='search'){
 
 // ── TEST KEY ──
 if($action==='test_key'&&isAdmin()){
-    $provider=lgGet($db,'api_provider','tomtom');
-    $k=lgGet($db,$provider==='tomtom'?'tomtom_key':($provider==='foursquare'?'foursquare_key':'google_api_key'));
+    // Use provider from POST if sent (tests what's shown in UI), else fall back to DB
+    $provider = trim($_POST['provider'] ?? lgGet($db,'api_provider','tomtom'));
+    if(!in_array($provider,['tomtom','foursquare','google'])) $provider='tomtom';
+    // Key can come from POST (just typed, not yet saved) or from DB (already saved)
+    $posted_key = trim($_POST['api_key'] ?? '');
+    $db_key = lgGet($db,$provider==='tomtom'?'tomtom_key':($provider==='foursquare'?'foursquare_key':'google_api_key'));
+    $k = $posted_key ?: $db_key;
     if(!$k){echo json_encode(['ok'=>false,'error'=>'No API key saved yet.']);exit;}
 
     if($provider==='tomtom'){

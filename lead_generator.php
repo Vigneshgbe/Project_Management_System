@@ -10,8 +10,8 @@ renderLayout('Lead Generator', 'lead_generator');
 <style>
 /* ── LAYOUT ── */
 .lg-top{display:grid;grid-template-columns:260px 1fr 240px;gap:14px;margin-bottom:18px}
-/* ── RING CARD ── */
-.lg-ring-card{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
+/* ── RING CARD ── Updated colors to match theme */
+.lg-ring-card{background:linear-gradient(135deg,var(--orange),#fb923c);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none;box-shadow:var(--shadow)}
 .lg-ring-wrap{position:relative;width:100px;height:100px;margin:8px auto}
 .lg-ring-svg{transform:rotate(-90deg)}
 .lg-ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:8}
@@ -70,10 +70,16 @@ renderLayout('Lead Generator', 'lead_generator');
 .budget-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#10b981}
 .budget-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#f59e0b}
 .budget-danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#ef4444}
-/* ── RECENT ── */
-.lg-act{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+/* ── RECENT SEARCHES - Now clickable ── */
+.lg-act{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
 .lg-act:last-child{border-bottom:none}
+.lg-act:hover{background:var(--bg3);margin:0 -8px;padding:7px 8px}
 .lg-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+/* ── MANAGE LEADS SECTION ── */
+.lg-manage-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+.lg-filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.lg-filter-input{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;min-width:160px}
+.lg-filter-select{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer}
 @media(max-width:1000px){.lg-top{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.lg-top{grid-template-columns:1fr}.lg-search-row{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.lg-search-row{grid-template-columns:1fr}}
@@ -223,6 +229,82 @@ renderLayout('Lead Generator', 'lead_generator');
   <div id="lg-quota-bar-row" style="margin-top:10px"></div>
 </div>
 
+<!-- MANAGE ALL LEADS SECTION (Admin/Manager only) -->
+<?php if (isManager()): ?>
+<div class="lg-manage-section" id="lg-manage-section" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">📚 Manage All Stored Leads</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px" id="lg-manage-count">Loading...</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="bulkDeleteSelected()" class="btn btn-danger btn-sm" id="lg-bulk-delete-btn" disabled>🗑 Delete Selected</button>
+      <button onclick="toggleManageSection()" class="btn btn-ghost btn-sm">✕ Close</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="lg-filter-bar">
+    <input type="text" id="filter-search" class="lg-filter-input" placeholder="Search by name, location, industry..." onkeyup="filterStoredLeads()">
+    <select id="filter-location" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All Locations</option>
+    </select>
+    <select id="filter-industry" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All Industries</option>
+    </select>
+    <select id="filter-website" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All</option>
+      <option value="1">Has Website</option>
+      <option value="0">No Website</option>
+    </select>
+    <select id="filter-imported" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All</option>
+      <option value="0">Not Imported</option>
+      <option value="1">Imported to CRM</option>
+    </select>
+    <button onclick="resetFilters()" class="btn btn-ghost btn-sm">🔄 Reset</button>
+  </div>
+
+  <!-- Stored Leads Table -->
+  <div style="overflow-x:auto">
+    <table class="lg-tbl">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all-leads" onchange="toggleSelectAll(this)"></th>
+          <th>#</th>
+          <th>Business Name</th>
+          <th>Phone</th>
+          <th>Location</th>
+          <th>Industry</th>
+          <th>Website</th>
+          <th>Rating</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="lg-stored-tbody">
+        <tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div style="display:flex;align-items:center;justify-content:between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;color:var(--text3)" id="lg-pagination-info"></div>
+    <div style="display:flex;gap:4px;margin-left:auto" id="lg-pagination-btns"></div>
+  </div>
+</div>
+
+<div style="margin-bottom:16px">
+  <?php if (isManager()): ?>
+  <button onclick="toggleManageSection()" class="btn btn-ghost" id="lg-show-manage-btn">
+    📚 View All Stored Leads (<span id="lg-total-stored">0</span>)
+  </button>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <!-- LOADING STATE -->
 <div class="lg-loading" id="lg-loading">
   <div class="lg-spinner"></div>
@@ -264,7 +346,9 @@ renderLayout('Lead Generator', 'lead_generator');
 </div>
 
 <script>
-var lgIds=[], lgConfigured=false, lgQuota=300, lgBudget=15;
+var lgIds=[], lgConfigured=false, lgQuota=300, lgBudget=15, lgUsedLeads=0;
+var lgCurrentPage=1, lgPerPage=50, lgTotalStored=0;
+var lgStoredLeads=[];
 
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();
@@ -292,6 +376,7 @@ function loadStats() {
         lgConfigured = d.api_set;
         lgQuota      = d.quota || 300;
         lgBudget     = d.budget || 15;
+        lgUsedLeads  = d.used || 0;
 
         // No-API banner
         var banner = document.getElementById('lg-no-api-banner');
@@ -338,6 +423,11 @@ function loadStats() {
         if (document.getElementById('cfg-quota')) document.getElementById('cfg-quota').value = lgQuota;
         if (document.getElementById('cfg-budget')) document.getElementById('cfg-budget').value = lgBudget;
 
+        // Total stored leads count
+        lgTotalStored = d.total_all || 0;
+        var totalEl = document.getElementById('lg-total-stored');
+        if (totalEl) totalEl.textContent = lgTotalStored;
+
         renderRecent(d.recent||[]);
         updateCostPreview();
     })
@@ -351,10 +441,35 @@ function renderRecent(data) {
     var colors=['#4f46e5','#10b981','#f97316','#8b5cf6','#f59e0b','#14b8a6','#6366f1','#ef4444'];
     el.innerHTML = data.map(function(r,i){
         var cost = parseFloat(r.estimated_cost||0).toFixed(4);
-        return '<div class="lg-act"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
+        return '<div class="lg-act" onclick="loadSearchHistory('+r.id+')"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
             +'<div><div style="font-size:12.5px;color:var(--text2);font-weight:600">'+esc(r.result_count)+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
             +'<div style="font-size:11px;color:var(--text3)">$'+cost+' cost · '+fmtAgo(r.created_at)+'</div></div></div>';
     }).join('');
+}
+
+function loadSearchHistory(usageId) {
+    var btn=document.getElementById('lg-gen-btn');
+    var loading=document.getElementById('lg-loading');
+    var results=document.getElementById('lg-results-section');
+    
+    loading.style.display='block';
+    if (results) results.style.display='none';
+    document.getElementById('lg-load-text').textContent='Loading previous search results...';
+    document.getElementById('lg-load-sub').textContent='';
+
+    fetch('lead_generator_api.php?action=get_search_history&usage_id='+usageId)
+    .then(function(r){return r.json();})
+    .then(function(d){
+        loading.style.display='none';
+        if (!d.ok) { toast(d.error||'Failed to load','error'); return; }
+        if (!d.leads||!d.leads.length) { toast('No leads found for this search','info'); return; }
+        renderResults(d.leads, d.industry, d.location);
+        results.scrollIntoView({behavior:'smooth',block:'start'});
+    })
+    .catch(function(e){
+        loading.style.display='none';
+        toast('Network error','error'); console.error(e);
+    });
 }
 
 function doSearch() {
@@ -364,6 +479,12 @@ function doSearch() {
     if (!loc) { toast('Enter a location','error'); document.getElementById('lg-location').focus(); return; }
     if (!ind) { toast('Enter an industry','error'); document.getElementById('lg-industry').focus(); return; }
     if (!lgConfigured) { toast('Configure Google API key first','error'); toggleSettings(); return; }
+
+    // HARD LIMIT CHECK - Stop before search if would exceed quota
+    if (lgUsedLeads + cnt > lgQuota) {
+        toast('⛔ Monthly quota limit reached! You have used '+lgUsedLeads+' of '+lgQuota+' leads this month. Cannot generate '+cnt+' more leads. This protects your free tier.','error');
+        return;
+    }
 
     var btn=document.getElementById('lg-gen-btn');
     var loading=document.getElementById('lg-loading');
@@ -386,6 +507,7 @@ function doSearch() {
         if (!d.leads||!d.leads.length) { toast(d.message||'No results found. Try different keywords.','info'); return; }
         renderResults(d.leads,ind,loc);
         if (d.used!==undefined) {
+            lgUsedLeads = d.used; // Update global counter
             var remLeads=Math.floor((d.budget-d.cost)/0.035);
             document.getElementById('lg-rem-leads').textContent='~'+Math.max(0,remLeads)+' leads remaining';
             document.getElementById('lg-sub').textContent=d.used+' / '+d.quota;
@@ -473,6 +595,298 @@ function exportCSV() {
         a.click();
     });
 }
+
+// ═══════════════════════════════════════════════════════════
+// MANAGE ALL STORED LEADS (Admin/Manager)
+// ═══════════════════════════════════════════════════════════
+
+function toggleManageSection() {
+    var sec = document.getElementById('lg-manage-section');
+    if (sec.style.display === 'none') {
+        sec.style.display = 'block';
+        loadAllStoredLeads();
+        document.getElementById('lg-show-manage-btn').textContent = '✕ Close Manage View';
+    } else {
+        sec.style.display = 'none';
+        document.getElementById('lg-show-manage-btn').textContent = '📚 View All Stored Leads ('+lgTotalStored+')';
+    }
+}
+
+function loadAllStoredLeads(page) {
+    page = page || 1;
+    lgCurrentPage = page;
+    
+    var search = document.getElementById('filter-search')?.value || '';
+    var location = document.getElementById('filter-location')?.value || '';
+    var industry = document.getElementById('filter-industry')?.value || '';
+    var website = document.getElementById('filter-website')?.value || '';
+    var imported = document.getElementById('filter-imported')?.value || '';
+
+    var url = 'lead_generator_api.php?action=get_all_stored&page='+page+'&per_page='+lgPerPage;
+    if (search) url += '&search='+encodeURIComponent(search);
+    if (location) url += '&location='+encodeURIComponent(location);
+    if (industry) url += '&industry='+encodeURIComponent(industry);
+    if (website) url += '&website='+website;
+    if (imported) url += '&imported='+imported;
+
+    document.getElementById('lg-stored-tbody').innerHTML = 
+        '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
+
+    fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (!d.ok) { toast(d.error||'Failed to load','error'); return; }
+        
+        lgStoredLeads = d.leads || [];
+        renderStoredLeadsTable(d.leads);
+        renderPagination(d.total, d.page, d.per_page);
+        
+        // Populate filter dropdowns
+        populateFilters(d.locations, d.industries);
+        
+        document.getElementById('lg-manage-count').textContent = 
+            'Total: '+d.total+' leads stored across all searches';
+    })
+    .catch(function(e){
+        toast('Failed to load stored leads','error');
+        console.error(e);
+    });
+}
+
+function renderStoredLeadsTable(leads) {
+    var tbody = document.getElementById('lg-stored-tbody');
+    if (!leads || !leads.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:36px"><div style="font-size:32px;margin-bottom:8px">📭</div><div style="color:var(--text3)">No leads found</div></td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = leads.map(function(l, idx) {
+        var rowNum = ((lgCurrentPage - 1) * lgPerPage) + idx + 1;
+        var web_badge = l.has_website
+            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" style="font-size:10px">✅ Yes ↗</a>'
+            : '<span class="lg-web-no" style="font-size:10px">✗ No</span>';
+        var status = l.imported
+            ? '<span class="lg-imp-done" style="font-size:10px">✓ Imported</span>'
+            : '<span style="font-size:10px;color:var(--text3)">Not imported</span>';
+        var stars = l.rating ? '⭐ '+l.rating : '—';
+        
+        return '<tr>'
+            +'<td><input type="checkbox" class="lead-select" data-id="'+l.id+'"></td>'
+            +'<td style="color:var(--text3);font-size:12px">'+rowNum+'</td>'
+            +'<td><div class="lg-name" style="font-size:13px">'+esc(l.name)+'</div></td>'
+            +'<td style="font-size:12px">'+(l.phone?esc(l.phone):'<span style="color:var(--text3)">—</span>')+'</td>'
+            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.location||'—')+'</td>'
+            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.industry||'—')+'</td>'
+            +'<td>'+web_badge+'</td>'
+            +'<td style="font-size:12px">'+stars+'</td>'
+            +'<td style="font-size:11px;color:var(--text3)">'+fmtDate(l.created_at)+'</td>'
+            +'<td>'+status+'</td>'
+            +'<td><div style="display:flex;gap:4px">'
+                +(l.imported ? '' : '<button onclick="impOne('+l.id+',this)" class="lg-imp-btn" style="width:24px;height:24px;font-size:10px" title="Import">⬇</button>')
+                +'<button onclick="deleteSingleLead('+l.id+')" class="btn btn-danger btn-sm btn-icon" style="width:24px;height:24px;padding:4px;font-size:11px" title="Delete">🗑</button>'
+            +'</div></td>'
+            +'</tr>';
+    }).join('');
+
+    // Update select all checkbox state
+    updateSelectAllState();
+}
+
+function renderPagination(total, currentPage, perPage) {
+    var totalPages = Math.ceil(total / perPage);
+    var info = document.getElementById('lg-pagination-info');
+    var btns = document.getElementById('lg-pagination-btns');
+    
+    var start = ((currentPage - 1) * perPage) + 1;
+    var end = Math.min(currentPage * perPage, total);
+    info.textContent = 'Showing '+start+'-'+end+' of '+total;
+
+    if (totalPages <= 1) {
+        btns.innerHTML = '';
+        return;
+    }
+
+    var html = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        html += '<button onclick="loadAllStoredLeads('+(currentPage-1)+')" class="btn btn-ghost btn-sm">← Prev</button>';
+    }
+    
+    // Page numbers
+    var startPage = Math.max(1, currentPage - 2);
+    var endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        html += '<button onclick="loadAllStoredLeads(1)" class="btn btn-ghost btn-sm">1</button>';
+        if (startPage > 2) html += '<span style="padding:5px 8px;color:var(--text3)">...</span>';
+    }
+    
+    for (var i = startPage; i <= endPage; i++) {
+        if (i === currentPage) {
+            html += '<button class="btn btn-sm" style="background:var(--orange);color:#fff">'+i+'</button>';
+        } else {
+            html += '<button onclick="loadAllStoredLeads('+i+')" class="btn btn-ghost btn-sm">'+i+'</button>';
+        }
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += '<span style="padding:5px 8px;color:var(--text3)">...</span>';
+        html += '<button onclick="loadAllStoredLeads('+totalPages+')" class="btn btn-ghost btn-sm">'+totalPages+'</button>';
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        html += '<button onclick="loadAllStoredLeads('+(currentPage+1)+')" class="btn btn-ghost btn-sm">Next →</button>';
+    }
+    
+    btns.innerHTML = html;
+}
+
+function populateFilters(locations, industries) {
+    var locSelect = document.getElementById('filter-location');
+    var indSelect = document.getElementById('filter-industry');
+    
+    if (locSelect && locations) {
+        var currentVal = locSelect.value;
+        locSelect.innerHTML = '<option value="">All Locations</option>' + 
+            locations.map(function(loc){ return '<option value="'+esc(loc)+'">'+esc(loc)+'</option>'; }).join('');
+        locSelect.value = currentVal;
+    }
+    
+    if (indSelect && industries) {
+        var currentVal = indSelect.value;
+        indSelect.innerHTML = '<option value="">All Industries</option>' + 
+            industries.map(function(ind){ return '<option value="'+esc(ind)+'">'+esc(ind)+'</option>'; }).join('');
+        indSelect.value = currentVal;
+    }
+}
+
+function filterStoredLeads() {
+    loadAllStoredLeads(1); // Reset to page 1 when filtering
+}
+
+function resetFilters() {
+    document.getElementById('filter-search').value = '';
+    document.getElementById('filter-location').value = '';
+    document.getElementById('filter-industry').value = '';
+    document.getElementById('filter-website').value = '';
+    document.getElementById('filter-imported').value = '';
+    loadAllStoredLeads(1);
+}
+
+function toggleSelectAll(checkbox) {
+    var checkboxes = document.querySelectorAll('.lead-select');
+    checkboxes.forEach(function(cb) {
+        cb.checked = checkbox.checked;
+    });
+    updateBulkDeleteButton();
+}
+
+function updateSelectAllState() {
+    var selectAll = document.getElementById('select-all-leads');
+    var checkboxes = document.querySelectorAll('.lead-select');
+    var checkedCount = document.querySelectorAll('.lead-select:checked').length;
+    
+    if (checkboxes.length === 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    } else if (checkedCount === 0) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    } else if (checkedCount === checkboxes.length) {
+        selectAll.checked = true;
+        selectAll.indeterminate = false;
+    } else {
+        selectAll.checked = false;
+        selectAll.indeterminate = true;
+    }
+    
+    updateBulkDeleteButton();
+}
+
+function updateBulkDeleteButton() {
+    var btn = document.getElementById('lg-bulk-delete-btn');
+    var selected = document.querySelectorAll('.lead-select:checked');
+    btn.disabled = selected.length === 0;
+    btn.textContent = '🗑 Delete Selected' + (selected.length > 0 ? ' ('+selected.length+')' : '');
+}
+
+// Event listener for individual checkboxes
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('lead-select')) {
+        updateSelectAllState();
+    }
+});
+
+function bulkDeleteSelected() {
+    var selected = Array.from(document.querySelectorAll('.lead-select:checked')).map(function(cb) {
+        return cb.dataset.id;
+    });
+    
+    if (!selected.length) {
+        toast('No leads selected','info');
+        return;
+    }
+    
+    if (!confirm('Delete '+selected.length+' selected lead(s)? This cannot be undone.')) return;
+    
+    var btn = document.getElementById('lg-bulk-delete-btn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    
+    var fd = new FormData();
+    fd.append('action', 'bulk_delete');
+    fd.append('ids', selected.join(','));
+    
+    fetch('lead_generator_api.php', {method:'POST', body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (d.ok) {
+            toast(d.deleted+' lead(s) deleted','success');
+            loadAllStoredLeads(lgCurrentPage);
+            loadStats(); // Refresh stats
+        } else {
+            toast(d.error||'Delete failed','error');
+            btn.disabled = false;
+            updateBulkDeleteButton();
+        }
+    })
+    .catch(function(){
+        toast('Network error','error');
+        btn.disabled = false;
+        updateBulkDeleteButton();
+    });
+}
+
+function deleteSingleLead(id) {
+    if (!confirm('Delete this lead? This cannot be undone.')) return;
+    
+    var fd = new FormData();
+    fd.append('action', 'bulk_delete');
+    fd.append('ids', id);
+    
+    fetch('lead_generator_api.php', {method:'POST', body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (d.ok) {
+            toast('Lead deleted','success');
+            loadAllStoredLeads(lgCurrentPage);
+            loadStats();
+        } else {
+            toast(d.error||'Delete failed','error');
+        }
+    });
+}
+
+function fmtDate(dt) {
+    if (!dt) return '';
+    var d = new Date(dt);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+
+// ═══════════════════════════════════════════════════════════
 
 function toggleSettings(){
     var p=document.getElementById('lg-settings-panel'); if(!p)return;

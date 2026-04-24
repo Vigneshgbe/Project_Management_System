@@ -2,444 +2,528 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-$db = getCRMDB(); $user = currentUser(); $uid = (int)$user['id'];
+$db   = getCRMDB();
+$user = currentUser();
+$uid  = (int)$user['id'];
 renderLayout('Lead Generator', 'lead_generator');
 ?>
 <style>
-.lg-grid{display:grid;grid-template-columns:280px 1fr 260px;gap:16px;margin-bottom:18px}
-.lg-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
-.lg-ring-card{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border:none;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:170px}
+/* ── LAYOUT ── */
+.lg-top{display:grid;grid-template-columns:260px 1fr 240px;gap:14px;margin-bottom:18px}
+/* ── RING CARD ── */
+.lg-ring-card{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
 .lg-ring-wrap{position:relative;width:100px;height:100px;margin:8px auto}
 .lg-ring-svg{transform:rotate(-90deg)}
-.lg-ring-bg{fill:none;stroke:rgba(255,255,255,.2);stroke-width:8}
-.lg-ring-fill{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
-.lg-ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.lg-ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:8}
+.lg-ring-fill{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
+.lg-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .lg-ring-pct{font-size:20px;font-weight:800;color:#fff}
-.lg-ring-sub{font-size:11px;color:rgba(255,255,255,.7)}
-.lg-ring-title{font-size:11px;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
-.lg-chart-title{font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:10px}
-.lg-act-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
-.lg-act-item:last-child{border-bottom:none}
-.lg-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.lg-act-text{font-size:12px;color:var(--text2)}
-.lg-act-time{font-size:10px;color:var(--text3);margin-top:1px}
-.lg-form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:18px}
-.lg-form-title{font-size:14px;font-weight:700;font-family:var(--font-display);margin-bottom:14px}
-.lg-row{display:grid;grid-template-columns:1fr 1fr 90px auto;gap:10px;align-items:end}
-.lg-input{padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:var(--font);width:100%;transition:border-color .15s}
+.lg-ring-sub{font-size:10.5px;color:rgba(255,255,255,.65)}
+.lg-ring-title{font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+/* ── COST METER ── */
+.lg-cost-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.cost-bar{height:10px;border-radius:99px;background:var(--bg4);overflow:hidden;margin:8px 0 4px}
+.cost-fill{height:100%;border-radius:99px;transition:width .5s}
+/* ── SEARCH FORM ── */
+.lg-search-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+.lg-search-row{display:grid;grid-template-columns:1fr 1fr 80px auto;gap:10px;align-items:end}
+.lg-input{padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13.5px;font-family:var(--font);width:100%;transition:border-color .15s}
 .lg-input:focus{outline:none;border-color:var(--orange)}
 .lg-input::placeholder{color:var(--text3)}
-.lg-btn{padding:9px 22px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
-.lg-btn:hover{opacity:.88} .lg-btn:disabled{opacity:.5;cursor:not-allowed}
-.lg-results{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
-.lg-results-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
-.lg-results-title{font-size:14px;font-weight:700;font-family:var(--font-display)}
+.lg-gen-btn{padding:9px 22px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.lg-gen-btn:hover{opacity:.88}
+.lg-gen-btn:disabled{opacity:.45;cursor:not-allowed}
+/* ── RESULTS TABLE ── */
+.lg-results-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:0;overflow:hidden}
+.lg-results-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:var(--bg3)}
 .lg-tbl{width:100%;border-collapse:collapse}
-.lg-tbl th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
-.lg-tbl td{padding:9px 8px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--text2);vertical-align:middle}
+.lg-tbl th{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;background:var(--bg3)}
+.lg-tbl td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);vertical-align:middle}
 .lg-tbl tr:last-child td{border-bottom:none}
 .lg-tbl tr:hover td{background:var(--bg3)}
-.lg-name{font-weight:600;color:var(--text)}
-.lg-phone{font-family:monospace;font-size:12px}
-.lg-addr{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text3)}
-.lg-acts{display:flex;gap:5px;align-items:center}
-.lg-call{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#10b981;color:#fff;border-radius:50%;text-decoration:none;font-size:13px;border:none;cursor:pointer;flex-shrink:0}
-.lg-call:hover{opacity:.8}
-.lg-imp{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:var(--orange);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:11px;flex-shrink:0}
-.lg-imp:hover{opacity:.8} .lg-imp:disabled{background:var(--bg4);cursor:default}
-.lg-done{font-size:10.5px;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);border-radius:99px;padding:2px 8px;white-space:nowrap}
-.lg-empty{text-align:center;padding:36px;color:var(--text3)}
-.lg-spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:lgspin .7s linear infinite;margin-bottom:8px}
+.lg-name{font-weight:700;color:var(--text);font-size:13.5px}
+.lg-phone{font-family:monospace;font-size:13px;color:var(--text)}
+.lg-addr{max-width:250px;font-size:12px;color:var(--text3)}
+.lg-rating{color:#f59e0b;font-size:12px;font-weight:700}
+.lg-web-yes{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap}
+.lg-web-no{background:var(--bg4);color:var(--text3);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.lg-call-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#10b981;color:#fff;border-radius:50%;text-decoration:none;font-size:13px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.lg-call-btn:hover{opacity:.8}
+.lg-imp-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--orange);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:12px;flex-shrink:0;transition:opacity .15s}
+.lg-imp-btn:hover{opacity:.8}
+.lg-imp-btn:disabled{background:var(--bg4);color:var(--text3);cursor:default}
+.lg-imp-done{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.lg-loading{text-align:center;padding:36px 20px;display:none}
+.lg-spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:lgspin .7s linear infinite;margin-bottom:10px}
 @keyframes lgspin{to{transform:rotate(360deg)}}
-.lg-setup-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.3);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.7;color:var(--text2)}
-.lg-setup-box strong{color:var(--text)}
-.lg-setup-box a{color:var(--orange);font-weight:600}
-.lg-warn-box{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;color:var(--text2);margin-bottom:12px;line-height:1.7}
-.lg-settings{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:18px;display:none}
+/* ── SETTINGS ── */
+.lg-settings{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:16px;display:none}
 .lg-settings.open{display:block}
-.prov-tab{padding:8px 16px;border:2px solid var(--border);border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;cursor:pointer;background:none;color:var(--text2);transition:all .12s}
-.prov-tab.active{background:var(--orange);border-color:var(--orange);color:#fff}
-@media(max-width:1000px){.lg-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:700px){.lg-grid{grid-template-columns:1fr}.lg-row{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.lg-row{grid-template-columns:1fr}}
+.lg-setup-step{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.lg-setup-step:last-child{border-bottom:none}
+.lg-step-num{width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.lg-setup-step h4{font-size:13px;font-weight:700;color:var(--text);margin:0 0 3px}
+.lg-setup-step p{font-size:12.5px;color:var(--text2);margin:0;line-height:1.6}
+.lg-setup-step a{color:var(--orange);font-weight:600}
+.lg-setup-step code{background:var(--bg2);padding:2px 6px;border-radius:4px;font-size:12px}
+/* ── BUDGET ALERTS ── */
+.budget-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#10b981}
+.budget-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#f59e0b}
+.budget-danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#ef4444}
+/* ── RECENT ── */
+.lg-act{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.lg-act:last-child{border-bottom:none}
+.lg-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+@media(max-width:1000px){.lg-top{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.lg-top{grid-template-columns:1fr}.lg-search-row{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.lg-search-row{grid-template-columns:1fr}}
 </style>
 
-<!-- STATS ROW -->
-<div class="lg-grid">
-  <div class="lg-card lg-ring-card">
-    <div class="lg-ring-title">Usage This Month</div>
+<!-- TOP STATS ROW -->
+<div class="lg-top" id="lg-top-row">
+  <!-- Usage ring -->
+  <div class="lg-ring-card">
+    <div class="lg-ring-title">Monthly Usage</div>
     <div class="lg-ring-wrap">
       <svg class="lg-ring-svg" viewBox="0 0 100 100" width="100" height="100">
         <circle class="lg-ring-bg" cx="50" cy="50" r="42"/>
-        <circle class="lg-ring-fill" id="lg-ring-fill" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
+        <circle class="lg-ring-fill" id="lg-ring" cx="50" cy="50" r="42"
+          stroke-dasharray="264" stroke-dashoffset="264"/>
       </svg>
-      <div class="lg-ring-text">
-        <div class="lg-ring-pct" id="lg-ring-pct">0%</div>
-        <div class="lg-ring-sub" id="lg-ring-sub">0 / 2500</div>
+      <div class="lg-ring-inner">
+        <div class="lg-ring-pct" id="lg-pct">0%</div>
+        <div class="lg-ring-sub" id="lg-sub">0 / 300</div>
       </div>
     </div>
   </div>
-  <div class="lg-card">
-    <div class="lg-chart-title">Monthly Usage Trend</div>
-    <div style="height:130px"><canvas id="lg-trend"></canvas></div>
+
+  <!-- Recent searches -->
+  <div class="lg-cost-card">
+    <div style="font-size:13px;font-weight:700;font-family:var(--font-display);margin-bottom:10px">📊 Recent Searches</div>
+    <div id="lg-recent"><div style="color:var(--text3);font-size:12.5px">Loading...</div></div>
   </div>
-  <div class="lg-card">
-    <div class="lg-chart-title">Recent Searches</div>
-    <div id="lg-recent"><div style="color:var(--text3);font-size:12px;padding:6px 0">No searches yet</div></div>
+
+  <!-- Cost meter -->
+  <div class="lg-cost-card">
+    <div style="font-size:13px;font-weight:700;font-family:var(--font-display);margin-bottom:10px">💰 API Budget</div>
+    <div id="lg-budget-status"></div>
+    <div class="cost-bar"><div class="cost-fill" id="lg-cost-fill" style="width:0%;background:#10b981"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+      <span>$<span id="lg-cost-used">0.00</span> used</span>
+      <span>$<span id="lg-cost-limit">15.00</span> limit</span>
+    </div>
+    <div style="margin-top:10px;font-size:11.5px;color:var(--text3);line-height:1.7">
+      <div>Cost per lead: ~$0.035</div>
+      <div id="lg-rem-leads"></div>
+      <div style="margin-top:4px;font-size:10.5px;color:var(--text3)">Google $200 free/month · You'll never hit it</div>
+    </div>
   </div>
 </div>
 
 <!-- NO API BANNER -->
-<div id="lg-no-api" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:none;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+<div id="lg-no-api-banner" style="display:none;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
   <div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:18px">🔑</span>
-    <div><div style="font-size:13px;font-weight:700;color:var(--orange)">API key not configured</div>
-    <div style="font-size:12px;color:var(--text2)">Set up TomTom free API key to start generating leads.</div></div>
+    <span style="font-size:22px">🔑</span>
+    <div><div style="font-size:13px;font-weight:700;color:var(--orange)">Google Places API key not configured</div>
+    <div style="font-size:12px;color:var(--text2)">Takes 2 minutes to setup. Free trial credits cover thousands of searches.</div></div>
   </div>
-  <button onclick="openSettings()" class="btn btn-sm" style="background:var(--orange);color:#fff;border:none;flex-shrink:0">⚙ Setup (Free)</button>
+  <?php if (isAdmin()): ?><button onclick="toggleSettings()" class="btn btn-sm" style="background:var(--orange);color:#fff;border:none">⚙ Configure Now</button><?php endif; ?>
 </div>
 
-<!-- SETTINGS PANEL -->
-<?php if(isAdmin()): ?>
-<div id="lg-settings" class="lg-settings">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div style="font-size:13px;font-weight:700">⚙ Lead Generator Settings</div>
-    <button onclick="closeSettings()" class="btn btn-ghost btn-sm">✕</button>
+<!-- SETTINGS PANEL (admin only) -->
+<?php if (isAdmin()): ?>
+<div class="lg-settings" id="lg-settings-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:13.5px;font-weight:700">⚙ Lead Generator Settings</div>
+    <button onclick="toggleSettings()" class="btn btn-ghost btn-sm">✕ Close</button>
   </div>
 
-  <!-- Provider tabs -->
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="prov-tab active" id="tab-tomtom"     onclick="switchProv('tomtom')">🗺 TomTom <span style="font-size:10px;opacity:.8">FREE · Recommended</span></button>
-    <button class="prov-tab"        id="tab-foursquare" onclick="switchProv('foursquare')">📍 Foursquare <span style="font-size:10px;opacity:.8">FREE</span></button>
-    <button class="prov-tab"        id="tab-google"     onclick="switchProv('google')">🌏 Google <span style="font-size:10px;opacity:.8">Paid</span></button>
-  </div>
-
-  <!-- TomTom setup -->
-  <div id="setup-tomtom">
-    <div class="lg-setup-box">
-      <strong>✅ TomTom — 2,500 free searches/day · No credit card · No domain restrictions</strong><br><br>
-      <strong>Get your free key in 2 minutes:</strong><br>
-      1. Go to <a href="https://developer.tomtom.com/" target="_blank">developer.tomtom.com</a> → click <strong>"Get Free API Key"</strong><br>
-      2. Sign up with email (free, no card)<br>
-      3. After signup, your API key is shown immediately on the dashboard<br>
-      4. Copy it → paste below → Save → Test
+  <!-- Setup guide -->
+  <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">How to get your Google Places API key (already paid ₹1,000 — use that credit):</div>
+    <div class="lg-setup-step">
+      <div class="lg-step-num">1</div>
+      <div><h4>Go to Google Cloud Console</h4><p>Open <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> → Your project "Leads-Generator"</p></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 100px;gap:10px;align-items:end">
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">TomTom API Key</label>
-        <input type="password" id="tt-key" class="lg-input" placeholder="Paste your TomTom API key here..." autocomplete="off">
-      </div>
-      <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
-        <input type="number" id="lg-quota" class="lg-input" value="2500" min="100">
-      </div>
+    <div class="lg-setup-step">
+      <div class="lg-step-num">2</div>
+      <div><h4>Enable Places API</h4><p>Left menu → <strong>APIs & Services</strong> → <strong>Library</strong> → Search <code>Places API</code> → Click it → Click <strong>Enable</strong></p></div>
+    </div>
+    <div class="lg-setup-step">
+      <div class="lg-step-num">3</div>
+      <div><h4>Create API Key</h4><p>APIs & Services → <strong>Credentials</strong> → <strong>+ Create Credentials</strong> → <strong>API key</strong> → Copy the key shown</p></div>
+    </div>
+    <div class="lg-setup-step">
+      <div class="lg-step-num">4</div>
+      <div><h4>Restrict Key (important!)</h4><p>Click the key → <strong>API restrictions</strong> → Restrict to <strong>Places API</strong> only → Save. This prevents accidental usage of other APIs.</p></div>
+    </div>
+    <div style="margin-top:10px;padding:10px 12px;background:rgba(16,185,129,.08);border-radius:var(--radius-sm);font-size:12px;color:#10b981">
+      ✅ Your ₹1,000 prepaid = ~₹16,000 equivalent free credit. At $0.035/lead, you can generate <strong>~4,500 leads</strong> before the credit runs out. Our monthly limit protects you from ever exceeding it.
     </div>
   </div>
 
-  <!-- Foursquare setup -->
-  <div id="setup-foursquare" style="display:none">
-    <div class="lg-setup-box">
-      <strong>📍 Foursquare — Free BUT requires allowlist fix first</strong><br><br>
-      <strong>Why "Invalid token" error happens:</strong><br>
-      Foursquare blocks requests from unlisted servers by default.<br><br>
-      <strong>Fix (30 seconds):</strong><br>
-      1. Go to <a href="https://foursquare.com/developer" target="_blank">foursquare.com/developer</a> → your project → <strong>Settings</strong><br>
-      2. Find <strong>"Allowed Hosts"</strong> section<br>
-      3. Add <strong>*</strong> (just an asterisk) → Save<br>
-      4. Then copy your <strong>Service API Key</strong> (NOT Client ID or Client Secret) and paste below
-    </div>
-    <div>
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Foursquare Service API Key</label>
-      <input type="password" id="fsq-key" class="lg-input" placeholder="fsq3..." autocomplete="off">
-    </div>
-  </div>
-
-  <!-- Google setup -->
-  <div id="setup-google" style="display:none">
-    <div class="lg-warn-box">
-      ⚠ <strong>Google requires billing setup</strong> — the ₹2 charges and redirect loop you experienced are a known Google issue for India/Sri Lanka accounts. <strong>We recommend TomTom instead.</strong>
-    </div>
+  <!-- Settings form -->
+  <div style="display:grid;grid-template-columns:1fr 130px 130px auto;gap:10px;align-items:end">
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Google Places API Key</label>
-      <input type="password" id="goog-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
+      <input type="password" id="cfg-key" class="lg-input" placeholder="AIzaSy..." autocomplete="off">
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
+      <input type="number" id="cfg-quota" class="lg-input" value="300" min="10" max="5000">
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">Max leads/month</div>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Budget Cap ($)</label>
+      <input type="number" id="cfg-budget" class="lg-input" value="15" min="1" max="180" step="0.5">
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">Max USD/month</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="saveSettings()" class="btn btn-primary">💾 Save</button>
+      <button onclick="testKey()" class="btn btn-ghost btn-sm" id="cfg-test-btn">🔌 Test</button>
     </div>
   </div>
-
-  <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
-    <button onclick="saveSettings()" class="btn btn-primary">💾 Save Settings</button>
-    <button onclick="testKey()" class="btn btn-ghost btn-sm" id="lg-test-btn">🔌 Test Connection</button>
-    <div id="lg-test-result" style="font-size:12.5px;display:none;padding:6px 10px;border-radius:var(--radius-sm);flex:1;white-space:pre-line"></div>
-  </div>
+  <div id="cfg-test-result" style="margin-top:10px;display:none;padding:8px 12px;border-radius:var(--radius-sm);font-size:13px;white-space:pre-line"></div>
 </div>
 <?php endif; ?>
 
 <!-- SEARCH FORM -->
-<div class="lg-form-card">
+<div class="lg-search-card">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <div class="lg-form-title">🔍 Generate Leads</div>
-    <?php if(isAdmin()): ?>
-    <button onclick="openSettings()" class="btn btn-ghost btn-sm" style="font-size:12px">⚙ Settings</button>
+    <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">🔍 Generate Business Leads</div>
+    <?php if (isAdmin()): ?>
+    <button onclick="toggleSettings()" class="btn btn-ghost btn-sm" style="font-size:12px">⚙ Settings</button>
     <?php endif; ?>
   </div>
-  <div class="lg-row">
+
+  <!-- Cost estimate preview -->
+  <div id="lg-cost-preview" style="margin-bottom:12px;font-size:12.5px;color:var(--text3)">
+    Each search costs approximately <strong>$0.032</strong> (text search) + <strong>$0.003 × leads</strong> (phone/website lookup).
+    At 5 leads: ~$0.047. Monthly limit protects you automatically.
+  </div>
+
+  <div class="lg-search-row">
     <div>
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Location / City</label>
-      <input type="text" id="lg-loc" class="lg-input" placeholder="e.g. Colombo, Batticaloa, Chennai">
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">City / Location</label>
+      <input type="text" id="lg-location" class="lg-input" placeholder="e.g. Colombo, Batticaloa, Chennai, London">
     </div>
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Industry / Business Type</label>
-      <input type="text" id="lg-ind" class="lg-input" placeholder="e.g. Restaurant, Web development, Hotel">
+      <input type="text" id="lg-industry" class="lg-input" placeholder="e.g. Web development, Restaurant, Law firm">
     </div>
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Count</label>
-      <input type="number" id="lg-cnt" class="lg-input" value="5" min="1" max="20">
+      <input type="number" id="lg-count" class="lg-input" value="5" min="1" max="20">
     </div>
     <div>
       <label style="display:block;margin-bottom:4px;opacity:0">_</label>
-      <button class="lg-btn" id="lg-gen-btn" onclick="doSearch()">Generate</button>
+      <button class="lg-gen-btn" id="lg-gen-btn" onclick="doSearch()">Generate</button>
     </div>
   </div>
-  <div id="lg-quota-info" style="margin-top:8px;font-size:12px;color:var(--text3)"></div>
+  <div id="lg-quota-bar-row" style="margin-top:10px"></div>
 </div>
 
-<!-- LOADING -->
-<div id="lg-loading" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;text-align:center">
+<!-- LOADING STATE -->
+<div class="lg-loading" id="lg-loading">
   <div class="lg-spinner"></div>
-  <div style="font-size:13px;color:var(--text3)" id="lg-load-txt">Searching...</div>
+  <div style="font-size:14px;font-weight:600;color:var(--text2)" id="lg-load-text">Searching Google Maps...</div>
+  <div style="font-size:12px;color:var(--text3);margin-top:4px" id="lg-load-sub"></div>
 </div>
 
-<!-- RESULTS -->
-<div id="lg-results-wrap" style="display:none" class="lg-results">
+<!-- RESULTS TABLE -->
+<div id="lg-results-section" style="display:none" class="lg-results-card">
   <div class="lg-results-head">
-    <div class="lg-results-title">Generated Leads <span id="lg-res-count" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
-    <div style="display:flex;gap:8px">
-      <button onclick="importAll()" class="btn btn-sm" id="lg-imp-all" style="background:var(--orange);color:#fff;border:none">⬇ Import All to CRM</button>
-      <button onclick="doExport()"  class="btn btn-ghost btn-sm">⬇ Download CSV</button>
+    <div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">Generated Leads
+        <span id="lg-res-label" style="font-size:12px;color:var(--text3);font-weight:400"></span>
+      </div>
+      <div id="lg-cost-summary" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="importAll()" class="btn btn-sm" id="lg-imp-all-btn"
+        style="background:var(--orange);color:#fff;border:none">⬇ Import All to CRM</button>
+      <button onclick="exportCSV()" class="btn btn-ghost btn-sm">⬇ Download CSV</button>
     </div>
   </div>
   <div style="overflow-x:auto">
     <table class="lg-tbl">
-      <thead><tr><th>#</th><th>Business Name</th><th>Phone</th><th>Address</th><th>Actions</th></tr></thead>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Business Name</th>
+          <th>Phone</th>
+          <th>Address</th>
+          <th>Website</th>
+          <th>Rating</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
       <tbody id="lg-tbody"></tbody>
     </table>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-var lgIds=[], lgChart=null, lgProv='tomtom', lgApiOk=false;
+var lgIds=[], lgConfigured=false, lgQuota=300, lgBudget=15;
 
-document.addEventListener('DOMContentLoaded',function(){
+document.addEventListener('DOMContentLoaded', function() {
     loadStats();
-    ['lg-loc','lg-ind','lg-cnt'].forEach(function(id){
+    ['lg-location','lg-industry','lg-count'].forEach(function(id) {
         var el=document.getElementById(id);
-        if(el)el.addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
+        if (el) el.addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
     });
+    // Update cost preview on count change
+    document.getElementById('lg-count')?.addEventListener('input', updateCostPreview);
 });
 
-function loadStats(){
+function updateCostPreview() {
+    var cnt = parseInt(document.getElementById('lg-count')?.value)||5;
+    var cost = (0.032 + 0.003*cnt).toFixed(4);
+    document.getElementById('lg-cost-preview').innerHTML =
+        'This search: <strong>$'+cost+'</strong> (1 text search $0.032 + '+cnt+' detail lookups × $0.003). '+
+        'Monthly limit of $'+lgBudget+' protects you automatically.';
+}
+
+function loadStats() {
     fetch('lead_generator_api.php?action=get_stats')
     .then(function(r){return r.json();})
     .then(function(d){
-        if(!d.ok)return;
-        lgApiOk=d.api_set; lgProv=d.provider||'tomtom';
-        var banner=document.getElementById('lg-no-api');
-        if(banner)banner.style.display=d.api_set?'none':'flex';
-        var pct=d.quota>0?Math.round(d.used/d.quota*100):0;
-        document.getElementById('lg-ring-pct').textContent=pct+'%';
-        document.getElementById('lg-ring-sub').textContent=d.used+' / '+d.quota;
+        if (!d.ok) return;
+        lgConfigured = d.api_set;
+        lgQuota      = d.quota || 300;
+        lgBudget     = d.budget || 15;
+
+        // No-API banner
+        var banner = document.getElementById('lg-no-api-banner');
+        if (banner) banner.style.display = d.api_set ? 'none' : 'flex';
+
+        // Ring
+        var pct = lgQuota > 0 ? Math.min(100, Math.round(d.used/lgQuota*100)) : 0;
+        document.getElementById('lg-pct').textContent = pct+'%';
+        document.getElementById('lg-sub').textContent = d.used+' / '+lgQuota;
         var circ=2*Math.PI*42;
-        document.getElementById('lg-ring-fill').setAttribute('stroke-dasharray',circ.toFixed(1));
-        document.getElementById('lg-ring-fill').setAttribute('stroke-dashoffset',(circ-(pct/100*circ)).toFixed(1));
-        var qi=document.getElementById('lg-quota-info');
-        if(qi)qi.textContent='Provider: '+(lgProv==='tomtom'?'TomTom':lgProv==='foursquare'?'Foursquare':'Google')+' · Used: '+d.used+'/'+d.quota+' this month · '+Math.max(0,d.quota-d.used)+' remaining';
-        renderTrend(d.trend||[]);
+        var fill=document.getElementById('lg-ring');
+        fill.setAttribute('stroke-dasharray', circ.toFixed(1));
+        fill.setAttribute('stroke-dashoffset', (circ-(pct/100*circ)).toFixed(1));
+        // Ring color by usage
+        fill.style.stroke = pct>80?'#f59e0b':pct>95?'#ef4444':'#fff';
+
+        // Cost meter
+        var cpct = lgBudget>0 ? Math.min(100,Math.round(d.cost/lgBudget*100)) : 0;
+        document.getElementById('lg-cost-used').textContent  = d.cost.toFixed(4);
+        document.getElementById('lg-cost-limit').textContent = lgBudget.toFixed(2);
+        document.getElementById('lg-cost-fill').style.width  = cpct+'%';
+        document.getElementById('lg-cost-fill').style.background =
+            cpct>80 ? '#ef4444' : cpct>60 ? '#f59e0b' : '#10b981';
+
+        var remLeads = Math.floor((lgBudget - d.cost) / 0.035);
+        document.getElementById('lg-rem-leads').textContent = '~'+Math.max(0,remLeads)+' leads remaining this month';
+
+        // Budget status
+        var bs = document.getElementById('lg-budget-status');
+        if (bs) {
+            if (cpct > 80)      bs.innerHTML='<div class="budget-danger">⚠ Budget '+(cpct>95?'CRITICAL':'WARNING')+': '+cpct+'% used</div>';
+            else if (cpct > 50) bs.innerHTML='<div class="budget-warn">📊 Budget '+cpct+'% used — OK</div>';
+            else                bs.innerHTML='<div class="budget-ok">✅ Budget healthy — '+cpct+'% used</div>';
+        }
+
+        // Quota bar
+        var qb=document.getElementById('lg-quota-bar-row');
+        if (qb) {
+            qb.innerHTML='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px"><span>Monthly quota: '+d.used+' / '+lgQuota+' leads used</span><span style="color:'+((lgQuota-d.used)<20?'#ef4444':'var(--text3)')+'">'+Math.max(0,lgQuota-d.used)+' remaining</span></div>'
+                +'<div style="height:6px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+(pct>80?'#ef4444':pct>50?'#f59e0b':'var(--orange)')+';width:'+pct+'%;transition:width .4s"></div></div>';
+        }
+
+        // Prefill settings if admin
+        if (document.getElementById('cfg-quota')) document.getElementById('cfg-quota').value = lgQuota;
+        if (document.getElementById('cfg-budget')) document.getElementById('cfg-budget').value = lgBudget;
+
         renderRecent(d.recent||[]);
-    }).catch(function(){});
+        updateCostPreview();
+    })
+    .catch(function(){});
 }
 
-function renderTrend(data){
-    var ctx=document.getElementById('lg-trend');
-    if(!ctx)return;
-    if(lgChart){lgChart.destroy();lgChart=null;}
-    var labels=data.map(function(r){return r.mo;});
-    var vals=data.map(function(r){return parseInt(r.cnt)||0;});
-    if(!labels.length){labels=['Jan','Feb','Mar','Apr','May','Jun'];vals=[0,0,0,0,0,0];}
-    lgChart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{data:vals,borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#4f46e5',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#94a3b8',font:{size:10}}},y:{grid:{color:'rgba(148,163,184,.12)'},ticks:{color:'#94a3b8',precision:0},beginAtZero:true}}}});
-}
-
-function renderRecent(data){
-    var el=document.getElementById('lg-recent');if(!el)return;
-    if(!data.length){el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:6px 0">No searches yet</div>';return;}
-    var cols=['#4f46e5','#10b981','#8b5cf6','#f97316','#f59e0b'];
-    el.innerHTML=data.map(function(r,i){
-        return '<div class="lg-act-item"><div class="lg-act-dot" style="background:'+cols[i%cols.length]+'"></div>'
-            +'<div><div class="lg-act-text">'+r.result_count+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
-            +'<div class="lg-act-time">'+fmtAgo(r.created_at)+'</div></div></div>';
+function renderRecent(data) {
+    var el = document.getElementById('lg-recent');
+    if (!el) return;
+    if (!data.length) { el.innerHTML='<div style="color:var(--text3);font-size:12.5px">No searches yet</div>'; return; }
+    var colors=['#4f46e5','#10b981','#f97316','#8b5cf6','#f59e0b','#14b8a6','#6366f1','#ef4444'];
+    el.innerHTML = data.map(function(r,i){
+        var cost = parseFloat(r.estimated_cost||0).toFixed(4);
+        return '<div class="lg-act"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
+            +'<div><div style="font-size:12.5px;color:var(--text2);font-weight:600">'+esc(r.result_count)+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">$'+cost+' cost · '+fmtAgo(r.created_at)+'</div></div></div>';
     }).join('');
 }
 
-function doSearch(){
-    var loc=document.getElementById('lg-loc').value.trim();
-    var ind=document.getElementById('lg-ind').value.trim();
-    var cnt=parseInt(document.getElementById('lg-cnt').value)||5;
-    if(!loc){toast('Enter a location','error');document.getElementById('lg-loc').focus();return;}
-    if(!ind){toast('Enter an industry','error');document.getElementById('lg-ind').focus();return;}
-    if(!lgApiOk){toast('Configure API key first — click ⚙ Settings','error');openSettings();return;}
+function doSearch() {
+    var loc=document.getElementById('lg-location').value.trim();
+    var ind=document.getElementById('lg-industry').value.trim();
+    var cnt=parseInt(document.getElementById('lg-count').value)||5;
+    if (!loc) { toast('Enter a location','error'); document.getElementById('lg-location').focus(); return; }
+    if (!ind) { toast('Enter an industry','error'); document.getElementById('lg-industry').focus(); return; }
+    if (!lgConfigured) { toast('Configure Google API key first','error'); toggleSettings(); return; }
 
     var btn=document.getElementById('lg-gen-btn');
-    btn.disabled=true;btn.textContent='Generating…';
-    document.getElementById('lg-loading').style.display='block';
-    document.getElementById('lg-results-wrap').style.display='none';
-    document.getElementById('lg-load-txt').textContent='Searching for '+ind+' in '+loc+'…';
+    var loading=document.getElementById('lg-loading');
+    var results=document.getElementById('lg-results-section');
+    btn.disabled=true; btn.textContent='Generating...';
+    loading.style.display='block';
+    if (results) results.style.display='none';
+    document.getElementById('lg-load-text').textContent='Searching Google Maps for "'+ind+'" in "'+loc+'"...';
+    document.getElementById('lg-load-sub').textContent='Fetching phone numbers & website info for each result...';
 
     var fd=new FormData();
-    fd.append('action','search');fd.append('location',loc);fd.append('industry',ind);fd.append('count',cnt);
+    fd.append('action','search'); fd.append('location',loc);
+    fd.append('industry',ind); fd.append('count',cnt);
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
-        btn.disabled=false;btn.textContent='Generate';
-        document.getElementById('lg-loading').style.display='none';
-        if(!d.ok){toast(d.error||'Generation failed','error');return;}
-        if(!d.leads||!d.leads.length){toast(d.message||'No results found. Try different keywords.','info');return;}
+        btn.disabled=false; btn.textContent='Generate';
+        loading.style.display='none';
+        if (!d.ok) { toast(d.error||'Search failed','error'); return; }
+        if (!d.leads||!d.leads.length) { toast(d.message||'No results found. Try different keywords.','info'); return; }
         renderResults(d.leads,ind,loc);
-        if(d.used!==undefined){
-            var qi=document.getElementById('lg-quota-info');
-            if(qi)qi.textContent='Provider: '+(lgProv==='tomtom'?'TomTom':'Foursquare')+' · Used: '+d.used+'/'+d.quota+' · '+(d.quota-d.used)+' remaining';
+        if (d.used!==undefined) {
+            var remLeads=Math.floor((d.budget-d.cost)/0.035);
+            document.getElementById('lg-rem-leads').textContent='~'+Math.max(0,remLeads)+' leads remaining';
+            document.getElementById('lg-sub').textContent=d.used+' / '+d.quota;
         }
         loadStats();
     })
     .catch(function(e){
-        btn.disabled=false;btn.textContent='Generate';
-        document.getElementById('lg-loading').style.display='none';
-        toast('Network error — check console','error');console.error(e);
+        btn.disabled=false; btn.textContent='Generate';
+        loading.style.display='none';
+        toast('Network error. Check console.','error'); console.error(e);
     });
 }
 
-function renderResults(leads,ind,loc){
-    lgIds=leads.map(function(l){return l.id;});
-    document.getElementById('lg-res-count').textContent='('+leads.length+' results for '+ind+', '+loc+')';
-    var tbody=document.getElementById('lg-tbody');
-    tbody.innerHTML=leads.map(function(l,i){
-        var phone_link=l.phone?'<a href="tel:'+esc(l.phone)+'" class="lg-call" title="Call">📞</a>':'<span style="width:30px;display:inline-block"></span>';
-        var imp=l.imported?'<span class="lg-done">✓ In CRM</span>':'<button class="lg-imp" onclick="impOne('+l.id+',this)" title="Import to CRM">⬇</button>';
-        var web=l.website?'<div style="font-size:10.5px;margin-top:2px"><a href="'+esc(l.website)+'" target="_blank" style="color:var(--orange)">🌐 Website</a></div>':'';
-        return '<tr id="lr-'+l.id+'"><td style="color:var(--text3);font-size:11px">'+(i+1)+'</td>'
-            +'<td><div class="lg-name">'+esc(l.name)+'</div>'+web+'</td>'
+function renderResults(leads,ind,loc) {
+    lgIds = leads.map(function(l){return l.id;});
+    document.getElementById('lg-res-label').textContent='('+leads.length+' results — '+ind+', '+loc+')';
+    var costEst = (0.032+0.003*leads.length).toFixed(4);
+    document.getElementById('lg-cost-summary').textContent='API cost for this search: ~$'+costEst;
+
+    document.getElementById('lg-tbody').innerHTML = leads.map(function(l,i){
+        var phone_btn = l.phone
+            ? '<a href="tel:'+esc(l.phone)+'" class="lg-call-btn" title="Call">📞</a>'
+            : '<span style="width:32px;display:inline-block"></span>';
+        var web_badge = l.has_website
+            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes">✅ Yes ↗</a>'
+            : '<span class="lg-web-no">✗ No</span>';
+        var imp_btn = l.imported
+            ? '<span class="lg-imp-done">✓ In CRM</span>'
+            : '<button class="lg-imp-btn" onclick="impOne('+l.id+',this)" title="Import to CRM">⬇</button>';
+        var stars = l.rating ? '⭐ '+l.rating : '—';
+        return '<tr id="lgr-'+l.id+'">'
+            +'<td style="color:var(--text3);font-size:12px">'+(i+1)+'</td>'
+            +'<td><div class="lg-name">'+esc(l.name)+'</div></td>'
             +'<td class="lg-phone">'+(l.phone?esc(l.phone):'<span style="color:var(--text3)">—</span>')+'</td>'
             +'<td><div class="lg-addr" title="'+esc(l.address)+'">'+esc(l.address||'—')+'</div></td>'
-            +'<td><div class="lg-acts">'+phone_link+'&nbsp;'+imp+'</div></td></tr>';
+            +'<td>'+web_badge+'</td>'
+            +'<td class="lg-rating">'+stars+'</td>'
+            +'<td><div style="display:flex;gap:5px;align-items:center">'+phone_btn+' '+imp_btn+'</div></td>'
+            +'</tr>';
     }).join('');
-    document.getElementById('lg-results-wrap').style.display='block';
-    document.getElementById('lg-results-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+
+    document.getElementById('lg-results-section').style.display='block';
+    document.getElementById('lg-results-section').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function impOne(id,btn){
-    btn.disabled=true;btn.textContent='…';
-    var fd=new FormData();fd.append('action','import_lead');fd.append('result_id',id);
+function impOne(id, btn) {
+    btn.disabled=true; btn.textContent='...';
+    var fd=new FormData(); fd.append('action','import_lead'); fd.append('result_id',id);
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
-        if(d.ok){btn.replaceWith(Object.assign(document.createElement('span'),{className:'lg-done',textContent:'✓ In CRM'}));toast(d.message,'success');}
+        if(d.ok){btn.replaceWith(Object.assign(document.createElement('span'),{className:'lg-imp-done',textContent:'✓ In CRM'}));toast(d.message,'success');}
         else{btn.disabled=false;btn.textContent='⬇';toast(d.error||'Failed','error');}
     });
 }
 
-function importAll(){
-    var pending=lgIds.filter(function(id){var b=document.querySelector('#lr-'+id+' .lg-imp');return b&&!b.disabled;});
+function importAll() {
+    var pending=lgIds.filter(function(id){var b=document.querySelector('#lgr-'+id+' .lg-imp-btn');return b&&!b.disabled;});
     if(!pending.length){toast('All leads already imported','info');return;}
-    if(!confirm('Import '+pending.length+' leads to CRM?'))return;
-    var btn=document.getElementById('lg-imp-all');
-    btn.disabled=true;btn.textContent='Importing…';
-    var fd=new FormData();fd.append('action','import_all');fd.append('ids',pending.join(','));
+    if(!confirm('Import '+pending.length+' leads to CRM pipeline?'))return;
+    var btn=document.getElementById('lg-imp-all-btn');
+    btn.disabled=true; btn.textContent='Importing...';
+    var fd=new FormData(); fd.append('action','import_all'); fd.append('ids',pending.join(','));
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
-        btn.disabled=false;btn.textContent='⬇ Import All to CRM';
-        if(d.ok){toast(d.imported+' leads added to CRM!','success');
-            pending.forEach(function(id){var b=document.querySelector('#lr-'+id+' .lg-imp');if(b)b.replaceWith(Object.assign(document.createElement('span'),{className:'lg-done',textContent:'✓ In CRM'}));});}
-        else toast(d.error||'Failed','error');
+        btn.disabled=false; btn.textContent='⬇ Import All to CRM';
+        if(d.ok){
+            toast(d.imported+' leads added to CRM! 🎉','success');
+            pending.forEach(function(id){var b=document.querySelector('#lgr-'+id+' .lg-imp-btn');if(b)b.replaceWith(Object.assign(document.createElement('span'),{className:'lg-imp-done',textContent:'✓ In CRM'}));});
+        } else toast(d.error||'Import failed','error');
     });
 }
 
-function doExport(){
-    if(!lgIds.length){toast('No data','error');return;}
-    var fd=new FormData();fd.append('action','export_excel');fd.append('ids',lgIds.join(','));
+function exportCSV() {
+    if(!lgIds.length){toast('No data to export','error');return;}
+    var fd=new FormData(); fd.append('action','export_csv'); fd.append('ids',lgIds.join(','));
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
         if(!d.ok||!d.csv){toast('Export failed','error');return;}
-        var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv'}));
-        a.download='leads_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv'}));
+        a.download='leads_'+new Date().toISOString().slice(0,10)+'.csv';
+        a.click();
     });
 }
 
-function openSettings(){var p=document.getElementById('lg-settings');if(p)p.classList.add('open');}
-function closeSettings(){var p=document.getElementById('lg-settings');if(p)p.classList.remove('open');}
+function toggleSettings(){
+    var p=document.getElementById('lg-settings-panel'); if(!p)return;
+    p.classList.toggle('open');
+}
 
-function switchProv(p){
-    lgProv=p;
-    ['tomtom','foursquare','google'].forEach(function(k){
-        var tab=document.getElementById('tab-'+k);
-        var setup=document.getElementById('setup-'+k);
-        if(tab)tab.classList.toggle('active',k===p);
-        if(setup)setup.style.display=k===p?'block':'none';
+function saveSettings(){
+    var key=document.getElementById('cfg-key')?.value.trim()||'';
+    var quota=document.getElementById('cfg-quota')?.value||300;
+    var budget=document.getElementById('cfg-budget')?.value||15;
+    if (!key) { toast('Enter your Google API key','error'); return; }
+    var fd=new FormData();
+    fd.append('action','save_settings');fd.append('google_key',key);
+    fd.append('quota',quota);fd.append('budget',budget);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){
+            toast('Settings saved! Click "🔌 Test" to verify.','success');
+            lgConfigured=true;
+            document.getElementById('lg-no-api-banner').style.display='none';
+            document.getElementById('cfg-key').value='';
+            loadStats();
+        } else toast(d.error||'Save failed','error');
     });
 }
 
 function testKey(){
-    var btn=document.getElementById('lg-test-btn');
-    var res=document.getElementById('lg-test-result');
-    btn.disabled=true;btn.textContent='Testing…';
-    if(res){res.style.display='none';}
-    // Send current provider + key (even if not yet saved, so user can test before saving)
-    var fd=new FormData();
-    fd.append('action','test_key');
-    fd.append('provider', lgProv);
-    var keyMap={'tomtom':'tt-key','foursquare':'fsq-key','google':'goog-key'};
-    var keyEl=document.getElementById(keyMap[lgProv]);
-    if(keyEl&&keyEl.value.trim()) fd.append('api_key', keyEl.value.trim());
+    var btn=document.getElementById('cfg-test-btn');
+    var res=document.getElementById('cfg-test-result');
+    var key=document.getElementById('cfg-key')?.value.trim()||'';
+    btn.disabled=true; btn.textContent='Testing...';
+    if(res) res.style.display='none';
+    var fd=new FormData(); fd.append('action','test_key'); if(key) fd.append('google_key',key);
     fetch('lead_generator_api.php',{method:'POST',body:fd})
     .then(function(r){return r.json();})
     .then(function(d){
-        btn.disabled=false;btn.textContent='🔌 Test Connection';
+        btn.disabled=false; btn.textContent='🔌 Test';
         if(res){
             res.style.display='block';
-            res.style.background=d.ok?'rgba(16,185,129,.1)':'rgba(239,68,68,.08)';
-            res.style.border=d.ok?'1px solid rgba(16,185,129,.3)':'1px solid rgba(239,68,68,.25)';
-            res.style.color=d.ok?'var(--green)':'var(--red)';
+            res.style.background=d.ok?'rgba(16,185,129,.08)':'rgba(239,68,68,.06)';
+            res.style.border=d.ok?'1px solid rgba(16,185,129,.25)':'1px solid rgba(239,68,68,.2)';
+            res.style.color=d.ok?'#10b981':'#ef4444';
             res.textContent=d.ok?d.message:d.error;
         }
     })
-    .catch(function(){btn.disabled=false;btn.textContent='🔌 Test Connection';toast('Network error','error');});
-}
-
-function saveSettings(){
-    var prov=lgProv;
-    // Update lgProv in DB and locally
-    lgApiOk=false; // reset until test confirms
-    var tk=document.getElementById('tt-key')?.value.trim()||'';
-    var fk=document.getElementById('fsq-key')?.value.trim()||'';
-    var gk=document.getElementById('goog-key')?.value.trim()||'';
-    var quota=document.getElementById('lg-quota')?.value||2500;
-    if(prov==='tomtom'&&!tk){toast('Paste your TomTom API key','error');return;}
-    if(prov==='foursquare'&&!fk){toast('Paste your Foursquare Service API Key','error');return;}
-    if(prov==='google'&&!gk){toast('Paste your Google API key','error');return;}
-    var fd=new FormData();
-    fd.append('action','save_settings');fd.append('provider',prov);
-    fd.append('tomtom_key',tk);fd.append('foursquare_key',fk);fd.append('google_key',gk);fd.append('quota',quota);
-    fetch('lead_generator_api.php',{method:'POST',body:fd})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        if(d.ok){toast('Settings saved! Click "Test Connection" to verify.','success');lgApiOk=true;
-            document.getElementById('lg-no-api').style.display='none';
-            ['tt-key','fsq-key','goog-key'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-            loadStats();
-        }else toast(d.error||'Save failed','error');
-    });
+    .catch(function(){btn.disabled=false;btn.textContent='🔌 Test';});
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function fmtAgo(dt){if(!dt)return'';var diff=Math.floor((Date.now()-new Date(dt).getTime())/1000);if(diff<60)return'just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';}
+function fmtAgo(dt){if(!dt)return'';var d=Math.floor((Date.now()-new Date(dt).getTime())/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 </script>
+
 <?php renderLayoutEnd(); ?>

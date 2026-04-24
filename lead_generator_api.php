@@ -73,7 +73,7 @@ if ($action === 'search') {
     $usage      = lgMonthUsed($db, $uid);
     $used_leads = (int)$usage['leads'];
     $used_cost  = (float)$usage['cost'];
-    $cost_this  = ($cost_ts + $cost_det) * $count; // estimated cost for this search
+    $cost_this  = ($cost_ts + $cost_det) * $count;
 
     if ($used_leads + $count > $quota) {
         echo json_encode(['ok'=>false,'error'=>"Monthly quota of $quota leads reached ($used_leads used). Reset next month or ask admin to increase quota in Settings."]);
@@ -117,7 +117,7 @@ if ($action === 'search') {
     $results = array_slice($data['results'], 0, $count);
     $leads   = [];
 
-    // ── STEP 2: Place Details (phone + website + email if available) ──
+    // ── STEP 2: Place Details (phone + website) ──
     foreach ($results as $place) {
         $place_id = $place['place_id'] ?? '';
         $name     = $place['name'] ?? '';
@@ -142,7 +142,6 @@ if ($action === 'search') {
             }
         }
 
-        // Save to holding table
         $pe = $db->real_escape_string($place_id);
         $ne = $db->real_escape_string($name);
         $phe= $db->real_escape_string($phone);
@@ -167,7 +166,6 @@ if ($action === 'search') {
                     'email'=>$email,'rating'=>$rating,'types'=>$types,'imported'=>false];
     }
 
-    // ── LOG USAGE WITH COST ──
     $real_count  = count($leads);
     $actual_cost = round($cost_ts + ($cost_det * $real_count), 6);
     $le_e = $db->real_escape_string($location);
@@ -184,6 +182,141 @@ if ($action === 'search') {
         'quota'   => $quota,
         'cost'    => round((float)$new_usage['cost'], 4),
         'budget'  => $budget_usd,
+    ]);
+    exit;
+}
+
+// ── ACTION: GET ALL STORED LEADS ──
+if ($action === 'get_all_stored') {
+    $page     = max(1, (int)($_GET['page'] ?? 1));
+    $per_page = max(10, min(200, (int)($_GET['per_page'] ?? 50)));
+    $offset   = ($page - 1) * $per_page;
+
+    $search   = trim($_GET['search']   ?? '');
+    $location = trim($_GET['location'] ?? '');
+    $industry = trim($_GET['industry'] ?? '');
+    $website  = $_GET['website']  ?? '';
+    $imported = $_GET['imported'] ?? '';
+
+    // Build WHERE clause
+    $where = ['1=1'];
+
+    // Managers see all leads; regular users see only their own
+    if (!isManager()) {
+        $where[] = "r.user_id = $uid";
+    }
+
+    if ($search !== '') {
+        $se = $db->real_escape_string($search);
+        $where[] = "(r.name LIKE '%$se%' OR r.location LIKE '%$se%' OR r.industry LIKE '%$se%' OR r.phone LIKE '%$se%' OR r.address LIKE '%$se%')";
+    }
+    if ($location !== '') {
+        $le = $db->real_escape_string($location);
+        $where[] = "r.location = '$le'";
+    }
+    if ($industry !== '') {
+        $ie = $db->real_escape_string($industry);
+        $where[] = "r.industry = '$ie'";
+    }
+    if ($website === '1') {
+        $where[] = "r.has_website = 1";
+    } elseif ($website === '0') {
+        $where[] = "r.has_website = 0";
+    }
+    if ($imported === '1') {
+        $where[] = "r.imported = 1";
+    } elseif ($imported === '0') {
+        $where[] = "r.imported = 0";
+    }
+
+    $whereSQL = implode(' AND ', $where);
+
+    // Total count
+    $countResult = @$db->query("SELECT COUNT(*) AS cnt FROM lead_gen_results r WHERE $whereSQL");
+    $total = $countResult ? (int)($countResult->fetch_assoc()['cnt'] ?? 0) : 0;
+
+    // Leads for this page
+    $rows = [];
+    $q = @$db->query("SELECT r.id, r.name, r.phone, r.address, r.website, r.has_website,
+                             r.rating, r.location, r.industry, r.imported, r.lead_id, r.created_at
+                      FROM lead_gen_results r
+                      WHERE $whereSQL
+                      ORDER BY r.id DESC
+                      LIMIT $per_page OFFSET $offset");
+    if ($q) {
+        while ($row = $q->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+
+    // Distinct locations for filter dropdown
+    $locations = [];
+    $lq = @$db->query("SELECT DISTINCT location FROM lead_gen_results WHERE location IS NOT NULL AND location != '' ORDER BY location");
+    if ($lq) {
+        while ($row = $lq->fetch_assoc()) {
+            $locations[] = $row['location'];
+        }
+    }
+
+    // Distinct industries for filter dropdown
+    $industries = [];
+    $iq = @$db->query("SELECT DISTINCT industry FROM lead_gen_results WHERE industry IS NOT NULL AND industry != '' ORDER BY industry");
+    if ($iq) {
+        while ($row = $iq->fetch_assoc()) {
+            $industries[] = $row['industry'];
+        }
+    }
+
+    echo json_encode([
+        'ok'         => true,
+        'leads'      => $rows,
+        'total'      => $total,
+        'page'       => $page,
+        'per_page'   => $per_page,
+        'locations'  => $locations,
+        'industries' => $industries,
+    ]);
+    exit;
+}
+
+// ── ACTION: GET SEARCH HISTORY ──
+if ($action === 'get_search_history') {
+    $usage_id = (int)($_GET['usage_id'] ?? 0);
+    if (!$usage_id) {
+        echo json_encode(['ok'=>false,'error'=>'Invalid usage ID']); exit;
+    }
+
+    // Get the usage record to find location+industry+time
+    $urow = @$db->query("SELECT * FROM lead_gen_usage WHERE id=$usage_id AND user_id=$uid LIMIT 1")->fetch_assoc();
+    if (!$urow) {
+        echo json_encode(['ok'=>false,'error'=>'Search record not found']); exit;
+    }
+
+    $le = $db->real_escape_string($urow['location']);
+    $ie = $db->real_escape_string($urow['industry']);
+    $created = $db->real_escape_string($urow['created_at']);
+
+    // Get leads from that search batch (same location+industry, created within 5 minutes of the usage record)
+    $q = @$db->query("SELECT * FROM lead_gen_results
+                      WHERE user_id=$uid
+                        AND location='$le'
+                        AND industry='$ie'
+                        AND created_at BETWEEN DATE_SUB('$created', INTERVAL 5 MINUTE)
+                                            AND DATE_ADD('$created', INTERVAL 5 MINUTE)
+                      ORDER BY id ASC
+                      LIMIT 20");
+    $leads = [];
+    if ($q) {
+        while ($row = $q->fetch_assoc()) {
+            $leads[] = $row;
+        }
+    }
+
+    echo json_encode([
+        'ok'       => true,
+        'leads'    => $leads,
+        'location' => $urow['location'],
+        'industry' => $urow['industry'],
     ]);
     exit;
 }
@@ -239,6 +372,25 @@ if ($action === 'import_all') {
     exit;
 }
 
+// ── ACTION: BULK DELETE ──
+if ($action === 'bulk_delete') {
+    if (!isManager()) {
+        echo json_encode(['ok'=>false,'error'=>'Permission denied']); exit;
+    }
+    $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
+    if (!$ids) { echo json_encode(['ok'=>false,'error'=>'No IDs provided']); exit; }
+    $idList = implode(',', $ids);
+    // Managers can delete any; non-managers only their own (already gated above)
+    $result = @$db->query("DELETE FROM lead_gen_results WHERE id IN($idList)");
+    if ($result) {
+        $deleted = $db->affected_rows;
+        echo json_encode(['ok'=>true,'deleted'=>$deleted]);
+    } else {
+        echo json_encode(['ok'=>false,'error'=>'Delete failed: '.$db->error]);
+    }
+    exit;
+}
+
 // ── ACTION: GET STATS ──
 if ($action === 'get_stats') {
     $quota     = (int)lgGet($db,'monthly_quota','300');
@@ -251,7 +403,7 @@ if ($action === 'get_stats') {
     if ($tr) $trend = $tr->fetch_all(MYSQLI_ASSOC);
 
     $recent = [];
-    $rc = @$db->query("SELECT industry,location,result_count,estimated_cost,created_at FROM lead_gen_usage WHERE user_id=$uid ORDER BY created_at DESC LIMIT 8");
+    $rc = @$db->query("SELECT id,industry,location,result_count,estimated_cost,created_at FROM lead_gen_usage WHERE user_id=$uid ORDER BY created_at DESC LIMIT 8");
     if ($rc) $recent = $rc->fetch_all(MYSQLI_ASSOC);
 
     $total_imp = (int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results WHERE user_id=$uid AND imported=1")->fetch_assoc()['c'] ?? 0);
@@ -320,4 +472,4 @@ if ($action === 'export_csv') {
     exit;
 }
 
-echo json_encode(['ok'=>false,'error'=>'Unknown action']);
+echo json_encode(['ok'=>false,'error'=>'Unknown action: '.$action]);

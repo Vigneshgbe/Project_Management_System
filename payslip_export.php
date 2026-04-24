@@ -1,15 +1,14 @@
 <?php
 /**
- * payslip_export.php — Payslip export: print/PDF + DOCX
- * Called as: require_once 'payslip_export.php'; exportPayslip($db,$id,$fmt);
+ * payslip_export.php — Payslip export: Print/PDF (browser) + DOCX
  */
 
 function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     $ps = $db->query("
         SELECT p.*, t.company_name, t.company_address, t.company_logo, t.footer_note
         FROM payslips p
-        LEFT JOIN payslip_templates t ON t.id=p.template_id
-        WHERE p.id=$pid
+        LEFT JOIN payslip_templates t ON t.id = p.template_id
+        WHERE p.id = $pid
     ")->fetch_assoc();
 
     if (!$ps) { http_response_code(404); die('Payslip not found.'); }
@@ -21,8 +20,11 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     $caddr       = htmlspecialchars($ps['company_address'] ?? '', ENT_QUOTES);
     $ename       = htmlspecialchars($ps['employee_name'], ENT_QUOTES);
     $period      = htmlspecialchars($ps['pay_period'], ENT_QUOTES);
+    $pay_date_str = $ps['pay_date'] ? date('d M Y', strtotime($ps['pay_date'])) : '';
 
-    // ── PRINT / PDF ──
+    // ──────────────────────────────────────────────
+    // PRINT / PDF
+    // ──────────────────────────────────────────────
     if ($fmt === 'print') {
         $logo_html = '';
         if ($ps['company_logo'] && file_exists($ps['company_logo'])) {
@@ -31,22 +33,28 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
             $logo_html = "<img src='data:$mime;base64,$data' style='height:44px;margin-bottom:6px;display:block'>";
         }
 
-        $allow_rows = "<tr><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9'>Basic Salary</td><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-weight:600'>$sym " . number_format($ps['basic_salary'],2) . "</td></tr>";
+        $earn_rows = "<tr style='border-bottom:1px solid #e2e8f0'><td style='padding:6px 8px'>Basic Salary</td><td style='padding:6px 8px;text-align:right;font-weight:600'>$sym " . number_format($ps['basic_salary'],2) . "</td></tr>";
         foreach ($allowances as $a) {
-            $n = htmlspecialchars($a['name'],ENT_QUOTES);
-            $allow_rows .= "<tr><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9'>$n</td><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right'>$sym " . number_format($a['amount'],2) . "</td></tr>";
+            $n = htmlspecialchars($a['name'], ENT_QUOTES);
+            $earn_rows .= "<tr style='border-bottom:1px solid #f1f5f9'><td style='padding:6px 8px'>$n</td><td style='padding:6px 8px;text-align:right'>$sym " . number_format($a['amount'],2) . "</td></tr>";
         }
+
         $ded_rows = '';
         foreach ($deductions as $d) {
-            $n = htmlspecialchars($d['name'],ENT_QUOTES);
-            $ded_rows .= "<tr><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9'>$n</td><td style='padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;color:#ef4444'>- $sym " . number_format($d['amount'],2) . "</td></tr>";
+            $n = htmlspecialchars($d['name'], ENT_QUOTES);
+            $ded_rows .= "<tr style='border-bottom:1px solid #f1f5f9'><td style='padding:6px 8px;color:#ef4444'>$n</td><td style='padding:6px 8px;text-align:right;color:#ef4444'>- $sym " . number_format($d['amount'],2) . "</td></tr>";
         }
-        if (!$ded_rows) $ded_rows = "<tr><td colspan='2' style='padding:8px;color:#94a3b8;font-size:12px'>No deductions</td></tr>";
+        if (!$ded_rows) {
+            $ded_rows = "<tr><td colspan='2' style='padding:8px;color:#94a3b8;font-size:12px'>No deductions for this period</td></tr>";
+        }
 
-        $pay_date_str = $ps['pay_date'] ? date('d M Y', strtotime($ps['pay_date'])) : '';
-        $notes_block = $ps['notes'] ? "<div style='margin-top:14px;padding:10px 12px;background:#f8fafc;border-radius:4px;font-size:12px;color:#64748b'><strong>Note:</strong> ".htmlspecialchars($ps['notes'],ENT_QUOTES)."</div>" : '';
-        $desig_dept   = trim(($ps['designation']??'') . ($ps['department']?' — '.$ps['department']:''));
-        $footer_note  = htmlspecialchars($ps['footer_note'] ?? 'This is a computer-generated payslip.', ENT_QUOTES);
+        $desig_dept  = implode(' — ', array_filter([$ps['designation']??'', $ps['department']??'']));
+        $footer_note = htmlspecialchars($ps['footer_note'] ?? 'This is a computer-generated payslip and requires no signature.', ENT_QUOTES);
+        $notes_block = $ps['notes'] ? "<div style='background:#f8fafc;border-left:3px solid #e2e8f0;padding:10px 14px;margin:0 28px 18px;font-size:12px;color:#64748b'>".htmlspecialchars($ps['notes'],ENT_QUOTES)."</div>" : '';
+        $status_col  = $ps['status'] === 'issued' ? '#10b981' : '#f59e0b';
+        $gross_str   = "$sym " . number_format($ps['gross_salary'],   2);
+        $ded_str     = "$sym " . number_format($ps['total_deductions'],2);
+        $net_str     = "$sym " . number_format($ps['net_salary'],      2);
 
         header('Content-Type: text/html; charset=utf-8');
         echo <<<HTML
@@ -54,208 +62,232 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Payslip - {$ename} - {$period}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payslip — {$ename} — {$period}</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size:13px; color:#1a1a1a; background:#f8fafc; }
-  .page { background:#fff; max-width:720px; margin:20px auto; padding:0; box-shadow:0 2px 20px rgba(0,0,0,.12); border-radius:8px; overflow:hidden; }
-  .hdr { background:#1e293b; color:#fff; padding:20px 28px; display:flex; justify-content:space-between; align-items:flex-start; }
-  .hdr h2 { font-size:18px; color:#fff; margin-bottom:2px; }
-  .hdr .addr { font-size:11px; color:rgba(255,255,255,.6); margin-top:4px; }
-  .hdr-right { text-align:right; }
-  .hdr-right .ps-label { font-size:22px; font-weight:900; color:#f97316; letter-spacing:2px; }
-  .hdr-right .ps-meta { font-size:11px; color:rgba(255,255,255,.65); margin-top:4px; }
-  .body { padding:24px 28px; }
-  .emp-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid #e2e8f0; }
-  .sec-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:8px; }
-  .emp-name { font-size:15px; font-weight:700; margin-bottom:4px; }
-  .emp-meta { font-size:12px; color:#64748b; line-height:1.6; }
-  .salary-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  .salary-table { width:100%; border-collapse:collapse; }
-  .salary-table th { background:#f8fafc; padding:7px 8px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#64748b; border-bottom:2px solid #e2e8f0; }
-  .total-row td { padding:8px; font-weight:700; border-top:2px solid #1e293b; font-size:13px; }
-  .divider { width:1px; background:#e2e8f0; }
-  .net-bar { background:#1e293b; color:#fff; padding:16px 28px; display:flex; justify-content:space-between; align-items:center; margin-top:20px; border-radius:0 0 8px 8px; }
-  .net-bar .lbl { font-size:12px; opacity:.7; }
-  .net-bar .amt { font-size:26px; font-weight:900; color:#f97316; }
-  .footer-note { font-size:11px; color:#94a3b8; text-align:center; padding:12px 28px 16px; background:#f8fafc; }
-  @media print {
-    body { background:#fff; }
-    .page { box-shadow:none; margin:0; border-radius:0; }
-    .no-print { display:none !important; }
-  }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e293b;background:#f1f5f9;}
+.toolbar{background:#1e293b;color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.toolbar h3{font-size:14px;font-weight:600;}
+.toolbar-btns{display:flex;gap:10px;}
+.btn-print{background:#f97316;color:#fff;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.02em;}
+.btn-print:hover{opacity:.88;}
+.btn-close{background:rgba(255,255,255,.15);color:#fff;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-size:13px;}
+.page{background:#fff;max-width:750px;margin:24px auto;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.15);overflow:hidden;}
+.hdr{background:#1e293b;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start;}
+.hdr-co h2{font-size:18px;font-weight:800;color:#fff;margin-bottom:3px;}
+.hdr-co .addr{font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-top:4px;}
+.hdr-right .ps-lbl{font-size:24px;font-weight:900;color:#f97316;letter-spacing:2px;}
+.hdr-right .ps-meta{font-size:11.5px;color:rgba(255,255,255,.6);margin-top:6px;line-height:1.7;text-align:right;}
+.body{padding:24px 28px;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-bottom:18px;border-bottom:2px solid #e2e8f0;margin-bottom:20px;}
+.info-sec h4{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:8px;}
+.info-sec p{font-size:12.5px;color:#334155;line-height:1.6;margin:0;}
+.sal-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:0;}
+.sal-col h4{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0;}
+.sal-col table{width:100%;border-collapse:collapse;}
+.sal-col td{font-size:12.5px;vertical-align:middle;}
+.sal-total{display:flex;justify-content:space-between;padding:8px 0 0;font-weight:700;font-size:13px;border-top:2px solid #1e293b;margin-top:4px;}
+.net-bar{background:#1e293b;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;}
+.net-bar .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.55);}
+.net-bar .amt{font-size:28px;font-weight:900;color:#f97316;}
+.footer-n{padding:12px 28px;background:#f8fafc;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;}
+@media print{
+    @page{margin:10mm;}
+    .toolbar{display:none!important;}
+    body{background:#fff;}
+    .page{box-shadow:none;border-radius:0;margin:0;max-width:100%;}
+}
 </style>
 </head>
 <body>
-<div class="no-print" style="background:#1e293b;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
-  <span style="font-size:14px;font-weight:600">Payslip Preview — {$ename}</span>
-  <div style="display:flex;gap:10px">
-    <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700">🖨 Print / Save as PDF</button>
-    <button onclick="window.close()" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">✕ Close</button>
-  </div>
+<div class="toolbar no-print">
+    <h3>📄 Payslip — {$ename} — {$period}</h3>
+    <div class="toolbar-btns">
+        <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
+        <button class="btn-close" onclick="window.close()">✕ Close</button>
+    </div>
 </div>
 <div class="page">
-  <div class="hdr">
-    <div>{$logo_html}<h2>{$cname}</h2><div class="addr">{$caddr}</div></div>
-    <div class="hdr-right">
-      <div class="ps-label">PAYSLIP</div>
-      <div class="ps-meta">Pay Period: {$period}</div>
-      <div class="ps-meta">Pay Date: {$pay_date_str}</div>
-    </div>
-  </div>
-  <div class="body">
-    <div class="emp-grid">
-      <div>
-        <div class="sec-title">Employee Details</div>
-        <div class="emp-name">{$ename}</div>
-        <div class="emp-meta">
-          {$desig_dept}<br>
-          Emp ID: {$ps['employee_id_no']}<br>
-          {$ps['employee_email']}<br>
-          {$ps['employee_phone']}
+    <div class="hdr">
+        <div class="hdr-co">
+            {$logo_html}
+            <h2>{$cname}</h2>
+            <div class="addr">{$caddr}</div>
         </div>
-      </div>
-      <div>
-        <div class="sec-title">Bank Details</div>
-        <div class="emp-meta">
-          Bank: {$ps['bank_name']}<br>
-          Account: {$ps['account_no']}<br>
-          <br>
-          <strong>Status: <span style="color:#10b981">{$ps['status']}</span></strong>
+        <div class="hdr-right">
+            <div class="ps-lbl">PAYSLIP</div>
+            <div class="ps-meta">
+                Pay Period: <strong style="color:#fff">{$period}</strong><br>
+                Pay Date: <strong style="color:#fff">{$pay_date_str}</strong><br>
+                Status: <strong style="color:{$status_col}">{$ps['status']}</strong>
+            </div>
         </div>
-      </div>
     </div>
-    <div class="salary-grid">
-      <div>
-        <div class="sec-title">Earnings</div>
-        <table class="salary-table">
-          <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody>{$allow_rows}</tbody>
-          <tfoot><tr class="total-row"><td>Gross Salary</td><td style="text-align:right">$sym {$ps['gross_salary']}</td></tr></tfoot>
-        </table>
-      </div>
-      <div>
-        <div class="sec-title">Deductions</div>
-        <table class="salary-table">
-          <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody>{$ded_rows}</tbody>
-          <tfoot><tr class="total-row"><td>Total Deductions</td><td style="text-align:right">$sym {$ps['total_deductions']}</td></tr></tfoot>
-        </table>
-      </div>
+    <div class="body">
+        <div class="info-grid">
+            <div class="info-sec">
+                <h4>Employee Details</h4>
+                <p><strong>{$ename}</strong></p>
+                <p>{$desig_dept}</p>
+                <p>EMP ID: {$ps['employee_id_no']}</p>
+                <p>{$ps['employee_email']}</p>
+                <p>{$ps['employee_phone']}</p>
+            </div>
+            <div class="info-sec">
+                <h4>Bank Details</h4>
+                <p>Bank: <strong>{$ps['bank_name']}</strong></p>
+                <p>Account: <strong>{$ps['account_no']}</strong></p>
+                <p style="margin-top:10px">Basic: <strong>$sym {$ps['basic_salary']}</strong></p>
+                <p>Gross: <strong>$gross_str</strong></p>
+                <p>Deductions: <strong style="color:#ef4444">- $ded_str</strong></p>
+            </div>
+        </div>
+        {$notes_block}
+        <div class="sal-grid">
+            <div class="sal-col">
+                <h4>Earnings</h4>
+                <table>{$earn_rows}</table>
+                <div class="sal-total"><span>Gross Salary</span><span>$gross_str</span></div>
+            </div>
+            <div class="sal-col">
+                <h4>Deductions</h4>
+                <table>{$ded_rows}</table>
+                <div class="sal-total"><span>Total Deductions</span><span style="color:#ef4444">- $ded_str</span></div>
+            </div>
+        </div>
     </div>
-    {$notes_block}
-  </div>
-  <div class="net-bar">
-    <div><div class="lbl">Net Salary Payable</div><div class="lbl">{$period}</div></div>
-    <div class="amt">{$sym} {$ps['net_salary']}</div>
-  </div>
-  <div class="footer-note">{$footer_note}</div>
+    <div class="net-bar">
+        <div>
+            <div class="lbl">Net Salary Payable</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px">{$period}</div>
+        </div>
+        <div class="amt">{$net_str}</div>
+    </div>
+    <div class="footer-n">{$footer_note}</div>
 </div>
-<script>
-// Auto-trigger browser print dialog
-window.onload = function() {
-  // Small delay so page renders first
-  setTimeout(function(){ window.print(); }, 500);
-};
-</script>
 </body>
 </html>
 HTML;
         return;
     }
 
-    // ── DOCX EXPORT ──
+    // ──────────────────────────────────────────────
+    // DOCX EXPORT
+    // ──────────────────────────────────────────────
     if ($fmt === 'docx') {
-        $allow_rows_docx = "<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Basic Salary</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>$sym " . number_format($ps['basic_salary'],2) . "</w:t></w:r></w:p></w:tc></w:tr>";
+        if (!class_exists('ZipArchive')) {
+            http_response_code(500);
+            die('ZipArchive not available. Please use Print/PDF instead.');
+        }
+
+        $en  = htmlspecialchars($ps['employee_name'],    ENT_XML1);
+        $pr  = htmlspecialchars($ps['pay_period'],       ENT_XML1);
+        $cn  = htmlspecialchars($ps['company_name']??'', ENT_XML1);
+        $ca  = htmlspecialchars($ps['company_address']??'',ENT_XML1);
+        $dg  = htmlspecialchars($ps['designation']??'',  ENT_XML1);
+        $dp  = htmlspecialchars($ps['department']??'',   ENT_XML1);
+        $ei  = htmlspecialchars($ps['employee_id_no']??'',ENT_XML1);
+        $em  = htmlspecialchars($ps['employee_email']??'',ENT_XML1);
+        $ph  = htmlspecialchars($ps['employee_phone']??'',ENT_XML1);
+        $bk  = htmlspecialchars($ps['bank_name']??'',    ENT_XML1);
+        $ac  = htmlspecialchars($ps['account_no']??'',   ENT_XML1);
+        $ft  = htmlspecialchars($ps['footer_note']??'',  ENT_XML1);
+        $nt  = htmlspecialchars($ps['notes']??'',        ENT_XML1);
+        $st  = ucfirst($ps['status']);
+        $cur = $ps['currency'] ?? 'LKR';
+        $gross_s = "$cur " . number_format($ps['gross_salary'],    2);
+        $ded_s   = "$cur " . number_format($ps['total_deductions'],2);
+        $net_s   = "$cur " . number_format($ps['net_salary'],      2);
+        $basic_s = "$cur " . number_format($ps['basic_salary'],    2);
+
+        // Build earnings rows XML
+        $earn_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val='1e293b'/></w:rPr><w:t>Basic Salary</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>$basic_s</w:t></w:r></w:p></w:tc></w:tr>";
         foreach ($allowances as $a) {
-            $n = htmlspecialchars($a['name'],ENT_QUOTES);
-            $v = number_format($a['amount'],2);
-            $allow_rows_docx .= "<w:tr><w:tc><w:p><w:r><w:t>$n</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>$sym $v</w:t></w:r></w:p></w:tc></w:tr>";
+            $n = htmlspecialchars($a['name'], ENT_XML1);
+            $v = "$cur " . number_format($a['amount'], 2);
+            $earn_xml .= "<w:tr><w:tc><w:p><w:r><w:t>$n</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>$v</w:t></w:r></w:p></w:tc></w:tr>";
         }
 
-        $ded_rows_docx = '';
+        $ded_xml = '';
         foreach ($deductions as $d) {
-            $n = htmlspecialchars($d['name'],ENT_QUOTES);
-            $v = number_format($d['amount'],2);
-            $ded_rows_docx .= "<w:tr><w:tc><w:p><w:r><w:t>$n</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>- $sym $v</w:t></w:r></w:p></w:tc></w:tr>";
+            $n = htmlspecialchars($d['name'], ENT_XML1);
+            $v = "$cur " . number_format($d['amount'], 2);
+            $ded_xml .= "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='EF4444'/></w:rPr><w:t>$n</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:color w:val='EF4444'/></w:rPr><w:t>- $v</w:t></w:r></w:p></w:tc></w:tr>";
         }
-        if (!$ded_rows_docx) $ded_rows_docx = "<w:tr><w:tc><w:p><w:r><w:t>No deductions</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t></w:t></w:r></w:p></w:tc></w:tr>";
+        if (!$ded_xml) $ded_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='94A3B8'/></w:rPr><w:t>No deductions</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t></w:t></w:r></w:p></w:tc></w:tr>";
 
-        $emp_name_raw  = htmlspecialchars($ps['employee_name'],ENT_XML1);
-        $period_raw    = htmlspecialchars($ps['pay_period'],ENT_XML1);
-        $cname_raw     = htmlspecialchars($ps['company_name']??'',ENT_XML1);
-        $desig_raw     = htmlspecialchars($ps['designation']??'',ENT_XML1);
-        $dept_raw      = htmlspecialchars($ps['department']??'',ENT_XML1);
-        $empid_raw     = htmlspecialchars($ps['employee_id_no']??'',ENT_XML1);
-        $bank_raw      = htmlspecialchars($ps['bank_name']??'',ENT_XML1);
-        $acct_raw      = htmlspecialchars($ps['account_no']??'',ENT_XML1);
-        $gross_str     = "$sym " . number_format($ps['gross_salary'],2);
-        $ded_str       = "$sym " . number_format($ps['total_deductions'],2);
-        $net_str       = "$sym " . number_format($ps['net_salary'],2);
-        $pay_date_str2 = $ps['pay_date'] ? date('d M Y',strtotime($ps['pay_date'])) : '';
-        $footer_raw    = htmlspecialchars($ps['footer_note']??'',ENT_XML1);
-        $notes_raw     = htmlspecialchars($ps['notes']??'',ENT_XML1);
+        $notes_xml = $nt ? "<w:p><w:pPr><w:spacing w:before='120' w:after='60'/></w:pPr><w:r><w:rPr><w:i/><w:color w:val='64748b'/></w:rPr><w:t>Note: $nt</w:t></w:r></w:p>" : '';
 
-        $notes_docx_block = $notes_raw ? "<w:p><w:pPr><w:spacing w:before=\"120\" w:after=\"60\"/></w:pPr><w:r><w:rPr><w:i/><w:color w:val=\"64748b\"/></w:rPr><w:t>Note: $notes_raw</w:t></w:r></w:p>" : '';
+        // Shared table border props
+        $tbdr = '<w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders>';
+
         $doc_xml = <<<XML
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
-  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
 <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="F97316"/></w:rPr><w:t>$cname_raw — PAYSLIP</w:t></w:r></w:p>
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="120"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="64748b"/></w:rPr><w:t>Pay Period: $period_raw  |  Pay Date: $pay_date_str2</w:t></w:r></w:p>
-<w:p><w:pPr><w:spacing w:before="120" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:color w:val="1e293b"/></w:rPr><w:t>EMPLOYEE DETAILS</w:t></w:r></w:p>
+  <w:r><w:rPr><w:b/><w:sz w:val="40"/><w:color w:val="F97316"/></w:rPr><w:t>PAYSLIP</w:t></w:r></w:p>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="60"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="1E293B"/></w:rPr><w:t>$cn</w:t></w:r></w:p>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="200"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>Pay Period: $pr  |  Pay Date: $pay_date_str  |  Status: $st</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:before="100" w:after="60"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E293B"/><w:sz w:val="24"/></w:rPr><w:t>EMPLOYEE DETAILS</w:t></w:r></w:p>
 <w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders></w:tblPr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Name</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$emp_name_raw</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Designation</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$desig_raw</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Department</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$dept_raw</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$empid_raw</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Bank</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$bank_raw</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Account</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$acct_raw</w:t></w:r></w:p></w:tc></w:tr>
-</w:tbl>
-<w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:color w:val="1e293b"/></w:rPr><w:t>EARNINGS</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders></w:tblPr>
-  {$allow_rows_docx}
-  <w:tr><w:tc><w:tcPr><w:shd w:fill="1e293b" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Gross Salary</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1e293b" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="F97316"/></w:rPr><w:t>$gross_str</w:t></w:r></w:p></w:tc></w:tr>
-</w:tbl>
-<w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:color w:val="1e293b"/></w:rPr><w:t>DEDUCTIONS</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders></w:tblPr>
-  {$ded_rows_docx}
-  <w:tr><w:tc><w:tcPr><w:shd w:fill="1e293b" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Total Deductions</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1e293b" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="EF4444"/></w:rPr><w:t>$ded_str</w:t></w:r></w:p></w:tc></w:tr>
+  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>$tbdr</w:tblPr>
+  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Name</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$en</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Designation</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$dg</w:t></w:r></w:p></w:tc></w:tr>
+  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Department</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$dp</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$ei</w:t></w:r></w:p></w:tc></w:tr>
+  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Email</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$em</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Phone</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$ph</w:t></w:r></w:p></w:tc></w:tr>
+  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Bank</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$bk</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Account No.</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>$ac</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
 <w:p><w:pPr><w:spacing w:before="200" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="F97316"/></w:rPr><w:t>NET SALARY PAYABLE: $net_str</w:t></w:r></w:p>
-{$notes_docx_block}
-<w:p><w:pPr><w:spacing w:before="200" w:after="0"/><w:jc w:val="center"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94a3b8"/></w:rPr><w:t>$footer_raw</w:t></w:r></w:p>
+  <w:r><w:rPr><w:b/><w:color w:val="1E293B"/><w:sz w:val="24"/></w:rPr><w:t>EARNINGS</w:t></w:r></w:p>
+<w:tbl>
+  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>$tbdr</w:tblPr>
+  $earn_xml
+  <w:tr><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Gross Salary</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="F97316"/></w:rPr><w:t>$gross_s</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl>
+<w:p><w:pPr><w:spacing w:before="200" w:after="60"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E293B"/><w:sz w:val="24"/></w:rPr><w:t>DEDUCTIONS</w:t></w:r></w:p>
+<w:tbl>
+  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>$tbdr</w:tblPr>
+  $ded_xml
+  <w:tr><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Total Deductions</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="EF4444"/></w:rPr><w:t>- $ded_s</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl>
+$notes_xml
+<w:p><w:pPr><w:spacing w:before="240" w:after="60"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="32"/><w:color w:val="F97316"/></w:rPr><w:t>NET SALARY PAYABLE: $net_s</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:before="300" w:after="0"/><w:jc w:val="center"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>$ft</w:t></w:r></w:p>
 <w:sectPr><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr>
 </w:body>
 </w:document>
 XML;
 
-        $fname = 'Payslip_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $ps['employee_name']) . '_' . preg_replace('/\s+/', '_', $ps['pay_period']) . '.docx';
+        $safe_name = preg_replace('/[^a-zA-Z0-9_-]/', '_', $ps['employee_name']);
+        $safe_per  = preg_replace('/\s+/', '_', $ps['pay_period']);
+        $fname     = "Payslip_{$safe_name}_{$safe_per}.docx";
 
-        // Build DOCX (ZIP with OOXML structure)
         $zip = new ZipArchive();
-        $tmp = tempnam(sys_get_temp_dir(), 'payslip_') . '.docx';
-        $zip->open($tmp, ZipArchive::CREATE);
-        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
-        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+        $tmp = tempnam(sys_get_temp_dir(), 'ps_') . '.docx';
+        if ($zip->open($tmp, ZipArchive::CREATE) !== true) {
+            http_response_code(500); die('Cannot create DOCX file.');
+        }
+        $zip->addFromString('[Content_Types].xml',
+            '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+        $zip->addFromString('_rels/.rels',
+            '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+        $zip->addFromString('word/_rels/document.xml.rels',
+            '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>');
         $zip->addFromString('word/document.xml', $doc_xml);
-        $zip->addFromString('word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>');
         $zip->close();
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        header('Content-Disposition: attachment; filename="' . $fname . '"');
-        header('Content-Length: ' . filesize($tmp));
+        header('Content-Disposition: attachment; filename="'.$fname.'"');
+        header('Content-Length: '.filesize($tmp));
+        header('Cache-Control: no-cache');
         readfile($tmp);
         unlink($tmp);
-        return;
     }
 }

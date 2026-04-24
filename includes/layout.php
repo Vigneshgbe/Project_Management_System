@@ -314,6 +314,15 @@ select.form-control{cursor:pointer}
     <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
       <span class="icon">💰</span> Expenses
     </a>
+    <a href="payslip.php" class="nav-item <?= $activePage==='payslip'?'active':'' ?>">
+      <span class="icon">💵</span> Payslips
+    </a>
+    <a href="whatsapp.php" class="nav-item <?= $activePage==='whatsapp'?'active':'' ?>">
+      <span class="icon">💬</span> WhatsApp
+    </a>
+    <a href="social_media.php" class="nav-item <?= $activePage==='social_media'?'active':'' ?>">
+      <span class="icon">📱</span> Social Media
+    </a>
     <div class="nav-label" style="margin-top:12px">Admin</div>
     <a href="portal_admin.php" class="nav-item <?= $activePage==='portal_admin'?'active':'' ?>">
       <span class="icon">🌐</span> Client Portal

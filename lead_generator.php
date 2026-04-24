@@ -290,7 +290,7 @@ renderLayout('Lead Generator', 'lead_generator');
   </div>
 
   <!-- Pagination -->
-  <div style="display:flex;align-items:center;justify-content:between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
     <div style="font-size:12px;color:var(--text3)" id="lg-pagination-info"></div>
     <div style="display:flex;gap:4px;margin-left:auto" id="lg-pagination-btns"></div>
   </div>
@@ -431,7 +431,9 @@ function loadStats() {
         renderRecent(d.recent||[]);
         updateCostPreview();
     })
-    .catch(function(){});
+    .catch(function(e){
+        console.error('loadStats error:', e);
+    });
 }
 
 function renderRecent(data) {
@@ -597,24 +599,34 @@ function exportCSV() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// MANAGE ALL STORED LEADS (Admin/Manager)
+// MANAGE ALL STORED LEADS (Admin/Manager) - FIXED VERSION
 // ═══════════════════════════════════════════════════════════
 
 function toggleManageSection() {
     var sec = document.getElementById('lg-manage-section');
-    if (sec.style.display === 'none') {
+    if (!sec) {
+        console.error('Manage section not found');
+        return;
+    }
+    
+    if (sec.style.display === 'none' || sec.style.display === '') {
         sec.style.display = 'block';
-        loadAllStoredLeads();
-        document.getElementById('lg-show-manage-btn').textContent = '✕ Close Manage View';
+        console.log('Opening manage section, loading leads...');
+        loadAllStoredLeads(1);
+        var btn = document.getElementById('lg-show-manage-btn');
+        if (btn) btn.textContent = '✕ Close Manage View';
     } else {
         sec.style.display = 'none';
-        document.getElementById('lg-show-manage-btn').textContent = '📚 View All Stored Leads ('+lgTotalStored+')';
+        var btn = document.getElementById('lg-show-manage-btn');
+        if (btn) btn.textContent = '📚 View All Stored Leads ('+lgTotalStored+')';
     }
 }
 
 function loadAllStoredLeads(page) {
     page = page || 1;
     lgCurrentPage = page;
+    
+    console.log('loadAllStoredLeads called for page:', page);
     
     var search = document.getElementById('filter-search')?.value || '';
     var location = document.getElementById('filter-location')?.value || '';
@@ -629,36 +641,69 @@ function loadAllStoredLeads(page) {
     if (website) url += '&website='+website;
     if (imported) url += '&imported='+imported;
 
-    document.getElementById('lg-stored-tbody').innerHTML = 
-        '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
+    console.log('Fetching URL:', url);
+
+    var tbody = document.getElementById('lg-stored-tbody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
+    }
 
     fetch(url)
-    .then(function(r){return r.json();})
+    .then(function(r){
+        console.log('Response status:', r.status);
+        if (!r.ok) {
+            throw new Error('HTTP error! status: ' + r.status);
+        }
+        return r.json();
+    })
     .then(function(d){
-        if (!d.ok) { toast(d.error||'Failed to load','error'); return; }
+        console.log('API Response:', d);
+        
+        if (!d.ok) { 
+            console.error('API returned ok=false:', d.error);
+            toast(d.error||'Failed to load stored leads','error');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:36px"><div style="font-size:32px;margin-bottom:8px">⚠️</div><div style="color:var(--text)">Error: '+(d.error||'Failed to load')+'</div></td></tr>';
+            }
+            return;
+        }
         
         lgStoredLeads = d.leads || [];
+        console.log('Loaded '+lgStoredLeads.length+' leads');
+        
         renderStoredLeadsTable(d.leads);
         renderPagination(d.total, d.page, d.per_page);
         
         // Populate filter dropdowns
         populateFilters(d.locations, d.industries);
         
-        document.getElementById('lg-manage-count').textContent = 
-            'Total: '+d.total+' leads stored across all searches';
+        var countEl = document.getElementById('lg-manage-count');
+        if (countEl) {
+            countEl.textContent = 'Total: '+d.total+' leads stored across all searches';
+        }
     })
     .catch(function(e){
-        toast('Failed to load stored leads','error');
-        console.error(e);
+        console.error('Fetch error:', e);
+        toast('Failed to load stored leads: ' + e.message,'error');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:36px"><div style="font-size:32px;margin-bottom:8px">⚠️</div><div style="color:var(--text)">Network Error</div><div style="color:var(--text3);font-size:12px;margin-top:4px">'+esc(e.message)+'</div></td></tr>';
+        }
     });
 }
 
 function renderStoredLeadsTable(leads) {
     var tbody = document.getElementById('lg-stored-tbody');
+    if (!tbody) {
+        console.error('tbody element not found');
+        return;
+    }
+    
     if (!leads || !leads.length) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:36px"><div style="font-size:32px;margin-bottom:8px">📭</div><div style="color:var(--text3)">No leads found</div></td></tr>';
         return;
     }
+
+    console.log('Rendering '+leads.length+' leads in table');
 
     tbody.innerHTML = leads.map(function(l, idx) {
         var rowNum = ((lgCurrentPage - 1) * lgPerPage) + idx + 1;
@@ -696,6 +741,8 @@ function renderPagination(total, currentPage, perPage) {
     var totalPages = Math.ceil(total / perPage);
     var info = document.getElementById('lg-pagination-info');
     var btns = document.getElementById('lg-pagination-btns');
+    
+    if (!info || !btns) return;
     
     var start = ((currentPage - 1) * perPage) + 1;
     var end = Math.min(currentPage * perPage, total);
@@ -747,14 +794,14 @@ function populateFilters(locations, industries) {
     var locSelect = document.getElementById('filter-location');
     var indSelect = document.getElementById('filter-industry');
     
-    if (locSelect && locations) {
+    if (locSelect && locations && locations.length) {
         var currentVal = locSelect.value;
         locSelect.innerHTML = '<option value="">All Locations</option>' + 
             locations.map(function(loc){ return '<option value="'+esc(loc)+'">'+esc(loc)+'</option>'; }).join('');
         locSelect.value = currentVal;
     }
     
-    if (indSelect && industries) {
+    if (indSelect && industries && industries.length) {
         var currentVal = indSelect.value;
         indSelect.innerHTML = '<option value="">All Industries</option>' + 
             industries.map(function(ind){ return '<option value="'+esc(ind)+'">'+esc(ind)+'</option>'; }).join('');
@@ -788,6 +835,8 @@ function updateSelectAllState() {
     var checkboxes = document.querySelectorAll('.lead-select');
     var checkedCount = document.querySelectorAll('.lead-select:checked').length;
     
+    if (!selectAll) return;
+    
     if (checkboxes.length === 0) {
         selectAll.checked = false;
         selectAll.indeterminate = false;
@@ -807,6 +856,7 @@ function updateSelectAllState() {
 
 function updateBulkDeleteButton() {
     var btn = document.getElementById('lg-bulk-delete-btn');
+    if (!btn) return;
     var selected = document.querySelectorAll('.lead-select:checked');
     btn.disabled = selected.length === 0;
     btn.textContent = '🗑 Delete Selected' + (selected.length > 0 ? ' ('+selected.length+')' : '');
@@ -852,8 +902,8 @@ function bulkDeleteSelected() {
             updateBulkDeleteButton();
         }
     })
-    .catch(function(){
-        toast('Network error','error');
+    .catch(function(e){
+        toast('Network error: ' + e.message,'error');
         btn.disabled = false;
         updateBulkDeleteButton();
     });
@@ -876,6 +926,9 @@ function deleteSingleLead(id) {
         } else {
             toast(d.error||'Delete failed','error');
         }
+    })
+    .catch(function(e){
+        toast('Network error: ' + e.message,'error');
     });
 }
 

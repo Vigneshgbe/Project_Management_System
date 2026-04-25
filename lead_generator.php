@@ -135,7 +135,7 @@ renderLayout('Lead Generator', 'lead_generator');
     <div style="margin-top:10px;font-size:11.5px;color:var(--text3);line-height:1.7">
       <div>Cost per lead: ~$0.035</div>
       <div id="lg-rem-leads"></div>
-      <div style="margin-top:4px;font-size:10.5px;color:var(--text3)">Google $200 free/month · You'll never hit it</div>
+      <div style="margin-top:4px;font-size:10.5px;color:var(--text3)">Google 5,000 free calls/SKU/month (Mar 2025) · ~4,000 leads free</div>
     </div>
   </div>
 </div>
@@ -190,7 +190,7 @@ renderLayout('Lead Generator', 'lead_generator');
     </div>
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
-      <input type="number" id="cfg-quota" class="lg-input" value="300" min="10" max="5000">
+      <input type="number" id="cfg-quota" class="lg-input" value="4000" min="10" max="5000">
       <div style="font-size:10px;color:var(--text3);margin-top:2px">Max leads/month</div>
     </div>
     <div>
@@ -370,7 +370,7 @@ renderLayout('Lead Generator', 'lead_generator');
 </div>
 
 <script>
-var lgIds=[], lgConfigured=false, lgQuota=300, lgBudget=15, lgSearchMode='no_website';
+var lgIds=[], lgConfigured=false, lgQuota=4000, lgBudget=15, lgSearchMode='no_website';
 
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();

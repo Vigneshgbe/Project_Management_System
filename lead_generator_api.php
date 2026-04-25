@@ -156,7 +156,7 @@ if ($action === 'search') {
         echo json_encode(['ok'=>false,'error'=>'Google API key not configured. Click Settings.']); exit;
     }
 
-    $quota      = max(1, (int)lgGet($db, 'monthly_quota', '300'));
+    $quota      = max(1, (int)lgGet($db, 'monthly_quota', '4000'));
     $budget_usd = (float)lgGet($db, 'monthly_budget_usd', '15.00');
     $cost_ts    = (float)lgGet($db, 'cost_per_textsearch', '0.032');
     $cost_det   = (float)lgGet($db, 'cost_per_details', '0.003');
@@ -456,7 +456,7 @@ if ($action === 'bulk_delete') {
 
 // ── GET STATS ──
 if ($action === 'get_stats') {
-    $quota  =(int)lgGet($db,'monthly_quota','300');
+    $quota  =(int)lgGet($db,'monthly_quota','4000');
     $budget =(float)lgGet($db,'monthly_budget_usd','15.00');
     $api_set=lgGet($db,'google_api_key')!=='';
     $usage  =lgMonthUsed($db,$uid);
@@ -482,7 +482,7 @@ if ($action === 'get_stats') {
 // ── SAVE SETTINGS ──
 if ($action === 'save_settings' && isAdmin()) {
     $g_key =trim($_POST['google_key']??'');
-    $quota =max(10,min(5000,(int)($_POST['quota']??300)));
+    $quota =max(10,min(5000,(int)($_POST['quota']??4000)));
     $budget=max(1,min(180,(float)($_POST['budget']??15)));
     $db->query("UPDATE lead_gen_settings SET setting_val='google',updated_by=$uid WHERE setting_key='api_provider'");
     if ($g_key) { $gke=$db->real_escape_string($g_key); $db->query("UPDATE lead_gen_settings SET setting_val='$gke',updated_by=$uid WHERE setting_key='google_api_key'"); }

@@ -73,6 +73,24 @@ function lgScrapeEmail(string $url): string {
     return '';
 }
 
+/**
+ * Determine if a URL is a real business website (not a social/maps redirect).
+ * Returns true only for genuine business domains.
+ */
+function lgIsRealWebsite(string $url): bool {
+    if (!$url) return false;
+    // Reject known non-website domains
+    $nonSite = ['facebook.com','fb.com','instagram.com','twitter.com','x.com',
+                'g.co','goo.gl','maps.google.com','google.com/maps',
+                'yelp.com','tripadvisor.com','justdial.com','indiamart.com',
+                'youtube.com','linkedin.com','whatsapp.com','t.me'];
+    $lower = strtolower($url);
+    foreach ($nonSite as $ns) {
+        if (strpos($lower, $ns) !== false) return false;
+    }
+    return true;
+}
+
 // Ensure new columns exist (safe, runs once)
 function lgEnsureColumns(mysqli $db): void {
     static $done = false; if ($done) return; $done = true;
@@ -88,6 +106,32 @@ function lgEnsureColumns(mysqli $db): void {
     if (!in_array('opportunity_score', $cols)) $add[] = "ADD COLUMN opportunity_score INT DEFAULT 0 AFTER price_level";
     if (!in_array('api_calls',         $cols)) $add[] = "ADD COLUMN api_calls         INT DEFAULT 0";
     if ($add) @$db->query("ALTER TABLE lead_gen_results ".implode(', ',$add));
+
+    // FIX: Recalculate has_website for all existing rows based on real website logic.
+    // Rows where website is empty/null → has_website=0
+    // Rows where website is a social/maps URL → has_website=0
+    // Rows where website is a genuine URL → has_website=1
+    @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE (website IS NULL OR website='')");
+    @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE website IS NOT NULL AND website!='' AND (
+        website LIKE '%facebook.com%' OR website LIKE '%fb.com%' OR
+        website LIKE '%instagram.com%' OR website LIKE '%twitter.com%' OR
+        website LIKE '%x.com%' OR website LIKE '%g.co%' OR
+        website LIKE '%goo.gl%' OR website LIKE '%maps.google%' OR
+        website LIKE '%youtube.com%' OR website LIKE '%linkedin.com%' OR
+        website LIKE '%whatsapp.com%' OR website LIKE '%t.me%' OR
+        website LIKE '%justdial.com%' OR website LIKE '%indiamart.com%' OR
+        website LIKE '%tripadvisor.com%' OR website LIKE '%yelp.com%'
+    )");
+    @$db->query("UPDATE lead_gen_results SET has_website=1 WHERE website IS NOT NULL AND website!='' AND has_website=0 AND (
+        website NOT LIKE '%facebook.com%' AND website NOT LIKE '%fb.com%' AND
+        website NOT LIKE '%instagram.com%' AND website NOT LIKE '%twitter.com%' AND
+        website NOT LIKE '%x.com%' AND website NOT LIKE '%g.co%' AND
+        website NOT LIKE '%goo.gl%' AND website NOT LIKE '%maps.google%' AND
+        website NOT LIKE '%youtube.com%' AND website NOT LIKE '%linkedin.com%' AND
+        website NOT LIKE '%whatsapp.com%' AND website NOT LIKE '%t.me%' AND
+        website NOT LIKE '%justdial.com%' AND website NOT LIKE '%indiamart.com%' AND
+        website NOT LIKE '%tripadvisor.com%' AND website NOT LIKE '%yelp.com%'
+    )");
 }
 
 if (!lgTableOk($db)) {
@@ -176,7 +220,8 @@ if ($action === 'search') {
                 $res   = $det['result'] ?? [];
                 $phone = $res['formatted_phone_number'] ?? ($res['international_phone_number'] ?? '');
                 $website     = $res['website'] ?? '';
-                $has_website = $website ? 1 : 0;
+                // FIX: Only mark has_website=1 for genuine business websites, not social/maps URLs
+                $has_website = lgIsRealWebsite($website) ? 1 : 0;
                 $ratings_total = (int)($res['user_ratings_total'] ?? 0);
                 $price_level   = isset($res['price_level']) ? (int)$res['price_level'] : null;
                 // Owner name from review reply
@@ -309,9 +354,10 @@ if ($action === 'get_all_stored') {
     $total=(int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results r WHERE $whereSQL")->fetch_assoc()['c']??0);
 
     $rows=[];
+    // FIX: Added has_website, opportunity_score, ratings_total to SELECT
     $q=@$db->query("SELECT r.id,r.name,r.owner_name,r.phone,r.email,r.address,
-                           r.website,r.has_website,r.rating,r.location,r.industry,
-                           r.imported,r.lead_id,r.created_at
+                           r.website,r.has_website,r.rating,r.ratings_total,r.opportunity_score,
+                           r.location,r.industry,r.imported,r.lead_id,r.created_at
                     FROM lead_gen_results r WHERE $whereSQL
                     ORDER BY r.id DESC LIMIT $per_page OFFSET $offset");
     if ($q) while ($row=$q->fetch_assoc()) $rows[]=$row;
@@ -419,8 +465,9 @@ if ($action === 'get_stats') {
     $tr=@$db->query("SELECT DATE_FORMAT(created_at,'%b') mo,DATE_FORMAT(created_at,'%Y-%m') smo,SUM(result_count) cnt,SUM(estimated_cost) cost FROM lead_gen_usage WHERE user_id=$uid AND created_at>=DATE_SUB(NOW(),INTERVAL 6 MONTH) GROUP BY mo,smo ORDER BY smo");
     if ($tr) $trend=$tr->fetch_all(MYSQLI_ASSOC);
 
+    // FIX: Limit recent searches to 5
     $recent=[];
-    $rc=@$db->query("SELECT id,industry,location,result_count,estimated_cost,created_at FROM lead_gen_usage WHERE user_id=$uid ORDER BY created_at DESC LIMIT 8");
+    $rc=@$db->query("SELECT id,industry,location,result_count,estimated_cost,created_at FROM lead_gen_usage WHERE user_id=$uid ORDER BY created_at DESC LIMIT 5");
     if ($rc) $recent=$rc->fetch_all(MYSQLI_ASSOC);
 
     $total_imp=(int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results WHERE user_id=$uid AND imported=1")->fetch_assoc()['c']??0);

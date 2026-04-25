@@ -447,3 +447,88 @@ if ($action === 'export_csv') {
 }
 
 echo json_encode(['ok'=>false,'error'=>'Unknown action']);
+
+// ═══════════════════════════════════════════════════════════
+// ACTION: GET ALL STORED LEADS (paginated, filterable)
+// ═══════════════════════════════════════════════════════════
+if ($action === 'get_all_stored') {
+    $page     = max(1, (int)($_GET['page'] ?? 1));
+    $per_page = max(10, min(200, (int)($_GET['per_page'] ?? 50)));
+    $offset   = ($page - 1) * $per_page;
+    $search   = trim($_GET['search']   ?? '');
+    $loc_f    = trim($_GET['location'] ?? '');
+    $ind_f    = trim($_GET['industry'] ?? '');
+    $website  = $_GET['website']  ?? '';
+    $imported = $_GET['imported'] ?? '';
+
+    $where = ['1=1'];
+    if (!isManager()) $where[] = "r.user_id = $uid";
+    if ($search !== '') {
+        $se = $db->real_escape_string($search);
+        $where[] = "(r.name LIKE '%$se%' OR r.owner_name LIKE '%$se%' OR r.location LIKE '%$se%' OR r.industry LIKE '%$se%' OR r.phone LIKE '%$se%' OR r.email LIKE '%$se%' OR r.address LIKE '%$se%')";
+    }
+    if ($loc_f !== '') { $le=$db->real_escape_string($loc_f); $where[] = "r.location='$le'"; }
+    if ($ind_f !== '') { $ie=$db->real_escape_string($ind_f); $where[] = "r.industry='$ie'"; }
+    if ($website  === '1') $where[] = "r.has_website=1";
+    elseif ($website  === '0') $where[] = "r.has_website=0";
+    if ($imported === '1') $where[] = "r.imported=1";
+    elseif ($imported === '0') $where[] = "r.imported=0";
+
+    $whereSQL = implode(' AND ', $where);
+    $total    = (int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results r WHERE $whereSQL")->fetch_assoc()['c'] ?? 0);
+
+    $rows = [];
+    $q = @$db->query("SELECT r.id, r.name, r.owner_name, r.phone, r.email, r.address,
+                             r.website, r.has_website, r.rating, r.ratings_total,
+                             r.opportunity_score, r.location, r.industry,
+                             r.imported, r.lead_id, r.created_at
+                      FROM lead_gen_results r WHERE $whereSQL
+                      ORDER BY r.opportunity_score DESC, r.id DESC
+                      LIMIT $per_page OFFSET $offset");
+    if ($q) { while ($row = $q->fetch_assoc()) $rows[] = $row; }
+
+    $locations = []; $industries = [];
+    $lq = @$db->query("SELECT DISTINCT location FROM lead_gen_results WHERE location IS NOT NULL AND location!='' ORDER BY location");
+    if ($lq) while ($row=$lq->fetch_assoc()) $locations[]=$row['location'];
+    $iq = @$db->query("SELECT DISTINCT industry FROM lead_gen_results WHERE industry IS NOT NULL AND industry!='' ORDER BY industry");
+    if ($iq) while ($row=$iq->fetch_assoc()) $industries[]=$row['industry'];
+
+    echo json_encode(['ok'=>true,'leads'=>$rows,'total'=>$total,'page'=>$page,'per_page'=>$per_page,'locations'=>$locations,'industries'=>$industries]);
+    exit;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTION: GET SEARCH HISTORY (click recent search to reload)
+// ═══════════════════════════════════════════════════════════
+if ($action === 'get_search_history') {
+    $usage_id = (int)($_GET['usage_id'] ?? 0);
+    if (!$usage_id) { echo json_encode(['ok'=>false,'error'=>'Invalid usage ID']); exit; }
+    $urow = @$db->query("SELECT * FROM lead_gen_usage WHERE id=$usage_id AND user_id=$uid LIMIT 1")->fetch_assoc();
+    if (!$urow) { echo json_encode(['ok'=>false,'error'=>'Search record not found']); exit; }
+    $le = $db->real_escape_string($urow['location']);
+    $ie = $db->real_escape_string($urow['industry']);
+    $created = $db->real_escape_string($urow['created_at']);
+    $q = @$db->query("SELECT * FROM lead_gen_results
+                      WHERE user_id=$uid AND location='$le' AND industry='$ie'
+                        AND created_at BETWEEN DATE_SUB('$created',INTERVAL 5 MINUTE)
+                                            AND DATE_ADD('$created',INTERVAL 5 MINUTE)
+                      ORDER BY opportunity_score DESC, id ASC LIMIT 20");
+    $leads = [];
+    if ($q) while ($row=$q->fetch_assoc()) $leads[]=$row;
+    echo json_encode(['ok'=>true,'leads'=>$leads,'location'=>$urow['location'],'industry'=>$urow['industry']]);
+    exit;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTION: BULK DELETE
+// ═══════════════════════════════════════════════════════════
+if ($action === 'bulk_delete') {
+    if (!isManager()) { echo json_encode(['ok'=>false,'error'=>'Permission denied']); exit; }
+    $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
+    if (!$ids) { echo json_encode(['ok'=>false,'error'=>'No IDs provided']); exit; }
+    $result = @$db->query("DELETE FROM lead_gen_results WHERE id IN(".implode(',',$ids).")");
+    echo $result
+        ? json_encode(['ok'=>true,'deleted'=>$db->affected_rows])
+        : json_encode(['ok'=>false,'error'=>'Delete failed: '.$db->error]);
+    exit;
+}

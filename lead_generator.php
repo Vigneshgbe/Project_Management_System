@@ -78,10 +78,19 @@ renderLayout('Lead Generator', 'lead_generator');
 @media(max-width:700px){.lg-top{grid-template-columns:1fr}.lg-search-row{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.lg-search-row{grid-template-columns:1fr}}
 /* ── MODE LABELS ── */
-.sm-mode-label-base{display:flex;align-items:flex-start;gap:8px;padding:9px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;background:var(--bg3)}
 #lm-no_website.mode-active{background:rgba(16,185,129,.08)!important;border-color:#10b981!important}
 #lm-high_value.mode-active{background:rgba(249,115,22,.06)!important;border-color:var(--orange)!important}
 #lm-all.mode-active{background:var(--bg4)!important;border-color:var(--text3)!important}
+/* ── MANAGE SECTION ── */
+.lg-manage-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+.lg-filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.lg-filter-input{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;min-width:160px}
+.lg-filter-select{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer}
+.lg-owner{font-size:12px;color:var(--text3);margin-top:2px}
+.lg-email-badge{background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;text-decoration:none}
+.lg-mail-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#6366f1;color:#fff;border-radius:50%;text-decoration:none;font-size:12px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.lg-mail-btn:hover{opacity:.8}
+.lg-no-data{color:var(--text3);font-size:12px;font-style:italic}
 </style>
 
 <!-- TOP STATS ROW -->
@@ -259,6 +268,57 @@ renderLayout('Lead Generator', 'lead_generator');
   <div id="lg-quota-bar-row" style="margin-top:10px"></div>
 </div>
 
+<!-- MANAGE ALL STORED LEADS -->
+<?php if (isManager()): ?>
+<div class="lg-manage-section" id="lg-manage-section" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div>
+      <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">📚 All Stored Leads</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px" id="lg-manage-count">Loading...</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="bulkDeleteSelected()" class="btn btn-danger btn-sm" id="lg-bulk-delete-btn" disabled>🗑 Delete Selected</button>
+      <button onclick="toggleManageSection()" class="btn btn-ghost btn-sm">✕ Close</button>
+    </div>
+  </div>
+  <div class="lg-filter-bar">
+    <input type="text" id="filter-search" class="lg-filter-input" placeholder="Search name, email, phone..." onkeyup="filterStoredLeads()">
+    <select id="filter-location" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Locations</option></select>
+    <select id="filter-industry" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Industries</option></select>
+    <select id="filter-website" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All</option><option value="0">🔥 No Website</option><option value="1">Has Website</option>
+    </select>
+    <select id="filter-imported" class="lg-filter-select" onchange="filterStoredLeads()">
+      <option value="">All</option><option value="0">Not Imported</option><option value="1">Imported to CRM</option>
+    </select>
+    <button onclick="resetFilters()" class="btn btn-ghost btn-sm">🔄 Reset</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="lg-tbl">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all-leads" onchange="toggleSelectAll(this)"></th>
+          <th>Score</th><th>Business Name / Owner</th><th>Phone</th><th>Email</th>
+          <th>Location</th><th>Industry</th><th>Website</th><th>Rating</th><th>Date</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="lg-stored-tbody">
+        <tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;color:var(--text3)" id="lg-pagination-info"></div>
+    <div style="display:flex;gap:4px;margin-left:auto" id="lg-pagination-btns"></div>
+  </div>
+</div>
+<div style="margin-bottom:16px">
+  <button onclick="toggleManageSection()" class="btn btn-ghost" id="lg-show-manage-btn">
+    📚 View All Stored Leads (<span id="lg-total-stored">0</span>)
+  </button>
+</div>
+<?php endif; ?>
+
 <!-- LOADING STATE -->
 <div class="lg-loading" id="lg-loading">
   <div class="lg-spinner"></div>
@@ -376,6 +436,10 @@ function loadStats() {
         if (document.getElementById('cfg-quota')) document.getElementById('cfg-quota').value = lgQuota;
         if (document.getElementById('cfg-budget')) document.getElementById('cfg-budget').value = lgBudget;
 
+        lgTotalStored = d.total_all||0;
+        var ts = document.getElementById('lg-total-stored');
+        if (ts) ts.textContent = lgTotalStored;
+
         renderRecent(d.recent||[]);
         updateCostPreview();
     })
@@ -389,7 +453,7 @@ function renderRecent(data) {
     var colors=['#4f46e5','#10b981','#f97316','#8b5cf6','#f59e0b','#14b8a6','#6366f1','#ef4444'];
     el.innerHTML = data.map(function(r,i){
         var cost = parseFloat(r.estimated_cost||0).toFixed(4);
-        return '<div class="lg-act"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
+        return '<div class="lg-act" onclick="loadSearchHistory('+r.id+')" title="Click to view these leads"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
             +'<div><div style="font-size:12.5px;color:var(--text2);font-weight:600">'+esc(r.result_count)+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
             +'<div style="font-size:11px;color:var(--text3)">$'+cost+' cost · '+fmtAgo(r.created_at)+'</div></div></div>';
     }).join('');
@@ -608,6 +672,197 @@ function testKey(){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtAgo(dt){if(!dt)return'';var d=Math.floor((Date.now()-new Date(dt).getTime())/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
+function fmtDate(dt){if(!dt)return'';var d=new Date(dt);return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
+
+// ── LOAD SEARCH HISTORY (click recent search) ──
+function loadSearchHistory(usageId){
+    var loading=document.getElementById('lg-loading');
+    var results=document.getElementById('lg-results-section');
+    loading.style.display='block'; if(results) results.style.display='none';
+    document.getElementById('lg-load-text').textContent='Loading previous search results...';
+    document.getElementById('lg-load-sub').textContent='';
+    fetch('lead_generator_api.php?action=get_search_history&usage_id='+usageId)
+    .then(function(r){return r.json();})
+    .then(function(d){
+        loading.style.display='none';
+        if(!d.ok){toast(d.error||'Failed to load','error');return;}
+        if(!d.leads||!d.leads.length){toast('No leads found for this search','info');return;}
+        renderResults(d.leads,d.industry,d.location);
+        document.getElementById('lg-results-section').scrollIntoView({behavior:'smooth',block:'start'});
+    })
+    .catch(function(e){loading.style.display='none';toast('Network error','error');console.error(e);});
+}
+
+// ── MANAGE ALL STORED LEADS ──
+var lgCurrentPage=1, lgPerPage=50, lgTotalStored=0;
+
+function toggleManageSection(){
+    var sec=document.getElementById('lg-manage-section'); if(!sec) return;
+    var btn=document.getElementById('lg-show-manage-btn');
+    if(sec.style.display==='none'||sec.style.display===''){
+        sec.style.display='block'; loadAllStoredLeads(1);
+        if(btn) btn.textContent='✕ Close Stored Leads';
+    } else {
+        sec.style.display='none';
+        if(btn) btn.textContent='📚 View All Stored Leads ('+lgTotalStored+')';
+    }
+}
+
+function loadAllStoredLeads(page){
+    page=page||1; lgCurrentPage=page;
+    var search=document.getElementById('filter-search')?.value||'';
+    var location=document.getElementById('filter-location')?.value||'';
+    var industry=document.getElementById('filter-industry')?.value||'';
+    var website=document.getElementById('filter-website')?.value||'';
+    var imported=document.getElementById('filter-imported')?.value||'';
+    var url='lead_generator_api.php?action=get_all_stored&page='+page+'&per_page='+lgPerPage;
+    if(search)   url+='&search='+encodeURIComponent(search);
+    if(location) url+='&location='+encodeURIComponent(location);
+    if(industry) url+='&industry='+encodeURIComponent(industry);
+    if(website)  url+='&website='+website;
+    if(imported) url+='&imported='+imported;
+    var tbody=document.getElementById('lg-stored-tbody');
+    if(tbody) tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
+    fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(!d.ok){toast(d.error||'Failed','error');return;}
+        renderStoredLeadsTable(d.leads);
+        renderPagination(d.total,d.page,d.per_page);
+        populateFilters(d.locations,d.industries);
+        var c=document.getElementById('lg-manage-count');
+        if(c) c.textContent='Total: '+d.total+' leads stored';
+        lgTotalStored=d.total;
+        var ts=document.getElementById('lg-total-stored'); if(ts) ts.textContent=d.total;
+    })
+    .catch(function(e){toast('Network error: '+e.message,'error');});
+}
+
+function renderStoredLeadsTable(leads){
+    var tbody=document.getElementById('lg-stored-tbody'); if(!tbody) return;
+    if(!leads||!leads.length){
+        tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:36px"><div style="font-size:28px;margin-bottom:8px">📭</div><div style="color:var(--text3)">No leads found</div></td></tr>';
+        return;
+    }
+    tbody.innerHTML=leads.map(function(l,idx){
+        var rowNum=((lgCurrentPage-1)*lgPerPage)+idx+1;
+        var score=l.opportunity_score||0;
+        var sc=score>=70?'#10b981':score>=40?'#f59e0b':'#94a3b8';
+        var scoreBadge='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:'+sc+'">'+score+'</div></div>';
+        var web_badge=l.has_website
+            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" style="font-size:10px">✅ Yes ↗</a>'
+            : '<span class="lg-web-no" style="font-size:10px;font-weight:800">🔥 No</span>';
+        var status=l.imported
+            ? '<span class="lg-imp-done" style="font-size:10px">✓ Imported</span>'
+            : '<span style="font-size:10px;color:var(--text3)">Not imported</span>';
+        var stars=l.rating?'⭐ '+l.rating:'—';
+        var email_cell=l.email
+            ? '<a href="mailto:'+esc(l.email)+'" style="font-size:11px;color:#6366f1" title="'+esc(l.email)+'">'+esc(l.email)+'</a>'
+            : '<span style="color:var(--text3);font-size:11px">—</span>';
+        var name_cell='<div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(l.name)+'</div>'
+            +(l.owner_name?'<div style="font-size:11px;color:var(--text3)">👤 '+esc(l.owner_name)+'</div>':'');
+        return '<tr style="'+(l.has_website?'':'background:rgba(16,185,129,.03)')+'">'
+            +'<td><input type="checkbox" class="lead-select" data-id="'+l.id+'"></td>'
+            +'<td>'+scoreBadge+'</td>'
+            +'<td>'+name_cell+'</td>'
+            +'<td style="font-size:12px">'+(l.phone?esc(l.phone):'<span style="color:var(--text3)">—</span>')+'</td>'
+            +'<td>'+email_cell+'</td>'
+            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.location||'—')+'</td>'
+            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.industry||'—')+'</td>'
+            +'<td>'+web_badge+'</td>'
+            +'<td style="font-size:12px">'+stars+(l.ratings_total?'<div style="font-size:10px;color:var(--text3)">'+l.ratings_total+'</div>':'')+'</td>'
+            +'<td style="font-size:11px;color:var(--text3)">'+fmtDate(l.created_at)+'</td>'
+            +'<td>'+status+'</td>'
+            +'<td><div style="display:flex;gap:4px">'
+                +(l.imported?''
+                    :'<button onclick="impOne('+l.id+',this)" class="lg-imp-btn" style="width:24px;height:24px;font-size:10px" title="Import">⬇</button>')
+                +'<button onclick="deleteSingleLead('+l.id+')" class="btn btn-ghost btn-sm btn-icon" style="width:24px;height:24px;padding:4px;font-size:11px" title="Delete">🗑</button>'
+            +'</div></td>'
+            +'</tr>';
+    }).join('');
+    updateSelectAllState();
+}
+
+function renderPagination(total,currentPage,perPage){
+    var totalPages=Math.ceil(total/perPage);
+    var info=document.getElementById('lg-pagination-info');
+    var btns=document.getElementById('lg-pagination-btns');
+    if(!info||!btns) return;
+    var start=((currentPage-1)*perPage)+1, end=Math.min(currentPage*perPage,total);
+    info.textContent='Showing '+start+'–'+end+' of '+total;
+    if(totalPages<=1){btns.innerHTML='';return;}
+    var html='';
+    if(currentPage>1) html+='<button onclick="loadAllStoredLeads('+(currentPage-1)+')" class="btn btn-ghost btn-sm">← Prev</button>';
+    var s=Math.max(1,currentPage-2),e=Math.min(totalPages,currentPage+2);
+    if(s>1){html+='<button onclick="loadAllStoredLeads(1)" class="btn btn-ghost btn-sm">1</button>';if(s>2) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';}
+    for(var i=s;i<=e;i++){
+        if(i===currentPage) html+='<button class="btn btn-sm" style="background:var(--orange);color:#fff">'+i+'</button>';
+        else html+='<button onclick="loadAllStoredLeads('+i+')" class="btn btn-ghost btn-sm">'+i+'</button>';
+    }
+    if(e<totalPages){if(e<totalPages-1) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';html+='<button onclick="loadAllStoredLeads('+totalPages+')" class="btn btn-ghost btn-sm">'+totalPages+'</button>';}
+    if(currentPage<totalPages) html+='<button onclick="loadAllStoredLeads('+(currentPage+1)+')" class="btn btn-ghost btn-sm">Next →</button>';
+    btns.innerHTML=html;
+}
+
+function populateFilters(locations,industries){
+    var locSel=document.getElementById('filter-location');
+    var indSel=document.getElementById('filter-industry');
+    if(locSel&&locations&&locations.length){var cv=locSel.value;locSel.innerHTML='<option value="">All Locations</option>'+locations.map(function(l){return'<option value="'+esc(l)+'">'+esc(l)+'</option>';}).join('');locSel.value=cv;}
+    if(indSel&&industries&&industries.length){var cv=indSel.value;indSel.innerHTML='<option value="">All Industries</option>'+industries.map(function(i){return'<option value="'+esc(i)+'">'+esc(i)+'</option>';}).join('');indSel.value=cv;}
+}
+
+function filterStoredLeads(){loadAllStoredLeads(1);}
+function resetFilters(){
+    ['filter-search','filter-location','filter-industry','filter-website','filter-imported'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    loadAllStoredLeads(1);
+}
+
+function toggleSelectAll(cb){
+    document.querySelectorAll('.lead-select').forEach(function(c){c.checked=cb.checked;});
+    updateBulkDeleteButton();
+}
+function updateSelectAllState(){
+    var sa=document.getElementById('select-all-leads');
+    var all=document.querySelectorAll('.lead-select');
+    var chk=document.querySelectorAll('.lead-select:checked').length;
+    if(!sa) return;
+    sa.checked=chk>0&&chk===all.length; sa.indeterminate=chk>0&&chk<all.length;
+    updateBulkDeleteButton();
+}
+function updateBulkDeleteButton(){
+    var btn=document.getElementById('lg-bulk-delete-btn'); if(!btn) return;
+    var sel=document.querySelectorAll('.lead-select:checked');
+    btn.disabled=sel.length===0;
+    btn.textContent='🗑 Delete Selected'+(sel.length>0?' ('+sel.length+')':'');
+}
+document.addEventListener('change',function(e){if(e.target.classList.contains('lead-select')) updateSelectAllState();});
+
+function bulkDeleteSelected(){
+    var sel=Array.from(document.querySelectorAll('.lead-select:checked')).map(function(cb){return cb.dataset.id;});
+    if(!sel.length){toast('No leads selected','info');return;}
+    if(!confirm('Delete '+sel.length+' lead(s)? Cannot be undone.')) return;
+    var btn=document.getElementById('lg-bulk-delete-btn');
+    btn.disabled=true; btn.textContent='Deleting...';
+    var fd=new FormData(); fd.append('action','bulk_delete'); fd.append('ids',sel.join(','));
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){toast(d.deleted+' lead(s) deleted','success');loadAllStoredLeads(lgCurrentPage);loadStats();}
+        else{toast(d.error||'Delete failed','error');btn.disabled=false;updateBulkDeleteButton();}
+    })
+    .catch(function(e){toast('Network error','error');btn.disabled=false;updateBulkDeleteButton();});
+}
+
+function deleteSingleLead(id){
+    if(!confirm('Delete this lead?')) return;
+    var fd=new FormData(); fd.append('action','bulk_delete'); fd.append('ids',id);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){toast('Lead deleted','success');loadAllStoredLeads(lgCurrentPage);loadStats();}
+        else toast(d.error||'Delete failed','error');
+    });
+}
 </script>
 
 <?php renderLayoutEnd(); ?>

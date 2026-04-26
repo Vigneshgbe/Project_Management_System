@@ -808,130 +808,438 @@ function saveQuotaConfig() {
 
 // ── COUNTRY / STATE / CITY CASCADE ──
 var lgCountryData = {
+  // ── SOUTH ASIA ──
   'India': {
-    'Andhra Pradesh': ['Visakhapatnam','Vijayawada','Guntur','Nellore','Kurnool','Rajahmundry','Tirupati','Kadapa','Eluru','Ongole','Anantapur','Vizianagaram','Srikakulam','Kakinada','Bhimavaram'],
-    'Arunachal Pradesh': ['Itanagar','Naharlagun','Pasighat'],
-    'Assam': ['Guwahati','Silchar','Dibrugarh','Jorhat','Nagaon','Tezpur','Lakhimpur','Dhubri','Sivasagar'],
-    'Bihar': ['Patna','Gaya','Muzaffarpur','Bhagalpur','Darbhanga','Purnia','Arrah','Begusarai','Katihar','Chapra'],
-    'Chhattisgarh': ['Raipur','Bhilai','Bilaspur','Korba','Durg','Rajnandgaon','Raigarh','Jagdalpur'],
-    'Goa': ['Panaji','Margao','Vasco da Gama','Mapusa','Ponda'],
-    'Gujarat': ['Ahmedabad','Surat','Vadodara','Rajkot','Bhavnagar','Jamnagar','Junagadh','Gandhinagar','Anand','Navsari','Morbi','Mehsana','Surendranagar','Bharuch'],
-    'Haryana': ['Faridabad','Gurgaon','Panipat','Ambala','Yamunanagar','Rohtak','Hisar','Karnal','Sonipat','Panchkula'],
-    'Himachal Pradesh': ['Shimla','Dharamsala','Solan','Mandi','Kullu','Palampur','Baddi'],
-    'Jharkhand': ['Ranchi','Jamshedpur','Dhanbad','Bokaro','Deoghar','Hazaribagh','Giridih'],
-    'Karnataka': ['Bangalore','Mysore','Hubballi','Mangalore','Belgaum','Davanagere','Bellary','Shimoga','Tumkur','Bijapur','Gulbarga','Udupi'],
-    'Kerala': ['Thiruvananthapuram','Kochi','Kozhikode','Thrissur','Kollam','Malappuram','Palakkad','Alappuzha','Kannur','Kasaragod','Kottayam','Wayanad'],
-    'Madhya Pradesh': ['Bhopal','Indore','Jabalpur','Gwalior','Ujjain','Sagar','Ratlam','Satna','Dewas','Rewa','Singrauli','Burhanpur'],
-    'Maharashtra': ['Mumbai','Pune','Nagpur','Thane','Nashik','Aurangabad','Solapur','Kolhapur','Amravati','Nanded','Sangli','Akola','Jalgaon','Latur','Dhule','Ahmednagar'],
-    'Manipur': ['Imphal','Thoubal','Bishnupur','Churachandpur'],
-    'Meghalaya': ['Shillong','Tura','Jowai'],
-    'Odisha': ['Bhubaneswar','Cuttack','Rourkela','Brahmapur','Sambalpur','Puri','Balasore','Bhadrak'],
-    'Punjab': ['Ludhiana','Amritsar','Jalandhar','Patiala','Bathinda','Mohali','Hoshiarpur','Pathankot'],
-    'Rajasthan': ['Jaipur','Jodhpur','Kota','Bikaner','Ajmer','Udaipur','Bhilwara','Alwar','Sikar','Bharatpur','Chittorgarh'],
-    'Tamil Nadu': ['Chennai','Coimbatore','Madurai','Tiruchirappalli','Trichy','Salem','Tirunelveli','Erode','Vellore','Thoothukudi','Dindigul','Tiruppur','Thanjavur','Ranipet','Sivakasi','Karur','Namakkal','Kanchipuram','Kumbakonam','Nagapattinam','Lalgudi','Ariyalur','Chidambaram','Cuddalore','Dharmapuri','Krishnagiri','Perambalur','Villupuram','Kallakurichi','Nagercoil','Ooty','Kodaikanal','Tiruvarur','Mayiladuthurai','Virudhunagar','Sivaganga','Ramanathapuram','Pudukottai','Tirupattur','Tenkasi','Batticola'],
-    'Telangana': ['Hyderabad','Warangal','Nizamabad','Karimnagar','Ramagundam','Khammam','Mahbubnagar','Nalgonda','Adilabad'],
-    'Tripura': ['Agartala','Dharmanagar','Udaipur'],
-    'Uttar Pradesh': ['Lucknow','Kanpur','Agra','Varanasi','Meerut','Allahabad','Bareilly','Aligarh','Moradabad','Saharanpur','Gorakhpur','Noida','Ghaziabad','Mathura','Jhansi'],
-    'Uttarakhand': ['Dehradun','Haridwar','Roorkee','Haldwani','Rishikesh','Nainital'],
-    'West Bengal': ['Kolkata','Asansol','Siliguri','Durgapur','Bardhaman','Malda','Baharampur'],
-    'Delhi': ['New Delhi','Central Delhi','North Delhi','South Delhi','East Delhi','West Delhi','Dwarka','Rohini','Noida Extension'],
-    'Chandigarh': ['Chandigarh'],
-    'Puducherry': ['Puducherry','Pondicherry','Karaikal','Mahe'],
-    'Jammu & Kashmir': ['Srinagar','Jammu','Anantnag','Baramulla'],
-    'Andaman & Nicobar': ['Port Blair']
+    'Andhra Pradesh': ['Visakhapatnam','Vijayawada','Guntur','Nellore','Kurnool','Rajahmundry','Tirupati','Kadapa','Eluru','Ongole','Anantapur','Vizianagaram','Kakinada','Bhimavaram','Machilipatnam'],
+    'Arunachal Pradesh': ['Itanagar','Naharlagun','Pasighat','Tezpur','Ziro'],
+    'Assam': ['Guwahati','Silchar','Dibrugarh','Jorhat','Nagaon','Tezpur','Lakhimpur','Dhubri','Bongaigaon','Sivasagar','Tinsukia'],
+    'Bihar': ['Patna','Gaya','Muzaffarpur','Bhagalpur','Darbhanga','Purnia','Arrah','Begusarai','Katihar','Bihar Sharif','Chapra','Sasaram','Hajipur','Siwan','Motihari'],
+    'Chhattisgarh': ['Raipur','Bhilai','Bilaspur','Korba','Durg','Rajnandgaon','Raigarh','Jagdalpur','Ambikapur','Dhamtari'],
+    'Goa': ['Panaji','Margao','Vasco da Gama','Mapusa','Ponda','Bicholim','Calangute','Candolim'],
+    'Gujarat': ['Ahmedabad','Surat','Vadodara','Rajkot','Bhavnagar','Jamnagar','Junagadh','Gandhinagar','Anand','Navsari','Morbi','Mehsana','Surendranagar','Bharuch','Porbandar','Amreli','Valsad','Patan'],
+    'Haryana': ['Faridabad','Gurgaon','Panipat','Ambala','Yamunanagar','Rohtak','Hisar','Karnal','Sonipat','Panchkula','Bhiwani','Bahadurgarh','Rewari','Sirsa','Palwal'],
+    'Himachal Pradesh': ['Shimla','Dharamsala','Solan','Mandi','Kullu','Palampur','Baddi','Nahan','Kangra','Hamirpur'],
+    'Jharkhand': ['Ranchi','Jamshedpur','Dhanbad','Bokaro','Deoghar','Phusro','Hazaribagh','Giridih','Ramgarh','Medininagar','Chaibasa'],
+    'Karnataka': ['Bangalore','Mysore','Hubballi','Mangalore','Belgaum','Davanagere','Bellary','Shimoga','Tumkur','Bijapur','Gulbarga','Raichur','Bidar','Udupi','Chikkamagaluru','Hassan','Mandya','Kolar'],
+    'Kerala': ['Thiruvananthapuram','Kochi','Kozhikode','Thrissur','Kollam','Malappuram','Palakkad','Alappuzha','Kannur','Kasaragod','Kottayam','Idukki','Wayanad','Pathanamthitta','Ernakulam'],
+    'Madhya Pradesh': ['Bhopal','Indore','Jabalpur','Gwalior','Ujjain','Sagar','Ratlam','Satna','Dewas','Murwara','Chhindwara','Rewa','Singrauli','Burhanpur','Vidisha','Shivpuri'],
+    'Maharashtra': ['Mumbai','Pune','Nagpur','Thane','Nashik','Aurangabad','Solapur','Kolhapur','Amravati','Nanded','Sangli','Akola','Jalgaon','Latur','Dhule','Ahmednagar','Malegaon','Chandrapur','Parbhani','Osmanabad','Ratnagiri'],
+    'Manipur': ['Imphal','Thoubal','Bishnupur','Churachandpur','Ukhrul'],
+    'Meghalaya': ['Shillong','Tura','Nongstoin','Jowai','Williamnagar'],
+    'Mizoram': ['Aizawl','Lunglei','Saiha','Champhai'],
+    'Nagaland': ['Kohima','Dimapur','Mokokchung','Tuensang'],
+    'Odisha': ['Bhubaneswar','Cuttack','Rourkela','Brahmapur','Sambalpur','Puri','Balasore','Bhadrak','Baripada','Jharsuguda','Rayagada'],
+    'Punjab': ['Ludhiana','Amritsar','Jalandhar','Patiala','Bathinda','Mohali','Hoshiarpur','Pathankot','Moga','Firozpur','Sangrur','Barnala'],
+    'Rajasthan': ['Jaipur','Jodhpur','Kota','Bikaner','Ajmer','Udaipur','Bhilwara','Alwar','Sikar','Pali','Sri Ganganagar','Bharatpur','Chittorgarh','Jhunjhunu','Hanumangarh','Tonk'],
+    'Sikkim': ['Gangtok','Namchi','Gyalshing','Mangan'],
+    'Tamil Nadu': ['Chennai','Coimbatore','Madurai','Tiruchirappalli','Trichy','Salem','Tirunelveli','Erode','Vellore','Thoothukudi','Dindigul','Tiruppur','Thanjavur','Ranipet','Sivakasi','Karur','Namakkal','Kanchipuram','Kumbakonam','Nagapattinam','Lalgudi','Ariyalur','Chidambaram','Cuddalore','Dharmapuri','Krishnagiri','Perambalur','Villupuram','Kallakurichi','Nagercoil','Ooty','Kodaikanal','Tiruvarur','Mayiladuthurai','Virudhunagar','Sivaganga','Ramanathapuram','Pudukottai','Tirupattur','Tenkasi','Batticola','Srirangam','Palayamkottai','Ambattur','Avadi','Tambaram','Tiruvallur'],
+    'Telangana': ['Hyderabad','Warangal','Nizamabad','Karimnagar','Ramagundam','Khammam','Mahbubnagar','Nalgonda','Adilabad','Suryapet','Siddipet','Mancherial'],
+    'Tripura': ['Agartala','Dharmanagar','Udaipur','Kailasahar','Belonia'],
+    'Uttar Pradesh': ['Lucknow','Kanpur','Agra','Varanasi','Meerut','Allahabad','Bareilly','Aligarh','Moradabad','Saharanpur','Gorakhpur','Noida','Ghaziabad','Firozabad','Mathura','Jhansi','Muzaffarnagar','Shahjahanpur','Rampur','Hapur','Bijnor','Etawah','Mainpuri','Rae Bareli','Sultanpur','Faizabad','Ayodhya','Sitapur','Hardoi','Lakhimpur'],
+    'Uttarakhand': ['Dehradun','Haridwar','Roorkee','Haldwani','Kashipur','Rishikesh','Nainital','Mussoorie','Rudrapur','Pithoragarh'],
+    'West Bengal': ['Kolkata','Asansol','Siliguri','Durgapur','Bardhaman','Malda','Baharampur','Habra','Kharagpur','Shantipur','Raiganj','Bally','Panihati','Kamarhati','Hugli'],
+    'Delhi': ['New Delhi','Central Delhi','North Delhi','South Delhi','East Delhi','West Delhi','Dwarka','Rohini','Janakpuri','Laxmi Nagar','Saket','Karol Bagh','Connaught Place','Nehru Place'],
+    'Chandigarh': ['Chandigarh','Sector 17','Sector 22','Sector 35','Mohali Industrial Area'],
+    'Puducherry': ['Puducherry','Pondicherry','Karaikal','Mahe','Yanam'],
+    'Jammu & Kashmir': ['Srinagar','Jammu','Anantnag','Baramulla','Sopore','Leh','Udhampur','Kathua'],
+    'Ladakh': ['Leh','Kargil','Nubra'],
+    'Andaman & Nicobar': ['Port Blair','Car Nicobar'],
+    'Lakshadweep': ['Kavaratti','Agatti'],
+    'Dadra & Nagar Haveli': ['Silvassa','Amli'],
+    'Daman & Diu': ['Daman','Diu']
   },
   'Sri Lanka': {
-    'Western Province': ['Colombo','Negombo','Kalutara','Panadura','Gampaha','Kelaniya','Dehiwala','Moratuwa','Homagama','Kaduwela'],
-    'Central Province': ['Kandy','Matale','Nuwara Eliya','Gampola','Hatton','Dambulla'],
-    'Southern Province': ['Galle','Matara','Hambantota','Tangalle','Weligama'],
-    'Northern Province': ['Jaffna','Vavuniya','Kilinochchi','Mannar','Mullaitivu'],
-    'Eastern Province': ['Batticaloa','Trincomalee','Ampara','Kalmunai','Akkaraipattu'],
-    'North Western Province': ['Kurunegala','Puttalam','Chilaw'],
-    'North Central Province': ['Anuradhapura','Polonnaruwa'],
-    'Uva Province': ['Badulla','Monaragala'],
-    'Sabaragamuwa Province': ['Ratnapura','Kegalle']
-  },
-  'UAE': {
-    'Dubai': ['Dubai Marina','Deira','Bur Dubai','Jumeirah','Business Bay','Downtown Dubai','Al Quoz','Al Barsha','Mirdif','International City','Jebel Ali'],
-    'Abu Dhabi': ['Abu Dhabi City','Al Ain','Mussafah','Khalifa City'],
-    'Sharjah': ['Sharjah City','Al Qasimia','Al Nahda'],
-    'Ajman': ['Ajman City'],
-    'Ras Al Khaimah': ['RAK City'],
-    'Fujairah': ['Fujairah City'],
-    'Umm Al Quwain': ['UAQ City']
-  },
-  'United Kingdom': {
-    'England': ['London','Manchester','Birmingham','Liverpool','Leeds','Sheffield','Bristol','Newcastle','Nottingham','Southampton','Leicester','Coventry','Bradford','Plymouth','Derby','Reading','Luton','Portsmouth','Norwich','Swindon','Bournemouth','Exeter'],
-    'Scotland': ['Edinburgh','Glasgow','Aberdeen','Dundee','Inverness'],
-    'Wales': ['Cardiff','Swansea','Newport','Wrexham'],
-    'Northern Ireland': ['Belfast','Derry','Lisburn']
-  },
-  'Singapore': {
-    'Singapore': ['Central','North','East','West','North-East','Jurong','Tampines','Woodlands','Yishun','Bishan','Clementi','Bedok','Buona Vista','Orchard','Marina Bay','Raffles Place']
-  },
-  'Malaysia': {
-    'Selangor': ['Petaling Jaya','Shah Alam','Subang Jaya','Klang','Ampang'],
-    'Kuala Lumpur': ['City Centre','Chow Kit','Bangsar','Mont Kiara','Bukit Bintang','Cheras','Kepong'],
-    'Penang': ['George Town','Butterworth','Bayan Lepas','Seberang Perai'],
-    'Johor': ['Johor Bahru','Skudai','Pasir Gudang','Batu Pahat'],
-    'Perak': ['Ipoh','Taiping','Teluk Intan'],
-    'Sabah': ['Kota Kinabalu','Sandakan','Tawau'],
-    'Sarawak': ['Kuching','Miri','Sibu']
-  },
-  'Australia': {
-    'New South Wales': ['Sydney','Newcastle','Wollongong','Central Coast','Wagga Wagga'],
-    'Victoria': ['Melbourne','Geelong','Ballarat','Bendigo','Shepparton'],
-    'Queensland': ['Brisbane','Gold Coast','Sunshine Coast','Townsville','Cairns'],
-    'Western Australia': ['Perth','Fremantle','Mandurah','Bunbury'],
-    'South Australia': ['Adelaide','Mount Gambier','Whyalla'],
-    'Tasmania': ['Hobart','Launceston'],
-    'ACT': ['Canberra']
-  },
-  'Germany': {
-    'Bavaria': ['Munich','Nuremberg','Augsburg','Regensburg'],
-    'Berlin': ['Berlin'],
-    'Hamburg': ['Hamburg'],
-    'North Rhine-Westphalia': ['Cologne','Dusseldorf','Dortmund','Essen','Bochum'],
-    'Baden-Wuerttemberg': ['Stuttgart','Mannheim','Karlsruhe','Freiburg'],
-    'Other States': ['Frankfurt','Leipzig','Dresden','Hannover','Bremen']
-  },
-  'United States': {
-    'California': ['Los Angeles','San Francisco','San Diego','San Jose','Sacramento','Fresno'],
-    'Texas': ['Houston','Dallas','San Antonio','Austin','Fort Worth'],
-    'New York': ['New York City','Buffalo','Rochester','Yonkers','Syracuse'],
-    'Florida': ['Miami','Orlando','Tampa','Jacksonville','Fort Lauderdale'],
-    'Other States': ['Chicago IL','Phoenix AZ','Philadelphia PA','Seattle WA','Denver CO','Boston MA','Atlanta GA']
-  },
-  'Canada': {
-    'Ontario': ['Toronto','Ottawa','Mississauga','Brampton','Hamilton','London','Markham'],
-    'Quebec': ['Montreal','Quebec City','Laval','Gatineau'],
-    'British Columbia': ['Vancouver','Surrey','Burnaby','Richmond'],
-    'Alberta': ['Calgary','Edmonton']
-  },
-  'Bangladesh': {
-    'Dhaka Division': ['Dhaka','Narayanganj','Gazipur','Mymensingh'],
-    'Chittagong Division': ['Chittagong','Comilla','Cox\'s Bazar'],
-    'Rajshahi Division': ['Rajshahi','Bogura'],
-    'Sylhet Division': ['Sylhet','Moulvibazar'],
-    'Khulna Division': ['Khulna','Jessore']
+    'Western Province': ['Colombo','Negombo','Kalutara','Panadura','Gampaha','Kelaniya','Dehiwala','Moratuwa','Homagama','Kaduwela','Wattala','Ja-Ela','Ragama'],
+    'Central Province': ['Kandy','Matale','Nuwara Eliya','Gampola','Hatton','Dambulla','Nawalapitiya'],
+    'Southern Province': ['Galle','Matara','Hambantota','Tangalle','Weligama','Ambalangoda','Hikkaduwa'],
+    'Northern Province': ['Jaffna','Vavuniya','Kilinochchi','Mannar','Mullaitivu','Point Pedro','Chavakachcheri'],
+    'Eastern Province': ['Batticaloa','Trincomalee','Ampara','Kalmunai','Akkaraipattu','Chenkalady','Valaichchenai'],
+    'North Western Province': ['Kurunegala','Puttalam','Chilaw','Kuliyapitiya','Wariyapola'],
+    'North Central Province': ['Anuradhapura','Polonnaruwa','Medirigiriya'],
+    'Uva Province': ['Badulla','Monaragala','Bandarawela','Welimada'],
+    'Sabaragamuwa Province': ['Ratnapura','Kegalle','Balangoda','Embilipitiya']
   },
   'Pakistan': {
-    'Punjab': ['Lahore','Faisalabad','Rawalpindi','Gujranwala','Multan','Sialkot'],
-    'Sindh': ['Karachi','Hyderabad','Sukkur'],
-    'Khyber Pakhtunkhwa': ['Peshawar','Mardan','Abbottabad'],
-    'Balochistan': ['Quetta'],
-    'Islamabad Capital Territory': ['Islamabad']
+    'Punjab': ['Lahore','Faisalabad','Rawalpindi','Gujranwala','Multan','Sialkot','Bahawalpur','Sargodha','Sheikhupura','Jhang','Rahim Yar Khan','Gujrat','Kasur','Okara','Wah Cantonment'],
+    'Sindh': ['Karachi','Hyderabad','Sukkur','Larkana','Nawabshah','Mirpur Khas','Jacobabad','Shikarpur'],
+    'Khyber Pakhtunkhwa': ['Peshawar','Mardan','Mingora','Abbottabad','Kohat','Bannu','Mansehra'],
+    'Balochistan': ['Quetta','Turbat','Gwadar','Khuzdar','Hub'],
+    'Azad Kashmir': ['Muzaffarabad','Mirpur','Rawalakot'],
+    'Islamabad Capital Territory': ['Islamabad','F-6 Markaz','F-7 Markaz','G-9 Markaz','Blue Area']
+  },
+  'Bangladesh': {
+    'Dhaka Division': ['Dhaka','Narayanganj','Gazipur','Mymensingh','Faridpur','Tangail','Manikganj','Munshiganj'],
+    'Chittagong Division': ['Chittagong','Comilla','Coxs Bazar','Brahmanbaria','Feni','Noakhali','Chandpur','Lakshmipur'],
+    'Rajshahi Division': ['Rajshahi','Bogura','Pabna','Natore','Naogaon','Sirajganj','Joypurhat'],
+    'Sylhet Division': ['Sylhet','Moulvibazar','Habiganj','Sunamganj'],
+    'Khulna Division': ['Khulna','Jessore','Satkhira','Bagerhat','Narail','Magura','Meherpur'],
+    'Barisal Division': ['Barisal','Patuakhali','Bhola','Pirojpur','Jhalakati'],
+    'Rangpur Division': ['Rangpur','Dinajpur','Kurigram','Gaibandha','Lalmonirhat','Nilphamari'],
+    'Mymensingh Division': ['Mymensingh','Netrokona','Jamalpur','Sherpur']
+  },
+  'Nepal': {
+    'Bagmati Province': ['Kathmandu','Lalitpur','Bhaktapur','Hetauda','Chitwan'],
+    'Gandaki Province': ['Pokhara','Baglung','Gorkha','Kaski'],
+    'Province No. 1': ['Biratnagar','Dharan','Itahari','Damak'],
+    'Madhesh Province': ['Birgunj','Janakpur','Rajbiraj','Lahan'],
+    'Lumbini Province': ['Butwal','Bhairahawa','Nepalgunj','Tulsipur'],
+    'Karnali Province': ['Birendranagar','Jumla','Narayan'],
+    'Sudurpashchim Province': ['Dhangadhi','Mahendranagar','Tikapur']
+  },
+  // ── SOUTHEAST ASIA ──
+  'Singapore': {
+    'Singapore': ['Orchard','Marina Bay','Raffles Place','City Hall','Clarke Quay','Chinatown','Little India','Bugis','Jurong East','Jurong West','Tampines','Woodlands','Yishun','Ang Mo Kio','Bedok','Bishan','Clementi','Toa Payoh','Geylang','Buona Vista','one-north','Changi','Pasir Ris','Punggol','Sengkang','Serangoon','Hougang']
+  },
+  'Malaysia': {
+    'Selangor': ['Petaling Jaya','Shah Alam','Subang Jaya','Klang','Ampang','Sepang','Hulu Langat','Rawang','Banting','Semenyih','Puchong','Cyberjaya'],
+    'Kuala Lumpur': ['KLCC','Bukit Bintang','Chow Kit','Bangsar','Mont Kiara','Cheras','Kepong','Wangsa Maju','Setapak','Titiwangsa','Desa Petaling','Sri Petaling'],
+    'Penang': ['George Town','Butterworth','Bayan Lepas','Seberang Perai','Balik Pulau','Teluk Intan'],
+    'Johor': ['Johor Bahru','Skudai','Pasir Gudang','Batu Pahat','Muar','Kluang','Segamat','Pontian'],
+    'Perak': ['Ipoh','Taiping','Teluk Intan','Sitiawan','Lumut','Manjung'],
+    'Negeri Sembilan': ['Seremban','Port Dickson','Nilai','Bahau'],
+    'Pahang': ['Kuantan','Temerloh','Bentong','Raub','Mentakab'],
+    'Kedah': ['Alor Setar','Sungai Petani','Kulim','Langkawi'],
+    'Kelantan': ['Kota Bharu','Gua Musang','Pasir Mas'],
+    'Terengganu': ['Kuala Terengganu','Kemaman','Dungun'],
+    'Melaka': ['Melaka City','Alor Gajah','Jasin'],
+    'Sabah': ['Kota Kinabalu','Sandakan','Tawau','Lahad Datu','Keningau'],
+    'Sarawak': ['Kuching','Miri','Sibu','Bintulu','Limbang','Sarikei']
+  },
+  'Indonesia': {
+    'Jakarta': ['Central Jakarta','North Jakarta','East Jakarta','South Jakarta','West Jakarta','Tangerang','Bekasi','Depok'],
+    'West Java': ['Bandung','Bogor','Bekasi','Depok','Cimahi','Tasikmalaya','Cirebon','Sukabumi','Karawang'],
+    'East Java': ['Surabaya','Malang','Pasuruan','Mojokerto','Madiun','Kediri','Blitar','Probolinggo'],
+    'Central Java': ['Semarang','Solo','Yogyakarta','Magelang','Pekalongan','Tegal','Salatiga'],
+    'Bali': ['Denpasar','Kuta','Seminyak','Ubud','Sanur','Nusa Dua','Singaraja','Gianyar'],
+    'North Sumatra': ['Medan','Pematang Siantar','Binjai','Tebing Tinggi'],
+    'South Sumatra': ['Palembang','Lubuklinggau','Prabumulih'],
+    'Other Provinces': ['Makassar South Sulawesi','Manado North Sulawesi','Balikpapan Kalimantan','Samarinda Kalimantan']
+  },
+  'Thailand': {
+    'Bangkok': ['Bangkok CBD','Sukhumvit','Silom','Siam','Chatuchak','Lat Phrao','Bang Na','Thonburi','Nonthaburi','Samut Prakan'],
+    'Chiang Mai Province': ['Chiang Mai','Chiang Rai','Lamphun','Mae Rim'],
+    'Phuket Province': ['Phuket Town','Patong','Kata','Karon','Rawai'],
+    'Other Provinces': ['Pattaya Chonburi','Ayutthaya','Korat Nakhon Ratchasima','Khon Kaen','Udon Thani','Hat Yai Songkhla']
+  },
+  'Vietnam': {
+    'Hanoi': ['Hoan Kiem','Ba Dinh','Dong Da','Hai Ba Trung','Tay Ho','Cau Giay','Thanh Xuan','Hoang Mai'],
+    'Ho Chi Minh City': ['District 1','District 3','District 5','District 7','Binh Thanh','Thu Duc','Tan Binh','Go Vap'],
+    'Da Nang': ['Hai Chau','Son Tra','Ngu Hanh Son','Cam Le','Thanh Khe'],
+    'Other Cities': ['Can Tho','Hai Phong','Bien Hoa','Hue','Nha Trang','Da Lat','Vung Tau','Buon Ma Thuot']
+  },
+  'Philippines': {
+    'Metro Manila': ['Makati','Taguig','Quezon City','Manila','Pasig','Mandaluyong','Marikina','Muntinlupa','Parañaque'],
+    'Cebu': ['Cebu City','Mandaue','Lapu-Lapu','Talisay'],
+    'Davao': ['Davao City','Tagum','Panabo'],
+    'Other Regions': ['Iloilo City','Bacolod','Cagayan de Oro','General Santos','Angeles City','Antipolo']
+  },
+  'Cambodia': {
+    'Phnom Penh': ['BKK1','Toul Kork','Daun Penh','Chamkarmon','Sen Sok','Meanchey'],
+    'Siem Reap': ['Siem Reap City','Angkor Wat Area','Pub Street Area'],
+    'Other Provinces': ['Sihanoukville','Battambang','Kampong Cham','Preah Vihear']
+  },
+  'Myanmar': {
+    'Yangon Region': ['Yangon','Insein','Hlaing Tharyar','Dagon','Tamwe','Sanchaung'],
+    'Mandalay Region': ['Mandalay','Pyin Oo Lwin','Meiktila'],
+    'Other Regions': ['Naypyidaw','Bago','Mawlamyine','Pathein']
+  },
+  // ── MIDDLE EAST ──
+  'UAE': {
+    'Dubai': ['Dubai Marina','JBR','Deira','Bur Dubai','Jumeirah','Business Bay','Downtown Dubai','DIFC','Al Quoz','Al Barsha','Mirdif','International City','Jebel Ali','Dubai Silicon Oasis','Motor City','The Greens','JLT','TECOM','Al Karama','Oud Metha'],
+    'Abu Dhabi': ['Abu Dhabi City','Al Ain','Mussafah','Khalifa City','Reem Island','Yas Island','Saadiyat Island','Al Raha','Mohammed Bin Zayed City'],
+    'Sharjah': ['Sharjah City','Al Qasimia','Al Nahda','Al Majaz','Al Khan','Al Taawun','Muwaileh'],
+    'Ajman': ['Ajman City','Al Nuaimia','Al Rashidiya'],
+    'Ras Al Khaimah': ['RAK City','Al Hamra','Al Nakheel','Dafan Al Nakheel'],
+    'Fujairah': ['Fujairah City','Dibba Al Fujairah'],
+    'Umm Al Quwain': ['UAQ City','Falaj Al Mualla']
+  },
+  'Saudi Arabia': {
+    'Riyadh Region': ['Riyadh','Al Kharj','Diriyah','Al Dawadmi','Zulfi'],
+    'Makkah Region': ['Jeddah','Mecca','Taif','Rabigh','Al Jumum'],
+    'Medina Region': ['Medina','Yanbu','Al Ula'],
+    'Eastern Province': ['Dammam','Al Khobar','Dhahran','Qatif','Jubail','Hafr Al Batin'],
+    'Other Regions': ['Tabuk','Abha','Hail','Buraidah','Najran','Jizan','Al Baha']
+  },
+  'Qatar': {
+    'Doha': ['Doha CBD','West Bay','The Pearl','Al Sadd','Msheireb','Lusail','Al Wakrah'],
+    'Other Areas': ['Al Rayyan','Al Khor','Al Wakrah','Dukhan','Mesaieed']
+  },
+  'Kuwait': {
+    'Kuwait Governorate': ['Kuwait City','Salmiya','Hawalli','Rumaithiya'],
+    'Farwaniya': ['Farwaniya','Khaitan','Reggae'],
+    'Ahmadi': ['Ahmadi','Mangaf','Abu Halifa','Fahaheel'],
+    'Mubarak Al-Kabeer': ['Sabah Al Salem','Mubarak Al Kabeer'],
+    'Jahra': ['Jahra City','Sulaibikhat']
+  },
+  'Bahrain': {
+    'Capital Governorate': ['Manama','Hoora','Seef','Juffair','Adliya'],
+    'Northern Governorate': ['Muharraq','Hamad Town','Budaiya','Saar'],
+    'Southern Governorate': ['Riffa','Zallaq','Awali']
+  },
+  'Oman': {
+    'Muscat Governorate': ['Muscat','Ruwi','Muttrah','Qurum','Al Khuwair','Madinat Sultan Qaboos','Seeb','Al Amerat'],
+    'Dhofar Governorate': ['Salalah'],
+    'Other Governorates': ['Sohar','Nizwa','Sur','Ibri','Buraimi']
+  },
+  'Jordan': {
+    'Amman Governorate': ['Amman','Zarqa','Madaba','Sahab'],
+    'Irbid Governorate': ['Irbid','Ramtha'],
+    'Other Governorates': ['Aqaba','Karak','Mafraq','Jerash']
+  },
+  'Lebanon': {
+    'Beirut': ['Beirut','Achrafieh','Hamra','Verdun','Solidere'],
+    'Mount Lebanon': ['Jounieh','Jdeideh','Metn','Baabda'],
+    'Other Governorates': ['Tripoli','Sidon','Tyre','Zahle']
+  },
+  'Israel': {
+    'Tel Aviv District': ['Tel Aviv','Ramat Gan','Givatayim','Petah Tikva','Bnei Brak'],
+    'Jerusalem District': ['Jerusalem','Bethlehem Area'],
+    'Haifa District': ['Haifa','Netanya','Caesarea'],
+    'Other Districts': ['Beer Sheva','Eilat','Ashkelon','Herzliya','Kfar Saba']
+  },
+  'Turkey': {
+    'Istanbul': ['Besiktas','Kadikoy','Sisli','Fatih','Uskudar','Beyoglu','Bakirkoy','Umraniye','Maltepe'],
+    'Ankara': ['Cankaya','Kecioren','Mamak','Etimesgut'],
+    'Other Cities': ['Izmir','Bursa','Antalya','Adana','Gaziantep','Konya','Kayseri','Mersin','Trabzon','Eskisehir']
+  },
+  // ── AFRICA ──
+  'South Africa': {
+    'Gauteng': ['Johannesburg','Pretoria','Sandton','Midrand','Centurion','Soweto','Ekurhuleni','Tembisa','Alberton'],
+    'Western Cape': ['Cape Town','Stellenbosch','Paarl','George','Knysna','Hermanus'],
+    'KwaZulu-Natal': ['Durban','Pietermaritzburg','Richards Bay','Newcastle','Pinetown'],
+    'Eastern Cape': ['Port Elizabeth','East London','Queenstown','Mthatha'],
+    'Other Provinces': ['Bloemfontein Free State','Polokwane Limpopo','Nelspruit Mpumalanga','Kimberley Northern Cape']
+  },
+  'Nigeria': {
+    'Lagos State': ['Lagos Island','Victoria Island','Lekki','Ikeja','Surulere','Yaba','Apapa','Oshodi','Ikorodu'],
+    'Abuja FCT': ['Wuse','Garki','Maitama','Asokoro','Gwarinpa','Kubwa'],
+    'Kano State': ['Kano City','Fagge','Dala','Nassarawa'],
+    'Other States': ['Ibadan Oyo','Port Harcourt Rivers','Enugu','Benin City Edo','Onitsha Anambra','Aba Abia','Kaduna','Zaria']
+  },
+  'Kenya': {
+    'Nairobi County': ['Nairobi CBD','Westlands','Karen','Kilimani','Ngong Road','Thika Road','Eastleigh','South B','South C','Kasarani'],
+    'Mombasa County': ['Mombasa','Nyali','Bamburi','Diani'],
+    'Other Counties': ['Kisumu','Nakuru','Eldoret','Thika','Machakos','Meru','Kisii']
+  },
+  'Ethiopia': {
+    'Addis Ababa': ['Bole','Kirkos','Lideta','Nifas Silk-Lafto','Yeka','Arada','Gulele'],
+    'Other Regions': ['Dire Dawa','Mekelle','Gondar','Bahir Dar','Hawassa','Adama']
+  },
+  'Ghana': {
+    'Greater Accra': ['Accra','Tema','Madina','Spintex','East Legon','Osu','Labadi','La'],
+    'Ashanti Region': ['Kumasi','Obuasi','Ejisu'],
+    'Other Regions': ['Takoradi Western','Cape Coast Central','Tamale Northern','Sunyani Brong Ahafo']
+  },
+  'Egypt': {
+    'Cairo Governorate': ['Cairo','Heliopolis','Nasr City','Maadi','New Cairo','Zamalek','Dokki','Mohandessin'],
+    'Giza Governorate': ['Giza','6th of October City','Sheikh Zayed','Haram'],
+    'Other Governorates': ['Alexandria','Luxor','Aswan','Sharm El Sheikh','Hurghada','Mansoura','Tanta']
+  },
+  'Tanzania': {
+    'Dar es Salaam': ['Ilala','Kinondoni','Temeke','Kigamboni','Ubungo'],
+    'Other Regions': ['Mwanza','Arusha','Moshi','Dodoma','Zanzibar','Tanga','Mbeya']
+  },
+  'Uganda': {
+    'Central Region': ['Kampala','Entebbe','Wakiso','Mukono','Jinja'],
+    'Other Regions': ['Gulu','Mbarara','Mbale','Masaka','Fort Portal']
+  },
+  // ── EUROPE ──
+  'United Kingdom': {
+    'England': ['London','Manchester','Birmingham','Liverpool','Leeds','Sheffield','Bristol','Newcastle','Nottingham','Southampton','Leicester','Coventry','Bradford','Plymouth','Derby','Reading','Luton','Portsmouth','Norwich','Swindon','Bournemouth','Exeter','Stoke-on-Trent','Wolverhampton','Kingston upon Hull','Middlesbrough','Oxford','Cambridge','Bath','Brighton','Milton Keynes'],
+    'Scotland': ['Edinburgh','Glasgow','Aberdeen','Dundee','Inverness','Perth','Stirling','St Andrews'],
+    'Wales': ['Cardiff','Swansea','Newport','Wrexham','Bangor','St Davids'],
+    'Northern Ireland': ['Belfast','Derry','Lisburn','Newry','Armagh','Omagh']
+  },
+  'Germany': {
+    'Bavaria': ['Munich','Nuremberg','Augsburg','Regensburg','Ingolstadt','Erlangen','Fuerth','Wuerzburg'],
+    'Berlin': ['Berlin Mitte','Charlottenburg','Prenzlauer Berg','Kreuzberg','Friedrichshain','Schoeneberg','Tempelhof'],
+    'Hamburg': ['Hamburg City','Altona','Eimsbüttel','Barmbek','Blankenese'],
+    'North Rhine-Westphalia': ['Cologne','Dusseldorf','Dortmund','Essen','Bochum','Wuppertal','Bielefeld','Bonn','Muenster','Duisburg','Oberhausen','Aachen'],
+    'Baden-Württemberg': ['Stuttgart','Mannheim','Karlsruhe','Freiburg','Heidelberg','Ulm','Heilbronn','Pforzheim'],
+    'Other States': ['Frankfurt Hesse','Leipzig Saxony','Dresden Saxony','Hannover Lower Saxony','Bremen','Magdeburg Saxony-Anhalt','Erfurt Thuringia','Kiel Schleswig-Holstein','Mainz Rhineland-Palatinate','Saarbruecken Saarland']
+  },
+  'France': {
+    'Île-de-France': ['Paris 1st','Paris 8th','Paris 16th','Boulogne-Billancourt','Saint-Denis','Argenteuil','Montreuil','Vincennes','Neuilly-sur-Seine','Levallois-Perret','Nanterre','La Défense'],
+    'Auvergne-Rhône-Alpes': ['Lyon','Grenoble','Saint-Etienne','Villeurbanne','Clermont-Ferrand','Annecy','Chambéry'],
+    'Provence-Alpes-Côte dAzur': ['Marseille','Nice','Aix-en-Provence','Toulon','Antibes','Cannes','Monaco'],
+    'Other Regions': ['Toulouse Occitanie','Bordeaux Nouvelle-Aquitaine','Nantes Loire','Strasbourg Alsace','Lille Nord','Rennes Brittany','Montpellier']
+  },
+  'Spain': {
+    'Community of Madrid': ['Madrid','Alcalá de Henares','Leganés','Getafe','Alcorcón','Móstoles','Fuenlabrada'],
+    'Catalonia': ['Barcelona','Hospitalet de Llobregat','Badalona','Sabadell','Terrassa','Girona'],
+    'Andalusia': ['Seville','Málaga','Córdoba','Granada','Almería','Cádiz','Huelva','Jaén'],
+    'Other Regions': ['Valencia','Bilbao Basque Country','Zaragoza Aragon','Palma Mallorca','Las Palmas Gran Canaria','Murcia']
+  },
+  'Italy': {
+    'Lombardy': ['Milan','Bergamo','Brescia','Monza','Como','Pavia','Lecco','Cremona'],
+    'Lazio': ['Rome','Viterbo','Frosinone','Latina','Rieti'],
+    'Campania': ['Naples','Salerno','Caserta','Benevento','Avellino'],
+    'Other Regions': ['Turin Piedmont','Florence Tuscany','Bologna Emilia-Romagna','Palermo Sicily','Catania Sicily','Bari Puglia','Venice Veneto','Genoa Liguria','Verona','Padua']
+  },
+  'Netherlands': {
+    'North Holland': ['Amsterdam','Haarlem','Zaandam','Purmerend','Alkmaar'],
+    'South Holland': ['Rotterdam','The Hague','Leiden','Delft','Dordrecht'],
+    'Other Provinces': ['Utrecht','Eindhoven North Brabant','Groningen','Maastricht Limburg','Arnhem Gelderland','Enschede Overijssel','Tilburg North Brabant']
+  },
+  'Belgium': {
+    'Brussels': ['Brussels','Ixelles','Saint-Gilles','Schaerbeek','Anderlecht'],
+    'Flanders': ['Antwerp','Ghent','Bruges','Leuven','Mechelen','Hasselt'],
+    'Wallonia': ['Liège','Namur','Charleroi','Mons','Tournai']
+  },
+  'Switzerland': {
+    'Zurich Canton': ['Zurich','Winterthur','Uster','Dübendorf'],
+    'Geneva Canton': ['Geneva','Carouge','Vernier'],
+    'Other Cantons': ['Basel','Bern','Lausanne','Lucerne','St. Gallen','Lugano']
+  },
+  'Sweden': {
+    'Stockholm County': ['Stockholm','Solna','Sundbyberg','Huddinge','Nacka','Täby'],
+    'Other Counties': ['Gothenburg Västra Götaland','Malmö Skåne','Uppsala','Linköping','Örebro','Helsingborg','Norrköping']
+  },
+  'Norway': {
+    'Oslo': ['Oslo','Bærum','Asker','Lillestrøm'],
+    'Other Counties': ['Bergen Vestland','Trondheim Trøndelag','Stavanger Rogaland','Tromsø','Fredrikstad']
+  },
+  'Denmark': {
+    'Capital Region': ['Copenhagen','Frederiksberg','Gentofte','Gladsaxe'],
+    'Other Regions': ['Aarhus','Odense','Aalborg','Esbjerg','Randers']
+  },
+  'Finland': {
+    'Uusimaa': ['Helsinki','Espoo','Vantaa','Tampere Area'],
+    'Other Regions': ['Tampere','Turku','Oulu','Lahti','Kuopio','Jyväskylä']
+  },
+  'Poland': {
+    'Masovian Voivodeship': ['Warsaw','Radom','Płock','Siedlce'],
+    'Lesser Poland': ['Krakow','Tarnów','Nowy Sącz'],
+    'Other Voivodeships': ['Wroclaw','Lodz','Poznan','Gdansk','Szczecin','Bydgoszcz','Katowice','Lublin','Rzeszow','Bialystok']
+  },
+  'Portugal': {
+    'Lisbon District': ['Lisbon','Sintra','Cascais','Oeiras','Amadora'],
+    'Porto District': ['Porto','Gaia','Matosinhos','Braga'],
+    'Other Districts': ['Faro Algarve','Coimbra','Aveiro','Setúbal','Funchal Madeira']
+  },
+  'Greece': {
+    'Attica': ['Athens','Piraeus','Peristeri','Kallithea','Glyfada','Kifissia'],
+    'Central Macedonia': ['Thessaloniki','Kavala','Serres'],
+    'Other Regions': ['Heraklion Crete','Patras','Larissa','Volos','Ioannina','Rhodes']
+  },
+  'Russia': {
+    'Moscow': ['Moscow City','Central Administrative Okrug','Northern','Eastern','Western','South-Western'],
+    'Saint Petersburg': ['Saint Petersburg','Petrodvorets','Pushkin','Kolpino'],
+    'Other Regions': ['Novosibirsk','Yekaterinburg','Nizhny Novgorod','Kazan','Chelyabinsk','Samara','Omsk','Rostov-on-Don','Ufa','Krasnoyarsk','Perm','Voronezh']
+  },
+  'Ukraine': {
+    'Kyiv City': ['Kyiv','Brovary','Boryspil','Irpin'],
+    'Kharkiv Oblast': ['Kharkiv'],
+    'Other Oblasts': ['Lviv','Odessa','Dnipro','Donetsk','Zaporizhzhia','Mykolaiv','Cherkasy','Poltava','Chernihiv']
+  },
+  // ── EAST ASIA ──
+  'China': {
+    'Beijing': ['Beijing CBD','Chaoyang','Haidian','Xicheng','Dongcheng','Shunyi','Tongzhou'],
+    'Shanghai': ['Pudong','Jingan','Huangpu','Xuhui','Changning','Minhang','Songjiang','Qingpu'],
+    'Guangdong': ['Guangzhou','Shenzhen','Dongguan','Foshan','Zhuhai','Zhongshan','Huizhou','Jiangmen'],
+    'Jiangsu': ['Nanjing','Suzhou','Wuxi','Changzhou','Nantong','Xuzhou'],
+    'Zhejiang': ['Hangzhou','Ningbo','Wenzhou','Jinhua','Shaoxing'],
+    'Other Provinces': ['Chengdu Sichuan','Wuhan Hubei','Xian Shaanxi','Chongqing','Shenyang Liaoning','Dalian Liaoning','Tianjin','Qingdao Shandong','Jinan Shandong','Zhengzhou Henan','Kunming Yunnan','Nanchang Jiangxi','Changsha Hunan','Fuzhou Fujian','Xiamen Fujian','Harbin Heilongjiang','Changchun Jilin']
+  },
+  'Japan': {
+    'Tokyo Metropolis': ['Shinjuku','Shibuya','Minato','Chiyoda','Chuo','Akihabara','Harajuku','Roppongi','Asakusa','Ikebukuro','Shinagawa','Shiodome','Ginza','Odaiba'],
+    'Osaka Prefecture': ['Osaka','Namba','Umeda','Shinsaibashi','Tennoji','Sakai','Higashiosaka'],
+    'Kanagawa Prefecture': ['Yokohama','Kawasaki','Sagamihara','Kamakura','Fujisawa'],
+    'Aichi Prefecture': ['Nagoya','Toyohashi','Toyota','Okazaki'],
+    'Other Prefectures': ['Sapporo Hokkaido','Fukuoka','Kobe Hyogo','Kyoto','Sendai Miyagi','Hiroshima','Okayama','Matsuyama Ehime','Takamatsu Kagawa']
+  },
+  'South Korea': {
+    'Seoul': ['Gangnam','Mapo','Jongno','Jung','Yongsan','Songpa','Seodaemun','Seocho','Nowon','Dobong'],
+    'Gyeonggi-do': ['Suwon','Seongnam','Goyang','Bucheon','Ansan','Anyang','Yongin','Hwaseong'],
+    'Other Cities': ['Busan','Incheon','Daegu','Daejeon','Gwangju','Ulsan','Jeju']
+  },
+  'Taiwan': {
+    'Taipei City': ['Zhongzheng','Daan','Xinyi','Zhongshan','Songshan','Neihu','Beitou','Nangang'],
+    'New Taipei City': ['Banqiao','Xinzhuang','Zhonghe','Yonghe','Tucheng'],
+    'Other Cities': ['Taichung','Kaohsiung','Tainan','Taoyuan','Hsinchu','Keelung']
+  },
+  'Hong Kong': {
+    'Hong Kong Island': ['Central','Admiralty','Wan Chai','Causeway Bay','Happy Valley','North Point','Quarry Bay','Chai Wan','Aberdeen','Repulse Bay'],
+    'Kowloon': ['Tsim Sha Tsui','Mong Kok','Yau Ma Tei','Jordan','Kowloon City','Wong Tai Sin','Kwun Tong'],
+    'New Territories': ['Sha Tin','Tuen Mun','Yuen Long','Tai Po','Fan Ling','Sai Kung','Tseung Kwan O']
+  },
+  // ── NORTH AMERICA ──
+  'United States': {
+    'California': ['Los Angeles','San Francisco','San Diego','San Jose','Sacramento','Fresno','Long Beach','Oakland','Bakersfield','Anaheim','Santa Ana','Riverside','Stockton','Chula Vista','Irvine','Fremont','San Bernardino','Modesto','Fontana','Moreno Valley','Santa Clarita','Glendale','Oxnard','Huntington Beach','Garden Grove','Silicon Valley','Palo Alto','Santa Monica','Beverly Hills'],
+    'Texas': ['Houston','Dallas','San Antonio','Austin','Fort Worth','El Paso','Arlington','Corpus Christi','Plano','Laredo','Lubbock','Garland','Irving','Amarillo','Grand Prairie','McKinney','Frisco','Mesquite','Pasadena TX','Killeen'],
+    'New York': ['New York City','Manhattan','Brooklyn','Queens','Bronx','Staten Island','Buffalo','Rochester','Yonkers','Syracuse','Albany','New Rochelle','Mount Vernon','Schenectady'],
+    'Florida': ['Miami','Orlando','Tampa','Jacksonville','St. Petersburg','Tallahassee','Fort Lauderdale','Hialeah','Pembroke Pines','Hollywood','Miramar','Gainesville','Coral Springs','Cape Coral','Miami Beach','Clearwater','Palm Bay','West Palm Beach','Lakeland','Pompano Beach'],
+    'Illinois': ['Chicago','Aurora','Rockford','Joliet','Naperville','Springfield','Peoria','Elgin','Waukegan','Champaign','Bloomington','Decatur'],
+    'Pennsylvania': ['Philadelphia','Pittsburgh','Allentown','Erie','Reading','Scranton','Bethlehem'],
+    'Ohio': ['Columbus','Cleveland','Cincinnati','Toledo','Akron','Dayton','Parma'],
+    'Georgia': ['Atlanta','Augusta','Columbus GA','Savannah','Athens','Sandy Springs','Roswell','Macon'],
+    'North Carolina': ['Charlotte','Raleigh','Greensboro','Durham','Winston-Salem','Fayetteville','Cary'],
+    'Michigan': ['Detroit','Grand Rapids','Warren','Sterling Heights','Ann Arbor','Lansing','Flint'],
+    'Other States': ['Seattle WA','Denver CO','Nashville TN','Boston MA','Las Vegas NV','Portland OR','Phoenix AZ','Minneapolis MN','Baltimore MD','Washington DC','Louisville KY','Memphis TN','Virginia Beach VA','Albuquerque NM','Tucson AZ','Oklahoma City OK','Kansas City MO','Omaha NE','Colorado Springs CO','New Orleans LA','Honolulu HI','Anchorage AK','Salt Lake City UT','Reno NV','Boise ID']
+  },
+  'Canada': {
+    'Ontario': ['Toronto','Ottawa','Mississauga','Brampton','Hamilton','London ON','Markham','Vaughan','Kitchener','Windsor','Waterloo','Richmond Hill','Oakville','Burlington','Oshawa','Barrie'],
+    'Quebec': ['Montreal','Quebec City','Laval','Gatineau','Longueuil','Sherbrooke','Saguenay'],
+    'British Columbia': ['Vancouver','Surrey','Burnaby','Richmond','Kelowna','Abbotsford','Kamloops','Victoria','Langley','Delta'],
+    'Alberta': ['Calgary','Edmonton','Red Deer','Lethbridge','Airdrie','St. Albert','Medicine Hat'],
+    'Other Provinces': ['Winnipeg Manitoba','Halifax Nova Scotia','Saskatoon Saskatchewan','Regina Saskatchewan','St. Johns Newfoundland','Fredericton New Brunswick','Moncton New Brunswick','Charlottetown PEI']
+  },
+  'Mexico': {
+    'Mexico City (CDMX)': ['Polanco','Condesa','Roma Norte','Santa Fe','Coyoacán','Xochimilco','Tlalpan','Iztapalapa'],
+    'Jalisco': ['Guadalajara','Zapopan','Tlaquepaque','Tonalá','Puerto Vallarta'],
+    'Nuevo León': ['Monterrey','San Pedro Garza García','San Nicolás','Apodaca','Escobedo'],
+    'Other States': ['Puebla','Tijuana BC','Cancún Quintana Roo','Mérida Yucatán','Querétaro','León Guanajuato','San Luis Potosí','Aguascalientes','Hermosillo Sonora','Chihuahua','Culiacán Sinaloa','Acapulco Guerrero','Veracruz','Oaxaca']
+  },
+  // ── SOUTH AMERICA ──
+  'Brazil': {
+    'São Paulo State': ['São Paulo','Guarulhos','Campinas','São Bernardo do Campo','Santo André','Osasco','Sorocaba','Mauá','Ribeirão Preto','Santos'],
+    'Rio de Janeiro State': ['Rio de Janeiro','São Gonçalo','Duque de Caxias','Nova Iguaçu','Niterói','Petrópolis'],
+    'Minas Gerais': ['Belo Horizonte','Uberlândia','Contagem','Juiz de Fora','Betim','Montes Claros'],
+    'Other States': ['Salvador Bahia','Fortaleza Ceará','Curitiba Paraná','Manaus Amazonas','Recife Pernambuco','Porto Alegre RS','Belém Pará','Goiânia Goiás','Florianópolis SC','Natal RN','Teresina Piauí','Campo Grande MS','Cuiabá MT','Maceió AL','Aracaju SE']
+  },
+  'Argentina': {
+    'Buenos Aires': ['Buenos Aires CBD','Palermo','Recoleta','San Isidro','Tigre','La Plata','Quilmes','Lanús','Lomas de Zamora'],
+    'Córdoba Province': ['Córdoba','Villa Carlos Paz','Río Cuarto'],
+    'Other Provinces': ['Rosario Santa Fe','Mendoza','Tucumán','Mar del Plata','Salta','San Juan','Neuquén','Resistencia Chaco']
+  },
+  'Colombia': {
+    'Bogotá': ['Bogotá CBD','Chapinero','Usaquén','Suba','Engativá','Bosa','Kennedy'],
+    'Antioquia': ['Medellín','El Poblado','Laureles','Envigado','Bello','Itagüí'],
+    'Other Departments': ['Cali Valle del Cauca','Barranquilla Atlántico','Cartagena Bolivar','Bucaramanga','Manizales Caldas','Pereira Risaralda','Cúcuta Norte de Santander']
+  },
+  'Chile': {
+    'Santiago Metropolitan': ['Santiago Centro','Las Condes','Providencia','Vitacura','Ñuñoa','La Florida','Maipú','Pudahuel'],
+    'Other Regions': ['Valparaíso','Concepción','La Serena','Antofagasta','Temuco','Iquique','Rancagua','Talca']
+  },
+  'Peru': {
+    'Lima Province': ['Lima Centro','Miraflores','San Isidro','Surco','La Molina','San Miguel','Barranco'],
+    'Other Regions': ['Arequipa','Trujillo','Chiclayo','Piura','Iquitos','Cusco']
+  },
+  // ── OCEANIA ──
+  'Australia': {
+    'New South Wales': ['Sydney CBD','North Sydney','Parramatta','Newcastle','Wollongong','Penrith','Liverpool','Blacktown','Campbelltown','Gosford','Central Coast','Wagga Wagga','Albury','Port Macquarie'],
+    'Victoria': ['Melbourne CBD','St Kilda','Fitzroy','Prahran','Geelong','Ballarat','Bendigo','Shepparton','Melton','Dandenong','Frankston','Knox'],
+    'Queensland': ['Brisbane CBD','Fortitude Valley','South Bank','Gold Coast','Sunshine Coast','Townsville','Cairns','Toowoomba','Rockhampton','Mackay','Bundaberg','Hervey Bay'],
+    'Western Australia': ['Perth CBD','Fremantle','Joondalup','Stirling','Swan','Mandurah','Bunbury','Geraldton','Kalgoorlie'],
+    'South Australia': ['Adelaide CBD','Norwood','Unley','Marion','Onkaparinga','Mount Gambier','Whyalla'],
+    'Tasmania': ['Hobart','Launceston','Devonport','Burnie'],
+    'ACT': ['Canberra','Civic','Kingston','Manuka','Belconnen'],
+    'Northern Territory': ['Darwin','Palmerston','Alice Springs']
+  },
+  'New Zealand': {
+    'Auckland Region': ['Auckland CBD','North Shore','Waitakere','Manukau','Papakura','East Auckland','West Auckland'],
+    'Wellington Region': ['Wellington','Porirua','Hutt Valley','Upper Hutt'],
+    'Other Regions': ['Christchurch Canterbury','Hamilton Waikato','Tauranga Bay of Plenty','Napier-Hastings Hawkes Bay','Dunedin Otago','Palmerston North Manawatū','Rotorua Bay of Plenty']
   }
 };
-
 function populateCountryDropdown() {
     var sel = document.getElementById('lg-country'); if (!sel) return;
-    var priority = ['India','Sri Lanka','UAE','United Kingdom','Singapore','Malaysia','Australia','United States','Canada','Germany','Bangladesh','Pakistan'];
+    var priority = ['India','Sri Lanka','UAE','Singapore','Malaysia','United Kingdom','Australia','United States','Canada','Germany','Bangladesh','Pakistan','Saudi Arabia','Qatar','Kuwait','Bahrain','Oman','Thailand','Indonesia','Philippines','Nigeria','South Africa','Kenya'];
     var all = Object.keys(lgCountryData).sort();
     var others = all.filter(function(c){return priority.indexOf(c)===-1;});
     sel.innerHTML = '<option value="">Select Country</option>';
     sel.innerHTML += '<optgroup label="Commonly Used">' + priority.filter(function(c){return lgCountryData[c];}).map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') + '</optgroup>';
-    if(others.length) sel.innerHTML += '<optgroup label="Others">' + others.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') + '</optgroup>';
+    if(others.length) sel.innerHTML += '<optgroup label="All Countries">' + others.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') + '</optgroup>';
 }
 function onCountryChange(country) {
     var stateSel=document.getElementById('lg-state');

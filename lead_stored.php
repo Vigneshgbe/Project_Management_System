@@ -365,9 +365,9 @@ function showDetail(idx) {
     document.getElementById('modal-actions').innerHTML=actions||'<span style="color:var(--text3);font-size:13px">No contact info available</span>';
 
     document.getElementById('ls-modal').style.display='flex';
-    document.body.style.overflow='hidden';
+    if(document&&document.body&&document.body.style)document.body.style.overflow='hidden';
 }
-function closeModal(){document.getElementById('ls-modal').style.display='none';document.body.style.overflow='';}
+function closeModal(){var m=document.getElementById('ls-modal');if(m)m.style.display='none';if(document&&document.body&&document.body.style)document.body.style.overflow='';}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
 function renderPagination(total,cur,pp) {

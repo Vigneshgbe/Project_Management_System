@@ -365,16 +365,10 @@ function showDetail(idx) {
     document.getElementById('modal-actions').innerHTML=actions||'<span style="color:var(--text3);font-size:13px">No contact info available</span>';
 
     document.getElementById('ls-modal').style.display='flex';
-    if(document&&document.body&&document.body.style)document.body.style.overflow='hidden';
 }
 function closeModal() {
-    try {
-        var m = document.getElementById('ls-modal');
-        if (m) m.style.display = 'none';
-    } catch(e) {}
-    try {
-        if (document.body) document.body.style.overflow = '';
-    } catch(e) {}
+    var m = document.getElementById('ls-modal');
+    if (m) m.style.display = 'none';
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 

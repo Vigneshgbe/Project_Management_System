@@ -10,16 +10,16 @@ renderLayout('Lead Generator', 'lead_generator');
 <style>
 /* ── LAYOUT ── */
 .lg-top{display:grid;grid-template-columns:260px 1fr 240px;gap:14px;margin-bottom:18px}
-/* ── RING CARD — orange gradient to match system theme ── */
-.lg-ring-card{background:linear-gradient(135deg,#f97316,#ea580c);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
+/* ── RING CARD ── */
+.lg-ring-card{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
 .lg-ring-wrap{position:relative;width:100px;height:100px;margin:8px auto}
 .lg-ring-svg{transform:rotate(-90deg)}
 .lg-ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:8}
 .lg-ring-fill{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s}
 .lg-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .lg-ring-pct{font-size:20px;font-weight:800;color:#fff}
-.lg-ring-sub{font-size:10.5px;color:rgba(255,255,255,.75)}
-.lg-ring-title{font-size:11px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.lg-ring-sub{font-size:10.5px;color:rgba(255,255,255,.65)}
+.lg-ring-title{font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
 /* ── COST METER ── */
 .lg-cost-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
 .cost-bar{height:10px;border-radius:99px;background:var(--bg4);overflow:hidden;margin:8px 0 4px}
@@ -46,7 +46,7 @@ renderLayout('Lead Generator', 'lead_generator');
 .lg-addr{max-width:250px;font-size:12px;color:var(--text3)}
 .lg-rating{color:#f59e0b;font-size:12px;font-weight:700}
 .lg-web-yes{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap}
-.lg-web-no{background:rgba(249,115,22,.08);color:var(--orange);border:1px solid rgba(249,115,22,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.lg-web-no{background:var(--bg4);color:var(--text3);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
 .lg-call-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#10b981;color:#fff;border-radius:50%;text-decoration:none;font-size:13px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
 .lg-call-btn:hover{opacity:.8}
 .lg-imp-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--orange);color:#fff;border-radius:50%;border:none;cursor:pointer;font-size:12px;flex-shrink:0;transition:opacity .15s}
@@ -68,40 +68,34 @@ renderLayout('Lead Generator', 'lead_generator');
 .lg-setup-step code{background:var(--bg2);padding:2px 6px;border-radius:4px;font-size:12px}
 /* ── BUDGET ALERTS ── */
 .budget-ok{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#10b981}
-.budget-warn{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:var(--orange)}
+.budget-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#f59e0b}
 .budget-danger{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);padding:10px 14px;font-size:12.5px;color:#ef4444}
 /* ── RECENT ── */
-.lg-act{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;border-radius:4px}
+.lg-act{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
 .lg-act:last-child{border-bottom:none}
-.lg-act:hover{background:var(--bg4)}
 .lg-act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
 @media(max-width:1000px){.lg-top{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.lg-top{grid-template-columns:1fr}.lg-search-row{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.lg-search-row{grid-template-columns:1fr}}
 /* ── MODE LABELS ── */
-.mode-label{display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
 #lm-no_website.mode-active{background:rgba(16,185,129,.08)!important;border-color:#10b981!important}
 #lm-high_value.mode-active{background:rgba(249,115,22,.06)!important;border-color:var(--orange)!important}
-#lm-all.mode-active{background:rgba(249,115,22,.04)!important;border-color:var(--orange)!important}
+#lm-all.mode-active{background:var(--bg4)!important;border-color:var(--text3)!important}
 /* ── MANAGE SECTION ── */
 .lg-manage-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
 .lg-filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .lg-filter-input{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;min-width:160px}
-.lg-filter-input:focus{outline:none;border-color:var(--orange)}
 .lg-filter-select{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer}
-.lg-filter-select:focus{outline:none;border-color:var(--orange)}
 .lg-owner{font-size:12px;color:var(--text3);margin-top:2px}
-.lg-email-badge{background:rgba(249,115,22,.08);color:var(--orange);border:1px solid rgba(249,115,22,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;text-decoration:none}
-.lg-mail-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:var(--orange);color:#fff;border-radius:50%;text-decoration:none;font-size:12px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+.lg-email-badge{background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;text-decoration:none}
+.lg-mail-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#6366f1;color:#fff;border-radius:50%;text-decoration:none;font-size:12px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
 .lg-mail-btn:hover{opacity:.8}
 .lg-no-data{color:var(--text3);font-size:12px;font-style:italic}
-/* ── ORANGE ACCENTS ── */
-.lg-opp-reason{font-size:10.5px;color:var(--orange);margin-top:2px}
 </style>
 
 <!-- TOP STATS ROW -->
 <div class="lg-top" id="lg-top-row">
-  <!-- Usage ring — orange gradient -->
+  <!-- Usage ring -->
   <div class="lg-ring-card">
     <div class="lg-ring-title">Monthly Usage</div>
     <div class="lg-ring-wrap">
@@ -117,9 +111,9 @@ renderLayout('Lead Generator', 'lead_generator');
     </div>
   </div>
 
-  <!-- Recent searches — max 5 -->
+  <!-- Recent searches -->
   <div class="lg-cost-card">
-    <div style="font-size:13px;font-weight:700;font-family:var(--font-display);margin-bottom:10px">📊 Recent Searches <span style="font-size:11px;font-weight:400;color:var(--text3)">(last 5)</span></div>
+    <div style="font-size:13px;font-weight:700;font-family:var(--font-display);margin-bottom:10px">📊 Recent Searches</div>
     <div id="lg-recent"><div style="color:var(--text3);font-size:12.5px">Loading...</div></div>
   </div>
 
@@ -127,7 +121,7 @@ renderLayout('Lead Generator', 'lead_generator');
   <div class="lg-cost-card">
     <div style="font-size:13px;font-weight:700;font-family:var(--font-display);margin-bottom:10px">💰 API Budget</div>
     <div id="lg-budget-status"></div>
-    <div class="cost-bar"><div class="cost-fill" id="lg-cost-fill" style="width:0%;background:var(--orange)"></div></div>
+    <div class="cost-bar"><div class="cost-fill" id="lg-cost-fill" style="width:0%;background:#10b981"></div></div>
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
       <span>$<span id="lg-cost-used">0.00</span> used</span>
       <span>$<span id="lg-cost-limit">15.00</span> limit</span>
@@ -135,7 +129,7 @@ renderLayout('Lead Generator', 'lead_generator');
     <div style="margin-top:10px;font-size:11.5px;color:var(--text3);line-height:1.7">
       <div>Cost per lead: ~$0.035</div>
       <div id="lg-rem-leads"></div>
-      <div style="margin-top:4px;font-size:10.5px;color:var(--text3)">Google 5,000 free calls/SKU/month (Mar 2025) · ~4,000 leads free</div>
+      <div style="margin-top:4px;font-size:10.5px;color:var(--text3)">Google $200 free/month · You'll never hit it</div>
     </div>
   </div>
 </div>
@@ -177,7 +171,7 @@ renderLayout('Lead Generator', 'lead_generator');
       <div class="lg-step-num">4</div>
       <div><h4>Restrict Key (important!)</h4><p>Click the key → <strong>API restrictions</strong> → Restrict to <strong>Places API</strong> only → Save. This prevents accidental usage of other APIs.</p></div>
     </div>
-    <div style="margin-top:10px;padding:10px 12px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:var(--radius-sm);font-size:12px;color:var(--orange)">
+    <div style="margin-top:10px;padding:10px 12px;background:rgba(16,185,129,.08);border-radius:var(--radius-sm);font-size:12px;color:#10b981">
       ✅ Your ₹1,000 prepaid = ~₹16,000 equivalent free credit. At $0.035/lead, you can generate <strong>~4,500 leads</strong> before the credit runs out. Our monthly limit protects you from ever exceeding it.
     </div>
   </div>
@@ -190,7 +184,7 @@ renderLayout('Lead Generator', 'lead_generator');
     </div>
     <div>
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Monthly Quota</label>
-      <input type="number" id="cfg-quota" class="lg-input" value="4000" min="10" max="5000">
+      <input type="number" id="cfg-quota" class="lg-input" value="300" min="10" max="5000">
       <div style="font-size:10px;color:var(--text3);margin-top:2px">Max leads/month</div>
     </div>
     <div>
@@ -204,16 +198,56 @@ renderLayout('Lead Generator', 'lead_generator');
     </div>
   </div>
   <div id="cfg-test-result" style="margin-top:10px;display:none;padding:8px 12px;border-radius:var(--radius-sm);font-size:13px;white-space:pre-line"></div>
+
+  <!-- ROLE QUOTA DEFAULTS -->
+  <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">👥 Monthly Lead Quotas by Role</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Set how many leads each role can generate per month. Resets on the 1st of every month.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Admin</label>
+        <input type="number" id="cfg-q-admin" class="lg-input" value="500" min="1" max="5000" placeholder="500">
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Leads/month</div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Manager</label>
+        <input type="number" id="cfg-q-manager" class="lg-input" value="100" min="1" max="2000" placeholder="100">
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Leads/month</div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Member</label>
+        <input type="number" id="cfg-q-member" class="lg-input" value="20" min="1" max="500" placeholder="20">
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Leads/month</div>
+      </div>
+    </div>
+    <button onclick="saveRoleQuotas()" class="btn btn-primary btn-sm">💾 Save Role Quotas</button>
+    <div id="cfg-quota-result" style="margin-top:8px;display:none;font-size:12.5px;padding:6px 10px;border-radius:var(--radius-sm)"></div>
+  </div>
+
+  <!-- PER-USER QUOTA TABLE -->
+  <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:13px;font-weight:700;margin-bottom:4px">👤 Per-User Quota Override</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Override quota for individual users. Leave blank to use role default.</div>
+    <div style="overflow-x:auto">
+      <table class="lg-tbl" id="user-quota-table">
+        <thead><tr>
+          <th>User</th><th>Role</th><th>Role Default</th><th>This Month Used</th>
+          <th>Custom Quota</th><th></th>
+        </tr></thead>
+        <tbody id="user-quota-tbody">
+          <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 <?php endif; ?>
 
 <!-- SEARCH FORM -->
 <div class="lg-search-card">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">🔍 Generate Business Leads</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:2px">Finds businesses · Fetches phone, email, website, rating &amp; opportunity score</div>
-    </div>
+    <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">🔍 Generate Business Leads</div>
+    <div style="font-size:12px;color:var(--text3);margin-top:2px">Finds businesses · Fetches phone, email, website, rating &amp; opportunity score</div>
     <?php if (isAdmin()): ?>
     <button onclick="toggleSettings()" class="btn btn-ghost btn-sm" style="font-size:12px">⚙ Settings</button>
     <?php endif; ?>
@@ -223,13 +257,13 @@ renderLayout('Lead Generator', 'lead_generator');
   <div style="margin-bottom:14px">
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Search Mode</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <label id="lm-no_website" class="mode-label" onclick="setMode('no_website')">
+      <label id="lm-no_website" onclick="setMode('no_website')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:rgba(16,185,129,.08);border:2px solid #10b981;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
         <div><div style="font-size:13px;font-weight:700;color:#10b981">🔥 No Website Only</div><div style="font-size:11px;color:var(--text3)">Prime prospects — need a website built</div></div>
       </label>
-      <label id="lm-high_value" class="mode-label" onclick="setMode('high_value')">
+      <label id="lm-high_value" onclick="setMode('high_value')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
         <div><div style="font-size:13px;font-weight:700;color:var(--orange)">💎 High Value</div><div style="font-size:11px;color:var(--text3)">Established — bigger budgets (₹40k+)</div></div>
       </label>
-      <label id="lm-all" class="mode-label" onclick="setMode('all')">
+      <label id="lm-all" onclick="setMode('all')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
         <div><div style="font-size:13px;font-weight:700;color:var(--text2)">📋 All Results</div><div style="font-size:11px;color:var(--text3)">All businesses sorted by score</div></div>
       </label>
     </div>
@@ -244,7 +278,7 @@ renderLayout('Lead Generator', 'lead_generator');
       <button type="button" onclick="setIndustry(this,'<?= h($hi) ?>')"
         style="padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:99px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .12s"
         onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'"
-        onmouseout="if(!this.classList.contains('chip-active')){this.style.borderColor='var(--border)';this.style.color='var(--text2)'}"><?= h($hi) ?></button>
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><?= h($hi) ?></button>
       <?php endforeach; ?>
     </div>
   </div>
@@ -294,7 +328,7 @@ renderLayout('Lead Generator', 'lead_generator');
     <select id="filter-location" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Locations</option></select>
     <select id="filter-industry" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Industries</option></select>
     <select id="filter-website" class="lg-filter-select" onchange="filterStoredLeads()">
-      <option value="">All</option><option value="0">🔥 No Website</option><option value="1">✅ Has Website</option>
+      <option value="">All</option><option value="0">🔥 No Website</option><option value="1">Has Website</option>
     </select>
     <select id="filter-imported" class="lg-filter-select" onchange="filterStoredLeads()">
       <option value="">All</option><option value="0">Not Imported</option><option value="1">Imported to CRM</option>
@@ -370,15 +404,15 @@ renderLayout('Lead Generator', 'lead_generator');
 </div>
 
 <script>
-var lgIds=[], lgConfigured=false, lgQuota=4000, lgBudget=15, lgSearchMode='no_website';
+var lgIds=[], lgConfigured=false, lgQuota=300, lgBudget=15;
 
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();
-    setMode('no_website');
     ['lg-location','lg-industry','lg-count'].forEach(function(id) {
         var el=document.getElementById(id);
         if (el) el.addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
     });
+    // Update cost preview on count change
     document.getElementById('lg-count')?.addEventListener('input', updateCostPreview);
 });
 
@@ -386,7 +420,7 @@ function updateCostPreview() {
     var cnt = parseInt(document.getElementById('lg-count')?.value)||5;
     var cost = (0.032 + 0.003*cnt).toFixed(4);
     document.getElementById('lg-cost-preview').innerHTML =
-        'This search: <strong style="color:var(--orange)">$'+cost+'</strong> (1 text search $0.032 + '+cnt+' detail lookups × $0.003). '+
+        'This search: <strong>$'+cost+'</strong> (1 text search $0.032 + '+cnt+' detail lookups x $0.003). '+
         'Monthly limit of $'+lgBudget+' protects you automatically.';
 }
 
@@ -399,6 +433,7 @@ function loadStats() {
         lgQuota      = d.quota || 300;
         lgBudget     = d.budget || 15;
 
+        // No-API banner
         var banner = document.getElementById('lg-no-api-banner');
         if (banner) banner.style.display = d.api_set ? 'none' : 'flex';
 
@@ -410,37 +445,36 @@ function loadStats() {
         var fill=document.getElementById('lg-ring');
         fill.setAttribute('stroke-dasharray', circ.toFixed(1));
         fill.setAttribute('stroke-dashoffset', (circ-(pct/100*circ)).toFixed(1));
-        fill.style.stroke = pct>95?'#ef4444':pct>80?'#fbbf24':'#fff';
+        // Ring color by usage
+        fill.style.stroke = pct>80?'#f59e0b':pct>95?'#ef4444':'#fff';
 
         // Cost meter
         var cpct = lgBudget>0 ? Math.min(100,Math.round(d.cost/lgBudget*100)) : 0;
         document.getElementById('lg-cost-used').textContent  = d.cost.toFixed(4);
         document.getElementById('lg-cost-limit').textContent = lgBudget.toFixed(2);
-        var costFill = document.getElementById('lg-cost-fill');
-        costFill.style.width  = cpct+'%';
-        costFill.style.background = cpct>80 ? '#ef4444' : cpct>60 ? '#f59e0b' : 'var(--orange)';
+        document.getElementById('lg-cost-fill').style.width  = cpct+'%';
+        document.getElementById('lg-cost-fill').style.background =
+            cpct>80 ? '#ef4444' : cpct>60 ? '#f59e0b' : '#10b981';
 
         var remLeads = Math.floor((lgBudget - d.cost) / 0.035);
         document.getElementById('lg-rem-leads').textContent = '~'+Math.max(0,remLeads)+' leads remaining this month';
 
+        // Budget status
         var bs = document.getElementById('lg-budget-status');
         if (bs) {
-            if (cpct > 80)      bs.innerHTML='<div class="budget-danger">⚠ Budget '+(cpct>95?'CRITICAL':'WARNING')+': '+cpct+'% used</div>';
+            if (cpct > 80)      bs.innerHTML='<div class="budget-danger">!! Budget '+(cpct>95?'CRITICAL':'WARNING')+': '+cpct+'% used</div>';
             else if (cpct > 50) bs.innerHTML='<div class="budget-warn">Budget '+cpct+'% used — OK</div>';
-            else                bs.innerHTML='<div class="budget-ok">✓ Budget OK — '+cpct+'% used</div>';
+            else                bs.innerHTML='<div class="budget-ok">OK - Budget — '+cpct+'% used</div>';
         }
 
         // Quota bar
         var qb=document.getElementById('lg-quota-bar-row');
         if (qb) {
-            var remQ=Math.max(0,lgQuota-d.used);
-            qb.innerHTML='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">'
-                +'<span>Monthly quota: '+d.used+' / '+lgQuota+' leads used</span>'
-                +'<span style="color:'+(remQ<20?'#ef4444':'var(--text3)')+'">'+remQ+' remaining</span></div>'
-                +'<div style="height:6px;background:var(--bg4);border-radius:99px;overflow:hidden">'
-                +'<div style="height:100%;border-radius:99px;background:'+(pct>80?'#ef4444':pct>50?'#f59e0b':'var(--orange)')+';width:'+pct+'%;transition:width .4s"></div></div>';
+            qb.innerHTML='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px"><span>Monthly quota: '+d.used+' / '+lgQuota+' leads used</span><span style="color:'+((lgQuota-d.used)<20?'#ef4444':'var(--text3)')+'">'+Math.max(0,lgQuota-d.used)+' remaining</span></div>'
+                +'<div style="height:6px;background:var(--bg4);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+(pct>80?'#ef4444':pct>50?'#f59e0b':'var(--orange)')+';width:'+pct+'%;transition:width .4s"></div></div>';
         }
 
+        // Prefill settings if admin
         if (document.getElementById('cfg-quota')) document.getElementById('cfg-quota').value = lgQuota;
         if (document.getElementById('cfg-budget')) document.getElementById('cfg-budget').value = lgBudget;
 
@@ -450,6 +484,27 @@ function loadStats() {
 
         renderRecent(d.recent||[]);
         updateCostPreview();
+
+        // Quota management panel (admin/manager only)
+        if (d.all_users && d.all_users.length) {
+            renderUserQuotaTable(d.all_users);
+        }
+        // Pre-fill role quota inputs from server values (via role defaults on first user)
+        if (d.all_users) {
+            d.all_users.forEach(function(u){
+                if(u.role==='admin' && !u.override && document.getElementById('cfg-q-admin')) {
+                    // Keep input as-is, user sets these
+                }
+            });
+        }
+        // Show user's role in quota bar label
+        if (d.user_role) {
+            var roleLabel = {'admin':'Admin','manager':'Manager','member':'Member'}[d.user_role] || d.user_role;
+            var quotaNote = document.querySelector('#lg-quota-bar-row');
+            if (quotaNote && d.user_role !== 'admin') {
+                // Already rendered correctly by quota bar update above
+            }
+        }
     })
     .catch(function(){});
 }
@@ -457,18 +512,13 @@ function loadStats() {
 function renderRecent(data) {
     var el = document.getElementById('lg-recent');
     if (!el) return;
-    // FIX: Already limited to 5 server-side, but also slice client-side as safety
-    data = data.slice(0, 5);
     if (!data.length) { el.innerHTML='<div style="color:var(--text3);font-size:12.5px">No searches yet</div>'; return; }
-    var colors=['var(--orange)','#10b981','#8b5cf6','#f59e0b','#14b8a6'];
+    var colors=['#4f46e5','#10b981','#f97316','#8b5cf6','#f59e0b','#14b8a6','#6366f1','#ef4444'];
     el.innerHTML = data.map(function(r,i){
         var cost = parseFloat(r.estimated_cost||0).toFixed(4);
-        return '<div class="lg-act" onclick="loadSearchHistory('+r.id+')" title="Click to reload these leads">'
-            +'<div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
-            +'<div style="flex:1;min-width:0">'
-            +'<div style="font-size:12.5px;color:var(--text2);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.result_count)+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
-            +'<div style="font-size:11px;color:var(--text3)">$'+cost+' · '+fmtAgo(r.created_at)+'</div>'
-            +'</div></div>';
+        return '<div class="lg-act" onclick="loadSearchHistory('+r.id+')" title="Click to view these leads"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
+            +'<div><div style="font-size:12.5px;color:var(--text2);font-weight:600">'+esc(r.result_count)+' leads · '+esc(r.industry)+' in '+esc(r.location)+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">$'+cost+' cost · '+fmtAgo(r.created_at)+'</div></div></div>';
     }).join('');
 }
 
@@ -517,28 +567,26 @@ function doSearch() {
 
 function renderResults(leads,ind,loc) {
     lgIds=leads.map(function(l){return l.id;});
-    var nowebCount=leads.filter(function(l){return !parseInt(l.has_website);}).length;
+    var nowebCount=leads.filter(function(l){return !l.has_website;}).length;
     document.getElementById('lg-res-label').textContent='('+leads.length+' results — '+ind+', '+loc
-        +(nowebCount?' — '+nowebCount+' without website':'')+')';
+        +(nowebCount?' - '+nowebCount+' without website':'')+')';
     var costEst=(0.032+0.003*leads.length).toFixed(4);
     document.getElementById('lg-cost-summary').textContent='API cost for this search: ~$'+costEst;
 
     document.getElementById('lg-tbody').innerHTML=leads.map(function(l,i){
-        var hasWeb = parseInt(l.has_website) === 1;
         var phone_btn=l.phone
             ? '<a href="tel:'+esc(l.phone)+'" class="lg-call-btn" title="Call '+esc(l.phone)+'">📞</a>'
             : '';
         var email_btn=l.email
             ? '<a href="mailto:'+esc(l.email)+'" class="lg-mail-btn" title="Email '+esc(l.email)+'">✉</a>'
             : '';
-        // FIX: Use actual hasWeb boolean, not truthy website URL
-        var web_badge = hasWeb
+        var web_badge=l.has_website
             ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes">✅ Yes ↗</a>'
-            : '<span class="lg-web-no">🔥 No Website</span>';
+            : '<span class="lg-web-no" style="font-weight:800;font-size:12px">🔥 No</span>';
         var imp_btn=l.imported
             ? '<span class="lg-imp-done">✓ In CRM</span>'
             : '<button class="lg-imp-btn" onclick="impOne('+l.id+',this)" title="Import to CRM">⬇</button>';
-        var stars=l.rating?'⭐ '+parseFloat(l.rating).toFixed(1):'—';
+        var stars=l.rating?'⭐ '+l.rating:'—';
         var name_cell='<div class="lg-name">'+esc(l.name)+'</div>'
             +(l.owner_name?'<div class="lg-owner">👤 '+esc(l.owner_name)+'</div>':'');
         var email_cell=l.email
@@ -548,19 +596,21 @@ function renderResults(leads,ind,loc) {
             ? '<span class="lg-phone">'+esc(l.phone)+'</span>'
             : '<span class="lg-no-data">—</span>';
 
-        var score=parseInt(l.opportunity_score)||0;
+        // Opportunity score badge
+        var score=l.opportunity_score||0;
         var scoreColor=score>=70?'#10b981':score>=40?'#f59e0b':'#94a3b8';
         var scoreBg=score>=70?'rgba(16,185,129,.12)':score>=40?'rgba(245,158,11,.12)':'rgba(148,163,184,.1)';
         var scoreLabel=score>=70?'🔥 HOT':score>=40?'👍 Good':'·';
         var scoreBadge='<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:'+scoreColor+'">'+score+'</div>'
             +'<div style="font-size:10px;font-weight:700;background:'+scoreBg+';color:'+scoreColor+';padding:1px 5px;border-radius:99px;white-space:nowrap">'+scoreLabel+'</div></div>';
 
-        var rowStyle=!hasWeb?'background:rgba(249,115,22,.03);':'';
+        // Row highlight for no-website leads
+        var rowStyle=!l.has_website?'background:rgba(16,185,129,.04);':'';
 
         return '<tr id="lgr-'+l.id+'" style="'+rowStyle+'">'
             +'<td>'+scoreBadge+'</td>'
             +'<td style="color:var(--text3);font-size:12px">'+(i+1)+'</td>'
-            +'<td>'+name_cell+(l.why?'<div class="lg-opp-reason" title="'+esc(l.why)+'">💡 '+esc(l.why.length>60?l.why.slice(0,57)+'...':l.why)+'</div>':'')+'</td>'
+            +'<td>'+name_cell+(l.why?'<div style="font-size:10.5px;color:#6366f1;margin-top:2px" title="'+esc(l.why)+'">💡 '+esc(l.why.length>60?l.why.slice(0,57)+'...':l.why)+'</div>':'')+'</td>'
             +'<td>'+phone_cell+'</td>'
             +'<td>'+email_cell+'</td>'
             +'<td><div class="lg-addr" title="'+esc(l.address)+'">'+esc(l.address||'—')+'</div></td>'
@@ -617,6 +667,7 @@ function exportCSV() {
     });
 }
 
+var lgSearchMode='no_website';
 function setMode(mode){
     lgSearchMode=mode;
     document.getElementById('lg-search-mode').value=mode;
@@ -625,20 +676,15 @@ function setMode(mode){
         if(el) el.classList.toggle('mode-active',m===mode);
     });
 }
-
 function setIndustry(btn,val){
     var el=document.getElementById('lg-industry');
     if(el){el.value=val;el.focus();}
-    document.querySelectorAll('.chip-active').forEach(function(b){
-        b.classList.remove('chip-active');
-        b.style.borderColor='var(--border)'; b.style.color='var(--text2)';
-    });
-    if(btn){
-        btn.classList.add('chip-active');
-        btn.style.borderColor='var(--orange)'; btn.style.color='var(--orange)';
-    }
+    // Highlight selected chip
+    document.querySelectorAll('#industry-chips button,[onclick*="setIndustry"]').forEach(function(b){b.style.borderColor='var(--border)';b.style.color='var(--text2)';});
+    if(btn){btn.style.borderColor='var(--orange)';btn.style.color='var(--orange)';}
 }
-
+// Activate no_website mode by default on load
+document.addEventListener('DOMContentLoaded',function(){setMode('no_website');});
 function toggleSettings(){
     var p=document.getElementById('lg-settings-panel'); if(!p)return;
     p.classList.toggle('open');
@@ -691,7 +737,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function fmtAgo(dt){if(!dt)return'';var d=Math.floor((Date.now()-new Date(dt).getTime())/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 function fmtDate(dt){if(!dt)return'';var d=new Date(dt);return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
 
-// ── LOAD SEARCH HISTORY ──
+// ── LOAD SEARCH HISTORY (click recent search) ──
 function loadSearchHistory(usageId){
     var loading=document.getElementById('lg-loading');
     var results=document.getElementById('lg-results-section');
@@ -762,28 +808,23 @@ function renderStoredLeadsTable(leads){
         return;
     }
     tbody.innerHTML=leads.map(function(l,idx){
-        var score=parseInt(l.opportunity_score)||0;
+        var rowNum=((lgCurrentPage-1)*lgPerPage)+idx+1;
+        var score=l.opportunity_score||0;
         var sc=score>=70?'#10b981':score>=40?'#f59e0b':'#94a3b8';
         var scoreBadge='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:'+sc+'">'+score+'</div></div>';
-
-        // FIX: Correctly read has_website from the API response (now included in SELECT)
-        var hasWeb = parseInt(l.has_website) === 1;
-        var web_badge = hasWeb
-            ? (l.website
-                ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" style="font-size:10px">✅ Yes ↗</a>'
-                : '<span class="lg-web-yes" style="font-size:10px">✅ Yes</span>')
-            : '<span class="lg-web-no" style="font-size:10px">🔥 No</span>';
-
+        var web_badge=l.has_website
+            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" style="font-size:10px">✅ Yes ↗</a>'
+            : '<span class="lg-web-no" style="font-size:10px;font-weight:800">🔥 No</span>';
         var status=l.imported
             ? '<span class="lg-imp-done" style="font-size:10px">✓ Imported</span>'
             : '<span style="font-size:10px;color:var(--text3)">Not imported</span>';
-        var stars=l.rating?'⭐ '+parseFloat(l.rating).toFixed(1):'—';
+        var stars=l.rating?'⭐ '+l.rating:'—';
         var email_cell=l.email
-            ? '<a href="mailto:'+esc(l.email)+'" style="font-size:11px;color:var(--orange)" title="'+esc(l.email)+'">'+esc(l.email)+'</a>'
+            ? '<a href="mailto:'+esc(l.email)+'" style="font-size:11px;color:#6366f1" title="'+esc(l.email)+'">'+esc(l.email)+'</a>'
             : '<span style="color:var(--text3);font-size:11px">—</span>';
         var name_cell='<div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(l.name)+'</div>'
             +(l.owner_name?'<div style="font-size:11px;color:var(--text3)">👤 '+esc(l.owner_name)+'</div>':'');
-        return '<tr style="'+(hasWeb?'':'background:rgba(249,115,22,.02)')+'">'
+        return '<tr style="'+(l.has_website?'':'background:rgba(16,185,129,.03)')+'">'
             +'<td><input type="checkbox" class="lead-select" data-id="'+l.id+'"></td>'
             +'<td>'+scoreBadge+'</td>'
             +'<td>'+name_cell+'</td>'
@@ -818,7 +859,7 @@ function renderPagination(total,currentPage,perPage){
     var s=Math.max(1,currentPage-2),e=Math.min(totalPages,currentPage+2);
     if(s>1){html+='<button onclick="loadAllStoredLeads(1)" class="btn btn-ghost btn-sm">1</button>';if(s>2) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';}
     for(var i=s;i<=e;i++){
-        if(i===currentPage) html+='<button class="btn btn-sm" style="background:var(--orange);color:#fff;border:none">'+i+'</button>';
+        if(i===currentPage) html+='<button class="btn btn-sm" style="background:var(--orange);color:#fff">'+i+'</button>';
         else html+='<button onclick="loadAllStoredLeads('+i+')" class="btn btn-ghost btn-sm">'+i+'</button>';
     }
     if(e<totalPages){if(e<totalPages-1) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';html+='<button onclick="loadAllStoredLeads('+totalPages+')" class="btn btn-ghost btn-sm">'+totalPages+'</button>';}
@@ -855,7 +896,7 @@ function updateBulkDeleteButton(){
     var btn=document.getElementById('lg-bulk-delete-btn'); if(!btn) return;
     var sel=document.querySelectorAll('.lead-select:checked');
     btn.disabled=sel.length===0;
-    btn.textContent='🗑 Delete Selected'+(sel.length>0?' ('+sel.length+')':'');
+    btn.textContent='Delete Selected'+(sel.length>0?' ('+sel.length+')':'');
 }
 document.addEventListener('change',function(e){if(e.target.classList.contains('lead-select')) updateSelectAllState();});
 
@@ -884,6 +925,75 @@ function deleteSingleLead(id){
         if(d.ok){toast('Lead deleted','success');loadAllStoredLeads(lgCurrentPage);loadStats();}
         else toast(d.error||'Delete failed','error');
     });
+}
+
+// ── QUOTA MANAGEMENT (admin) ──
+function renderUserQuotaTable(users){
+    var tbody=document.getElementById('user-quota-tbody'); if(!tbody) return;
+    if(!users||!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text3)">No users found</td></tr>';return;}
+    var roleColors={'admin':'var(--orange)','manager':'#8b5cf6','member':'#64748b'};
+    tbody.innerHTML=users.map(function(u){
+        var rc=roleColors[u.role]||'var(--text3)';
+        var pct=u.quota>0?Math.min(100,Math.round(u.used_month/u.quota*100)):0;
+        var barColor=pct>90?'#ef4444':pct>70?'#f59e0b':'var(--orange)';
+        var roleDefault=roleDef[u.role]||u.quota;
+        return '<tr>'
+            +'<td style="font-weight:600;color:var(--text)">'+esc(u.name)+'</td>'
+            +'<td><span style="color:'+rc+';font-weight:700;font-size:12px">'+u.role.toUpperCase()+'</span></td>'
+            +'<td style="font-size:13px">'+roleDefault+' leads</td>'
+            +'<td>'
+                +'<div style="font-size:13px;font-weight:700;color:'+(pct>90?'#ef4444':'var(--text)')+'">'+u.used_month+' / '+u.quota+'</div>'
+                +'<div style="height:4px;background:var(--bg4);border-radius:99px;margin-top:3px;width:80px"><div style="height:100%;border-radius:99px;background:'+barColor+';width:'+pct+'%"></div></div>'
+            +'</td>'
+            +'<td><input type="number" id="uq-'+u.id+'" placeholder="Role default" value="'+esc(u.override)+'" min="1" max="5000" style="width:90px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px"></td>'
+            +'<td><button onclick="saveUserQuota('+u.id+')" class="btn btn-ghost btn-sm" style="font-size:11.5px">Save</button>'
+                +(u.override?'<button onclick="clearUserQuota('+u.id+')" class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--text3);margin-left:4px" title="Reset to role default">×</button>':'')
+            +'</td>'
+            +'</tr>';
+    }).join('');
+}
+
+var roleDef={'admin':500,'manager':100,'member':20};
+
+function saveRoleQuotas(){
+    var qa=document.getElementById('cfg-q-admin')?.value||500;
+    var qm=document.getElementById('cfg-q-manager')?.value||100;
+    var qmb=document.getElementById('cfg-q-member')?.value||20;
+    roleDef={'admin':parseInt(qa)||500,'manager':parseInt(qm)||100,'member':parseInt(qmb)||20};
+    var fd=new FormData();
+    fd.append('action','save_role_quotas');
+    fd.append('q_admin',qa); fd.append('q_manager',qm); fd.append('q_member',qmb);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        var el=document.getElementById('cfg-quota-result');
+        if(el){el.style.display='block';el.style.background=d.ok?'rgba(16,185,129,.08)':'rgba(239,68,68,.06)';el.style.color=d.ok?'#10b981':'#ef4444';el.textContent=d.ok?'Role quotas saved!':d.error;}
+        if(d.ok){toast('Role quotas saved!','success');loadStats();}else toast(d.error||'Failed','error');
+    });
+}
+
+function saveUserQuota(uid){
+    var val=document.getElementById('uq-'+uid)?.value||'';
+    var fd=new FormData(); fd.append('action','save_user_quota'); fd.append('target_uid',uid); fd.append('user_quota',val);
+    fetch('lead_generator_api.php',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok){toast(d.message,'success');loadStats();}else toast(d.error||'Failed','error');
+    });
+}
+
+function clearUserQuota(uid){
+    document.getElementById('uq-'+uid).value='';
+    saveUserQuota(uid);
+}
+
+// Hook into existing loadStats to populate quota table when settings open
+var _origLoadStats = null;
+function hookLoadStats(){
+    var origFn = window.loadStats;
+    window.loadStats = function(){
+        origFn.apply(this,arguments);
+    };
 }
 </script>
 

@@ -569,7 +569,7 @@ function doSearch() {
     var results=document.getElementById('lg-results-section');
     btn.disabled=true; btn.textContent='Generating...';
     loading.style.display='block'; if (results) results.style.display='none';
-    document.getElementById('lg-load-text').textContent='Searching Google Maps for "'+ind+'" in "'+loc+'"...';
+    document.getElementById('lg-load-text').textContent='Searching for "'+ind+'" in "'+loc+'"...';
     document.getElementById('lg-load-sub').textContent='Fetching phone numbers & website info...';
 
     var fd=new FormData();

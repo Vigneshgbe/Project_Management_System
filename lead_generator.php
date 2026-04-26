@@ -11,7 +11,7 @@ renderLayout('Lead Generator', 'lead_generator');
 /* ── LAYOUT ── */
 .lg-top{display:grid;grid-template-columns:260px 1fr 240px;gap:14px;margin-bottom:18px}
 /* ── RING CARD ── */
-.lg-ring-card{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
+.lg-ring-card{background:linear-gradient(135deg,#f97316,#ea580c);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;border:none}
 .lg-ring-wrap{position:relative;width:100px;height:100px;margin:8px auto}
 .lg-ring-svg{transform:rotate(-90deg)}
 .lg-ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:8}
@@ -26,7 +26,7 @@ renderLayout('Lead Generator', 'lead_generator');
 .cost-fill{height:100%;border-radius:99px;transition:width .5s}
 /* ── SEARCH FORM ── */
 .lg-search-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
-.lg-search-row{display:grid;grid-template-columns:1fr 1fr 80px auto;gap:10px;align-items:end}
+.lg-search-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end}
 .lg-input{padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13.5px;font-family:var(--font);width:100%;transition:border-color .15s}
 .lg-input:focus{outline:none;border-color:var(--orange)}
 .lg-input::placeholder{color:var(--text3)}
@@ -81,16 +81,7 @@ renderLayout('Lead Generator', 'lead_generator');
 #lm-no_website.mode-active{background:rgba(16,185,129,.08)!important;border-color:#10b981!important}
 #lm-high_value.mode-active{background:rgba(249,115,22,.06)!important;border-color:var(--orange)!important}
 #lm-all.mode-active{background:var(--bg4)!important;border-color:var(--text3)!important}
-/* ── MANAGE SECTION ── */
-.lg-manage-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
-.lg-filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.lg-filter-input{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;min-width:160px}
-.lg-filter-select{padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;cursor:pointer}
-.lg-owner{font-size:12px;color:var(--text3);margin-top:2px}
-.lg-email-badge{background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;text-decoration:none}
-.lg-mail-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#6366f1;color:#fff;border-radius:50%;text-decoration:none;font-size:12px;border:none;cursor:pointer;flex-shrink:0;transition:opacity .15s}
-.lg-mail-btn:hover{opacity:.8}
-.lg-no-data{color:var(--text3);font-size:12px;font-style:italic}
+
 /* ── QUOTA MANAGEMENT ── */
 .quota-role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
 .quota-role-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}
@@ -309,19 +300,6 @@ renderLayout('Lead Generator', 'lead_generator');
     <input type="hidden" id="lg-search-mode" value="no_website">
   </div>
 
-  <!-- HOT INDUSTRY SHORTCUTS -->
-  <div style="margin-bottom:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">🎯 Quick Targets <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--text3)">(high-value clients — click to fill)</span></div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap">
-      <?php foreach (['Hotel','Restaurant chain','Hospital','Private school','Manufacturing company','Real estate agency','Supermarket chain','Automobile dealer','Jewellery store','Event hall','Fitness center','Pharmacy chain','Construction company','Catering service','Interior design firm','Architecture firm'] as $hi): ?>
-      <button type="button" onclick="setIndustry(this,'<?= h($hi) ?>')"
-        style="padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:99px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .12s"
-        onmouseover="this.style.borderColor='var(--orange)';this.style.color='var(--orange)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'"><?= h($hi) ?></button>
-      <?php endforeach; ?>
-    </div>
-  </div>
-
   <!-- Cost estimate preview -->
   <div id="lg-cost-preview" style="margin-bottom:12px;font-size:12.5px;color:var(--text3)">
     Each search costs approximately <strong>$0.032</strong> (text search) + <strong>$0.003 × leads</strong> (phone/website lookup).
@@ -329,11 +307,27 @@ renderLayout('Lead Generator', 'lead_generator');
   </div>
 
   <div class="lg-search-row">
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Country</label>
+      <select id="lg-country" class="lg-input" onchange="onCountryChange(this.value)" style="cursor:pointer">
+        <option value="">Select Country</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">State / Province</label>
+      <select id="lg-state" class="lg-input" onchange="onStateChange(this.value)" style="cursor:pointer" disabled>
+        <option value="">Select State</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">City / District / Town</label>
+      <select id="lg-city" class="lg-input" onchange="onCityChange(this.value)" style="cursor:pointer" disabled>
+        <option value="">Select City</option>
+      </select>
+    </div>
     <div style="position:relative">
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">City / Location</label>
-      <input type="text" id="lg-location" class="lg-input" placeholder="Type city, state or country..." autocomplete="off"
-        oninput="lgLocInput(this)" onkeydown="lgLocKey(event)" onfocus="lgLocInput(this)" onblur="setTimeout(lgLocHide,200)">
-      <div id="lg-loc-drop" class="lg-ac-drop" style="display:none"></div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Custom Location <span style="font-weight:400;text-transform:none;font-size:10px;color:var(--text3)">(optional override)</span></label>
+      <input type="text" id="lg-location" class="lg-input" placeholder="e.g. Trichy Old Town" autocomplete="off">
     </div>
     <div style="position:relative">
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Industry / Business Type</label>
@@ -353,59 +347,8 @@ renderLayout('Lead Generator', 'lead_generator');
   <div id="lg-quota-bar-row" style="margin-top:10px"></div>
 </div>
 
-<!-- MANAGE ALL STORED LEADS -->
-<?php if (isManager()): ?>
-<div class="lg-manage-section" id="lg-manage-section" style="display:none">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--font-display)">📚 All Stored Leads</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:2px" id="lg-manage-count">Loading...</div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="bulkDeleteSelected()" class="btn btn-danger btn-sm" id="lg-bulk-delete-btn" disabled>🗑 Delete Selected</button>
-      <button onclick="toggleManageSection()" class="btn btn-ghost btn-sm">✕ Close</button>
-    </div>
-  </div>
-  <div class="lg-filter-bar">
-    <input type="text" id="filter-search" class="lg-filter-input" placeholder="Search name, email, phone..." onkeyup="filterStoredLeads()">
-    <select id="filter-location" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Locations</option></select>
-    <select id="filter-industry" class="lg-filter-select" onchange="filterStoredLeads()"><option value="">All Industries</option></select>
-    <select id="filter-website" class="lg-filter-select" onchange="filterStoredLeads()">
-      <option value="">All</option><option value="0">🔥 No Website</option><option value="1">Has Website</option>
-    </select>
-    <select id="filter-imported" class="lg-filter-select" onchange="filterStoredLeads()">
-      <option value="">All</option><option value="0">Not Imported</option><option value="1">Imported to CRM</option>
-    </select>
-    <button onclick="resetFilters()" class="btn btn-ghost btn-sm">🔄 Reset</button>
-  </div>
-  <div style="overflow-x:auto">
-    <table class="lg-tbl">
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="select-all-leads" onchange="toggleSelectAll(this)"></th>
-          <th>Score</th><th>Business Name / Owner</th><th>Phone</th><th>Email</th>
-          <th>Location</th><th>Industry</th><th>Website</th><th>Rating</th><th>Date</th><th>Status</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="lg-stored-tbody">
-        <tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-    <div style="font-size:12px;color:var(--text3)" id="lg-pagination-info"></div>
-    <div style="display:flex;gap:4px;margin-left:auto" id="lg-pagination-btns"></div>
-  </div>
-</div>
-<div style="margin-bottom:16px">
-  <button onclick="toggleManageSection()" class="btn btn-ghost" id="lg-show-manage-btn">
-    📚 View All Stored Leads (<span id="lg-total-stored">0</span>)
-  </button>
-</div>
-<?php endif; ?>
 
-<!-- LOADING STATE -->
-<div class="lg-loading" id="lg-loading">
+<!-- LOADING STATE -->" id="lg-loading">
   <div class="lg-spinner"></div>
   <div style="font-size:14px;font-weight:600;color:var(--text2)" id="lg-load-text">Searching Google Maps...</div>
   <div style="font-size:12px;color:var(--text3);margin-top:4px" id="lg-load-sub"></div>
@@ -452,6 +395,8 @@ var lgUsed=0, lgRemaining=0, lgBlocked=false, lgQuotaSrc='role', lgTotalStored=0
 
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();
+    populateCountryDropdown();
+    setMode('no_website');
     ['lg-location','lg-industry','lg-count'].forEach(function(id) {
         var el=document.getElementById(id);
         if (el) el.addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
@@ -523,7 +468,6 @@ function loadStats() {
         if(document.getElementById('cfg-quota')) document.getElementById('cfg-quota').value=lgQuota;
         if(document.getElementById('cfg-budget')) document.getElementById('cfg-budget').value=lgBudget;
         lgTotalStored=d.total_all||0;
-        var ts=document.getElementById('lg-total-stored'); if(ts) ts.textContent=lgTotalStored;
         renderRecent(d.recent||[]);
         updateCostPreview();
 
@@ -548,7 +492,7 @@ function renderRecent(data) {
     var el = document.getElementById('lg-recent');
     if (!el) return;
     if (!data.length) { el.innerHTML='<div style="color:var(--text3);font-size:12.5px">No searches yet</div>'; return; }
-    var colors=['#4f46e5','#10b981','#f97316','#8b5cf6','#f59e0b','#14b8a6','#6366f1','#ef4444'];
+    var colors=['var(--orange)','#10b981','#8b5cf6','#f59e0b','#14b8a6'];
     el.innerHTML = data.map(function(r,i){
         var cost = parseFloat(r.estimated_cost||0).toFixed(4);
         return '<div class="lg-act" onclick="loadSearchHistory('+r.id+')" title="Click to view these leads"><div class="lg-act-dot" style="background:'+colors[i%colors.length]+'"></div>'
@@ -793,248 +737,7 @@ function loadSearchHistory(usageId){
     .catch(function(e){loading.style.display='none';toast('Network error','error');console.error(e);});
 }
 
-// ── MANAGE ALL STORED LEADS ──
-var lgCurrentPage=1, lgPerPage=50, lgTotalStored=0;
-
-function toggleManageSection(){
-    var sec=document.getElementById('lg-manage-section'); if(!sec) return;
-    var btn=document.getElementById('lg-show-manage-btn');
-    if(sec.style.display==='none'||sec.style.display===''){
-        sec.style.display='block'; loadAllStoredLeads(1);
-        if(btn) btn.textContent='✕ Close Stored Leads';
-    } else {
-        sec.style.display='none';
-        if(btn) btn.textContent='📚 View All Stored Leads ('+lgTotalStored+')';
-    }
-}
-
-function loadAllStoredLeads(page){
-    page=page||1; lgCurrentPage=page;
-    var search=document.getElementById('filter-search')?.value||'';
-    var location=document.getElementById('filter-location')?.value||'';
-    var industry=document.getElementById('filter-industry')?.value||'';
-    var website=document.getElementById('filter-website')?.value||'';
-    var imported=document.getElementById('filter-imported')?.value||'';
-    var url='lead_generator_api.php?action=get_all_stored&page='+page+'&per_page='+lgPerPage;
-    if(search)   url+='&search='+encodeURIComponent(search);
-    if(location) url+='&location='+encodeURIComponent(location);
-    if(industry) url+='&industry='+encodeURIComponent(industry);
-    if(website)  url+='&website='+website;
-    if(imported) url+='&imported='+imported;
-    var tbody=document.getElementById('lg-stored-tbody');
-    if(tbody) tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr>';
-    fetch(url)
-    .then(function(r){return r.json();})
-    .then(function(d){
-        if(!d.ok){toast(d.error||'Failed','error');return;}
-        renderStoredLeadsTable(d.leads);
-        renderPagination(d.total,d.page,d.per_page);
-        populateFilters(d.locations,d.industries);
-        var c=document.getElementById('lg-manage-count');
-        if(c) c.textContent='Total: '+d.total+' leads stored';
-        lgTotalStored=d.total;
-        var ts=document.getElementById('lg-total-stored'); if(ts) ts.textContent=d.total;
-    })
-    .catch(function(e){toast('Network error: '+e.message,'error');});
-}
-
-function renderStoredLeadsTable(leads){
-    var tbody=document.getElementById('lg-stored-tbody'); if(!tbody) return;
-    if(!leads||!leads.length){
-        tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:36px"><div style="font-size:28px;margin-bottom:8px">📭</div><div style="color:var(--text3)">No leads found</div></td></tr>';
-        return;
-    }
-    tbody.innerHTML=leads.map(function(l,idx){
-        var rowNum=((lgCurrentPage-1)*lgPerPage)+idx+1;
-        var score=l.opportunity_score||0;
-        var sc=score>=70?'#10b981':score>=40?'#f59e0b':'#94a3b8';
-        var scoreBadge='<div style="text-align:center"><div style="font-size:15px;font-weight:800;color:'+sc+'">'+score+'</div></div>';
-        var web_badge=l.has_website
-            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" style="font-size:10px">✅ Yes ↗</a>'
-            : '<span class="lg-web-no" style="font-size:10px;font-weight:800">🔥 No</span>';
-        var status=l.imported
-            ? '<span class="lg-imp-done" style="font-size:10px">✓ Imported</span>'
-            : '<span style="font-size:10px;color:var(--text3)">Not imported</span>';
-        var stars=l.rating?'⭐ '+l.rating:'—';
-        var email_cell=l.email
-            ? '<a href="mailto:'+esc(l.email)+'" style="font-size:11px;color:#6366f1" title="'+esc(l.email)+'">'+esc(l.email)+'</a>'
-            : '<span style="color:var(--text3);font-size:11px">—</span>';
-        var name_cell='<div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(l.name)+'</div>'
-            +(l.owner_name?'<div style="font-size:11px;color:var(--text3)">👤 '+esc(l.owner_name)+'</div>':'');
-        return '<tr style="'+(l.has_website?'':'background:rgba(16,185,129,.03)')+'">'
-            +'<td><input type="checkbox" class="lead-select" data-id="'+l.id+'"></td>'
-            +'<td>'+scoreBadge+'</td>'
-            +'<td>'+name_cell+'</td>'
-            +'<td style="font-size:12px">'+(l.phone?esc(l.phone):'<span style="color:var(--text3)">—</span>')+'</td>'
-            +'<td>'+email_cell+'</td>'
-            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.location||'—')+'</td>'
-            +'<td style="font-size:12px;color:var(--text3)">'+esc(l.industry||'—')+'</td>'
-            +'<td>'+web_badge+'</td>'
-            +'<td style="font-size:12px">'+stars+(l.ratings_total?'<div style="font-size:10px;color:var(--text3)">'+l.ratings_total+'</div>':'')+'</td>'
-            +'<td style="font-size:11px;color:var(--text3)">'+fmtDate(l.created_at)+'</td>'
-            +'<td>'+status+'</td>'
-            +'<td><div style="display:flex;gap:4px">'
-                +(l.imported?''
-                    :'<button onclick="impOne('+l.id+',this)" class="lg-imp-btn" style="width:24px;height:24px;font-size:10px" title="Import">⬇</button>')
-                +'<button onclick="deleteSingleLead('+l.id+')" class="btn btn-ghost btn-sm btn-icon" style="width:24px;height:24px;padding:4px;font-size:11px" title="Delete">🗑</button>'
-            +'</div></td>'
-            +'</tr>';
-    }).join('');
-    updateSelectAllState();
-}
-
-function renderPagination(total,currentPage,perPage){
-    var totalPages=Math.ceil(total/perPage);
-    var info=document.getElementById('lg-pagination-info');
-    var btns=document.getElementById('lg-pagination-btns');
-    if(!info||!btns) return;
-    var start=((currentPage-1)*perPage)+1, end=Math.min(currentPage*perPage,total);
-    info.textContent='Showing '+start+'–'+end+' of '+total;
-    if(totalPages<=1){btns.innerHTML='';return;}
-    var html='';
-    if(currentPage>1) html+='<button onclick="loadAllStoredLeads('+(currentPage-1)+')" class="btn btn-ghost btn-sm">← Prev</button>';
-    var s=Math.max(1,currentPage-2),e=Math.min(totalPages,currentPage+2);
-    if(s>1){html+='<button onclick="loadAllStoredLeads(1)" class="btn btn-ghost btn-sm">1</button>';if(s>2) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';}
-    for(var i=s;i<=e;i++){
-        if(i===currentPage) html+='<button class="btn btn-sm" style="background:var(--orange);color:#fff">'+i+'</button>';
-        else html+='<button onclick="loadAllStoredLeads('+i+')" class="btn btn-ghost btn-sm">'+i+'</button>';
-    }
-    if(e<totalPages){if(e<totalPages-1) html+='<span style="padding:5px 8px;color:var(--text3)">...</span>';html+='<button onclick="loadAllStoredLeads('+totalPages+')" class="btn btn-ghost btn-sm">'+totalPages+'</button>';}
-    if(currentPage<totalPages) html+='<button onclick="loadAllStoredLeads('+(currentPage+1)+')" class="btn btn-ghost btn-sm">Next →</button>';
-    btns.innerHTML=html;
-}
-
-function populateFilters(locations,industries){
-    var locSel=document.getElementById('filter-location');
-    var indSel=document.getElementById('filter-industry');
-    if(locSel&&locations&&locations.length){var cv=locSel.value;locSel.innerHTML='<option value="">All Locations</option>'+locations.map(function(l){return'<option value="'+esc(l)+'">'+esc(l)+'</option>';}).join('');locSel.value=cv;}
-    if(indSel&&industries&&industries.length){var cv=indSel.value;indSel.innerHTML='<option value="">All Industries</option>'+industries.map(function(i){return'<option value="'+esc(i)+'">'+esc(i)+'</option>';}).join('');indSel.value=cv;}
-}
-
-function filterStoredLeads(){loadAllStoredLeads(1);}
-function resetFilters(){
-    ['filter-search','filter-location','filter-industry','filter-website','filter-imported'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-    loadAllStoredLeads(1);
-}
-
-function toggleSelectAll(cb){
-    document.querySelectorAll('.lead-select').forEach(function(c){c.checked=cb.checked;});
-    updateBulkDeleteButton();
-}
-function updateSelectAllState(){
-    var sa=document.getElementById('select-all-leads');
-    var all=document.querySelectorAll('.lead-select');
-    var chk=document.querySelectorAll('.lead-select:checked').length;
-    if(!sa) return;
-    sa.checked=chk>0&&chk===all.length; sa.indeterminate=chk>0&&chk<all.length;
-    updateBulkDeleteButton();
-}
-function updateBulkDeleteButton(){
-    var btn=document.getElementById('lg-bulk-delete-btn'); if(!btn) return;
-    var sel=document.querySelectorAll('.lead-select:checked');
-    btn.disabled=sel.length===0;
-    btn.textContent='Delete Selected'+(sel.length>0?' ('+sel.length+')':'');
-}
-document.addEventListener('change',function(e){if(e.target.classList.contains('lead-select')) updateSelectAllState();});
-
-function bulkDeleteSelected(){
-    var sel=Array.from(document.querySelectorAll('.lead-select:checked')).map(function(cb){return cb.dataset.id;});
-    if(!sel.length){toast('No leads selected','info');return;}
-    if(!confirm('Delete '+sel.length+' lead(s)? Cannot be undone.')) return;
-    var btn=document.getElementById('lg-bulk-delete-btn');
-    btn.disabled=true; btn.textContent='Deleting...';
-    var fd=new FormData(); fd.append('action','bulk_delete'); fd.append('ids',sel.join(','));
-    fetch('lead_generator_api.php',{method:'POST',body:fd})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        if(d.ok){toast(d.deleted+' lead(s) deleted','success');loadAllStoredLeads(lgCurrentPage);loadStats();}
-        else{toast(d.error||'Delete failed','error');btn.disabled=false;updateBulkDeleteButton();}
-    })
-    .catch(function(e){toast('Network error','error');btn.disabled=false;updateBulkDeleteButton();});
-}
-
-function deleteSingleLead(id){
-    if(!confirm('Delete this lead?')) return;
-    var fd=new FormData(); fd.append('action','bulk_delete'); fd.append('ids',id);
-    fetch('lead_generator_api.php',{method:'POST',body:fd})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        if(d.ok){toast('Lead deleted','success');loadAllStoredLeads(lgCurrentPage);loadStats();}
-        else toast(d.error||'Delete failed','error');
-    });
-}
-
-// ── QUOTA MANAGEMENT (admin) ──
-function renderUserQuotaTable(users){
-    var tbody=document.getElementById('user-quota-tbody'); if(!tbody) return;
-    if(!users||!users.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--text3)">No users found</td></tr>';return;}
-    var roleColors={'admin':'var(--orange)','manager':'#8b5cf6','member':'#64748b'};
-    tbody.innerHTML=users.map(function(u){
-        var rc=roleColors[u.role]||'var(--text3)';
-        var pct=u.quota>0?Math.min(100,Math.round(u.used_month/u.quota*100)):0;
-        var barColor=pct>90?'#ef4444':pct>70?'#f59e0b':'var(--orange)';
-        var roleDefault=roleDef[u.role]||u.quota;
-        return '<tr>'
-            +'<td style="font-weight:600;color:var(--text)">'+esc(u.name)+'</td>'
-            +'<td><span style="color:'+rc+';font-weight:700;font-size:12px">'+u.role.toUpperCase()+'</span></td>'
-            +'<td style="font-size:13px">'+roleDefault+' leads</td>'
-            +'<td>'
-                +'<div style="font-size:13px;font-weight:700;color:'+(pct>90?'#ef4444':'var(--text)')+'">'+u.used_month+' / '+u.quota+'</div>'
-                +'<div style="height:4px;background:var(--bg4);border-radius:99px;margin-top:3px;width:80px"><div style="height:100%;border-radius:99px;background:'+barColor+';width:'+pct+'%"></div></div>'
-            +'</td>'
-            +'<td><input type="number" id="uq-'+u.id+'" placeholder="Role default" value="'+esc(u.override)+'" min="1" max="5000" style="width:90px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px"></td>'
-            +'<td><button onclick="saveUserQuota('+u.id+')" class="btn btn-ghost btn-sm" style="font-size:11.5px">Save</button>'
-                +(u.override?'<button onclick="clearUserQuota('+u.id+')" class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--text3);margin-left:4px" title="Reset to role default">×</button>':'')
-            +'</td>'
-            +'</tr>';
-    }).join('');
-}
-
-var roleDef={'admin':500,'manager':100,'member':20};
-
-function saveRoleQuotas(){
-    var qa=document.getElementById('cfg-q-admin')?.value||500;
-    var qm=document.getElementById('cfg-q-manager')?.value||100;
-    var qmb=document.getElementById('cfg-q-member')?.value||20;
-    roleDef={'admin':parseInt(qa)||500,'manager':parseInt(qm)||100,'member':parseInt(qmb)||20};
-    var fd=new FormData();
-    fd.append('action','save_role_quotas');
-    fd.append('q_admin',qa); fd.append('q_manager',qm); fd.append('q_member',qmb);
-    fetch('lead_generator_api.php',{method:'POST',body:fd})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        var el=document.getElementById('cfg-quota-result');
-        if(el){el.style.display='block';el.style.background=d.ok?'rgba(16,185,129,.08)':'rgba(239,68,68,.06)';el.style.color=d.ok?'#10b981':'#ef4444';el.textContent=d.ok?'Role quotas saved!':d.error;}
-        if(d.ok){toast('Role quotas saved!','success');loadStats();}else toast(d.error||'Failed','error');
-    });
-}
-
-function saveUserQuota(uid){
-    var val=document.getElementById('uq-'+uid)?.value||'';
-    var fd=new FormData(); fd.append('action','save_user_quota'); fd.append('target_uid',uid); fd.append('user_quota',val);
-    fetch('lead_generator_api.php',{method:'POST',body:fd})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        if(d.ok){toast(d.message,'success');loadStats();}else toast(d.error||'Failed','error');
-    });
-}
-
-function clearUserQuota(uid){
-    document.getElementById('uq-'+uid).value='';
-    saveUserQuota(uid);
-}
-
-// Hook into existing loadStats to populate quota table when settings open
-var _origLoadStats = null;
-function hookLoadStats(){
-    var origFn = window.loadStats;
-    window.loadStats = function(){
-        origFn.apply(this,arguments);
-    };
-}
-
-
-// ── SETTINGS TABS ──────────────────────────────────────────────────────────
+// ── SETTINGS TABS ──
 function switchSettingsTab(tab) {
     ['api','quota'].forEach(function(t){
         var btn=document.getElementById('stab-'+t);
@@ -1045,26 +748,23 @@ function switchSettingsTab(tab) {
     });
     if(tab==='quota') loadQuotaConfig();
 }
-
 function loadQuotaConfig() {
     var tbody=document.getElementById('quota-users-tbody');
     if(tbody) tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text3)">Loading...</td></tr>';
     fetch('lead_generator_api.php?action=get_quota_config')
     .then(function(r){return r.json();})
     .then(function(d){
-        if(!d.ok){if(tbody)tbody.innerHTML='<tr><td colspan="5" style="color:var(--text3);padding:12px">Failed to load</td></tr>';return;}
+        if(!d.ok){if(tbody)tbody.innerHTML='<tr><td colspan="5" style="color:var(--text3);padding:12px">Failed</td></tr>';return;}
         var roles=d.roles||{};
         if(document.getElementById('qr-admin'))   document.getElementById('qr-admin').value   = roles.admin   ??300;
         if(document.getElementById('qr-manager')) document.getElementById('qr-manager').value = roles.manager ??100;
         if(document.getElementById('qr-user'))    document.getElementById('qr-user').value    = roles.user    ??30;
-        renderQuotaUsers(d.users||[],d.global_quota||300);
+        renderQuotaUsers(d.users||[]);
     }).catch(function(){});
 }
-
-function renderQuotaUsers(users,globalQuota) {
+function renderQuotaUsers(users) {
     var tbody=document.getElementById('quota-users-tbody'); if(!tbody) return;
     if(!users.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text3)">No users found</td></tr>';return;}
-    var roleColors={'admin':'#ef4444','manager':'var(--orange)','user':'var(--text3)'};
     tbody.innerHTML=users.map(function(u){
         var used=parseInt(u.used_leads)||0; var eq=parseInt(u.effective_quota)||0;
         var pct=eq>0?Math.min(100,Math.round(used/eq*100)):0;
@@ -1082,11 +782,10 @@ function renderQuotaUsers(users,globalQuota) {
                 +'<div class="qu-bar-wrap" style="margin-left:6px"><div class="qu-bar" style="width:'+pct+'%;background:'+barColor+'"></div></div></td>'
             +'<td>'+srcBadge+'</td>'
             +'<td><input type="number" name="user_quota['+u.id+']" class="qu-input" value="'+overrideVal
-                +'" min="-1" max="5000" placeholder="inherit" title="Blank=role default, 0=block, number=custom"></td>'
+                +'" min="-1" max="5000" placeholder="inherit" title="Blank=role default, 0=block"></td>'
             +'</tr>';
     }).join('');
 }
-
 function saveQuotaConfig() {
     var fd=new FormData();
     fd.append('action','save_quota_config');
@@ -1099,223 +798,260 @@ function saveQuotaConfig() {
     });
     var msg=document.getElementById('quota-save-msg');
     fetch('lead_generator_api.php',{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){
-        if(msg){msg.style.display='block';msg.style.color=d.ok?'#10b981':'#ef4444';msg.textContent=d.ok?'Quota settings saved!':d.error||'Save failed';setTimeout(function(){msg.style.display='none';},3000);}
+        if(msg){msg.style.display='block';msg.style.color=d.ok?'#10b981':'#ef4444';msg.textContent=d.ok?'Saved!':d.error||'Failed';setTimeout(function(){msg.style.display='none';},3000);}
         if(d.ok){loadStats();loadQuotaConfig();toast('Quota settings saved','success');}
         else toast(d.error||'Save failed','error');
     }).catch(function(){toast('Network error','error');});
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// LOCATION & INDUSTRY AUTOCOMPLETE
-// All client-side, no API calls, no cost
-// ═══════════════════════════════════════════════════════════════════
-
-// Location data: country → array of cities/states/regions
-var lgLocData = {
-  // South Asia (primary market)
-  'India': {flag:'🇮🇳', regions:[
-    'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-    'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-    'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-    'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-    // Major cities
-    'Mumbai','Delhi','Bangalore','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad',
-    'Jaipur','Surat','Lucknow','Kanpur','Nagpur','Indore','Thane','Bhopal','Visakhapatnam',
-    'Pimpri-Chinchwad','Patna','Vadodara','Ghaziabad','Ludhiana','Agra','Nashik','Faridabad',
-    'Meerut','Rajkot','Kalyan-Dombivali','Vasai-Virar','Varanasi','Srinagar','Aurangabad',
-    'Dhanbad','Amritsar','Navi Mumbai','Allahabad','Ranchi','Howrah','Coimbatore','Jabalpur',
-    'Gwalior','Vijayawada','Jodhpur','Madurai','Raipur','Kota','Guwahati','Chandigarh',
-    'Solapur','Hubballi-Dharwad','Bareilly','Moradabad','Mysore','Gurgaon','Aligarh',
-    'Jalandhar','Tiruchirappalli','Bhubaneswar','Salem','Mira-Bhayandar','Warangal',
-    'Guntur','Bhiwandi','Saharanpur','Gorakhpur','Bikaner','Amravati','Noida','Jamshedpur',
-    'Bhilai','Cuttack','Firozabad','Kochi','Nellore','Bhavnagar','Dehradun','Durgapur',
-    'Asansol','Rourkela','Nanded','Kolhapur','Ajmer','Akola','Gulbarga','Jamnagar',
-    'Ujjain','Loni','Siliguri','Jhansi','Ulhasnagar','Jammu','Sangli-Miraj','Mangalore',
-    'Erode','Belgaum','Ambattur','Tirunelveli','Malegaon','Gaya','Jalgaon','Udaipur',
-    'Maheshtala','Davanagere','Kozhikode','Kurnool','Rajpur Sonarpur','Rajahmundry',
-    'Bokaro','South Dumdum','Bellary','Patiala','Gopalpur','Agartala','Bhagalpur',
-    'Muzaffarnagar','Bhatpara','Panihati','Latur','Dhule','Rohtak','Korba','Bhilwara',
-    'Brahmapur','Muzaffarpur','Ahmadnagar','Mathura','Kollam','Avadi','Kadapa','Kamarhati',
-    'Sambalpur','Bilaspur','Shahjahanpur','Satara','Bijapur','Rampur','Shimoga','Chandrapur',
-    // Tamil Nadu specific (key market)
-    'Trichy','Tiruchirappalli','Lalgudi','Batticola','Batticaloa','Puducherry','Pondicherry',
-    'Thanjavur','Kumbakonam','Karur','Namakkal','Dindigul','Tiruppur','Erode','Vellore',
-    'Tirunelveli','Tuticorin','Nagercoil','Kanyakumari','Thoothukudi','Krishnagiri',
-    'Dharmapuri','Perambalur','Ariyalur','Sivaganga','Ramanathapuram','Virudhunagar',
-    'Tiruvarur','Nagapattinam','Mayiladuthurai','Cuddalore','Villupuram','Kallakurichi',
-    'Ranipet','Tirupattur','Tenkasi','Tirupur','Nilgiris','The Nilgiris','Ooty',
-    'Chidambaram','Sirkazhi','Srirangam','Palayamkottai','Sivakasi','Kayalpattinam'
-  ]},
-  'Sri Lanka': {flag:'🇱🇰', regions:[
-    'Colombo','Kandy','Galle','Jaffna','Negombo','Trincomalee','Batticaloa','Anuradhapura',
-    'Polonnaruwa','Nuwara Eliya','Ratnapura','Kurunegala','Matara','Badulla','Hambantota',
-    'Kalutara','Gampaha','Kegalle','Ampara','Mannar','Mullativu','Vavuniya','Kilinochchi',
-    'Puttalam','Monaragala','Matale','Western Province','Central Province','Southern Province',
-    'Northern Province','Eastern Province','North Western Province','Sabaragamuwa Province'
-  ]},
-  'Pakistan': {flag:'🇵🇰', regions:['Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad','Multan','Peshawar','Quetta','Sialkot','Gujranwala','Hyderabad','Bahawalpur']},
-  'Bangladesh': {flag:'🇧🇩', regions:['Dhaka','Chittagong','Khulna','Rajshahi','Sylhet','Barisal','Comilla','Mymensingh','Narayanganj','Rangpur']},
-  // Southeast Asia
-  'Singapore': {flag:'🇸🇬', regions:['Singapore','Central Singapore','North Singapore','East Singapore','West Singapore','North-East Singapore']},
-  'Malaysia': {flag:'🇲🇾', regions:['Kuala Lumpur','Selangor','Penang','Johor Bahru','Ipoh','Petaling Jaya','Subang Jaya','Shah Alam','Malacca','Kota Kinabalu','Kuching']},
-  'Indonesia': {flag:'🇮🇩', regions:['Jakarta','Surabaya','Bandung','Medan','Bekasi','Tangerang','Depok','Semarang','Palembang','Makassar','Yogyakarta','Denpasar','Bali']},
-  // Middle East
-  'UAE': {flag:'🇦🇪', regions:['Dubai','Abu Dhabi','Sharjah','Ajman','Ras Al Khaimah','Fujairah','Umm Al Quwain']},
-  'Saudi Arabia': {flag:'🇸🇦', regions:['Riyadh','Jeddah','Mecca','Medina','Dammam','Khobar','Tabuk','Abha','Taif','Hail','Buraidah']},
-  'Qatar': {flag:'🇶🇦', regions:['Doha','Al Rayyan','Al Wakrah','Al Khor','Lusail']},
-  'Kuwait': {flag:'🇰🇼', regions:['Kuwait City','Salmiya','Hawalli','Farwaniya','Ahmadi']},
-  'Bahrain': {flag:'🇧🇭', regions:['Manama','Muharraq','Riffa','Hamad Town']},
-  // UK & Europe
-  'United Kingdom': {flag:'🇬🇧', regions:['London','Manchester','Birmingham','Liverpool','Leeds','Sheffield','Bristol','Edinburgh','Glasgow','Cardiff','Belfast','Newcastle','Nottingham','Southampton','Leicester','Coventry','Bradford','Stoke-on-Trent','Wolverhampton','Plymouth']},
-  'Germany': {flag:'🇩🇪', regions:['Berlin','Hamburg','Munich','Cologne','Frankfurt','Stuttgart','Dusseldorf','Dortmund','Essen','Leipzig','Bremen','Dresden','Hannover','Nuremberg']},
-  'France': {flag:'🇫🇷', regions:['Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille','Rennes','Reims','Le Havre','Saint-Etienne']},
-  // Americas
-  'United States': {flag:'🇺🇸', regions:['New York','Los Angeles','Chicago','Houston','Phoenix','Philadelphia','San Antonio','San Diego','Dallas','San Jose','Austin','Jacksonville','Fort Worth','Columbus','Charlotte','San Francisco','Indianapolis','Seattle','Denver','Washington DC','Nashville','Oklahoma City','Las Vegas','Portland','Memphis','Louisville','Baltimore','Milwaukee','Albuquerque','Boston','Atlanta','Miami','Minneapolis','Tampa','New Orleans']},
-  'Canada': {flag:'🇨🇦', regions:['Toronto','Montreal','Vancouver','Calgary','Edmonton','Ottawa','Winnipeg','Quebec City','Hamilton','Kitchener','London','Halifax','Victoria','Windsor']},
-  // Australia
-  'Australia': {flag:'🇦🇺', regions:['Sydney','Melbourne','Brisbane','Perth','Adelaide','Gold Coast','Canberra','Hobart','Geelong','Newcastle','Wollongong','Townsville','Cairns','Darwin']},
-  // Africa
-  'South Africa': {flag:'🇿🇦', regions:['Johannesburg','Cape Town','Durban','Pretoria','Port Elizabeth','Bloemfontein','East London','Polokwane','Nelspruit','Kimberley']},
-  'Nigeria': {flag:'🇳🇬', regions:['Lagos','Abuja','Kano','Ibadan','Port Harcourt','Benin City','Maiduguri','Zaria','Kaduna','Owerri']},
-  'Kenya': {flag:'🇰🇪', regions:['Nairobi','Mombasa','Kisumu','Nakuru','Eldoret','Thika','Malindi']},
+// ── COUNTRY / STATE / CITY CASCADE ──
+var lgCountryData = {
+  'India': {
+    'Andhra Pradesh': ['Visakhapatnam','Vijayawada','Guntur','Nellore','Kurnool','Rajahmundry','Tirupati','Kadapa','Eluru','Ongole','Anantapur','Vizianagaram','Srikakulam','Kakinada','Bhimavaram'],
+    'Arunachal Pradesh': ['Itanagar','Naharlagun','Pasighat'],
+    'Assam': ['Guwahati','Silchar','Dibrugarh','Jorhat','Nagaon','Tezpur','Lakhimpur','Dhubri','Sivasagar'],
+    'Bihar': ['Patna','Gaya','Muzaffarpur','Bhagalpur','Darbhanga','Purnia','Arrah','Begusarai','Katihar','Chapra'],
+    'Chhattisgarh': ['Raipur','Bhilai','Bilaspur','Korba','Durg','Rajnandgaon','Raigarh','Jagdalpur'],
+    'Goa': ['Panaji','Margao','Vasco da Gama','Mapusa','Ponda'],
+    'Gujarat': ['Ahmedabad','Surat','Vadodara','Rajkot','Bhavnagar','Jamnagar','Junagadh','Gandhinagar','Anand','Navsari','Morbi','Mehsana','Surendranagar','Bharuch'],
+    'Haryana': ['Faridabad','Gurgaon','Panipat','Ambala','Yamunanagar','Rohtak','Hisar','Karnal','Sonipat','Panchkula'],
+    'Himachal Pradesh': ['Shimla','Dharamsala','Solan','Mandi','Kullu','Palampur','Baddi'],
+    'Jharkhand': ['Ranchi','Jamshedpur','Dhanbad','Bokaro','Deoghar','Hazaribagh','Giridih'],
+    'Karnataka': ['Bangalore','Mysore','Hubballi','Mangalore','Belgaum','Davanagere','Bellary','Shimoga','Tumkur','Bijapur','Gulbarga','Udupi'],
+    'Kerala': ['Thiruvananthapuram','Kochi','Kozhikode','Thrissur','Kollam','Malappuram','Palakkad','Alappuzha','Kannur','Kasaragod','Kottayam','Wayanad'],
+    'Madhya Pradesh': ['Bhopal','Indore','Jabalpur','Gwalior','Ujjain','Sagar','Ratlam','Satna','Dewas','Rewa','Singrauli','Burhanpur'],
+    'Maharashtra': ['Mumbai','Pune','Nagpur','Thane','Nashik','Aurangabad','Solapur','Kolhapur','Amravati','Nanded','Sangli','Akola','Jalgaon','Latur','Dhule','Ahmednagar'],
+    'Manipur': ['Imphal','Thoubal','Bishnupur','Churachandpur'],
+    'Meghalaya': ['Shillong','Tura','Jowai'],
+    'Odisha': ['Bhubaneswar','Cuttack','Rourkela','Brahmapur','Sambalpur','Puri','Balasore','Bhadrak'],
+    'Punjab': ['Ludhiana','Amritsar','Jalandhar','Patiala','Bathinda','Mohali','Hoshiarpur','Pathankot'],
+    'Rajasthan': ['Jaipur','Jodhpur','Kota','Bikaner','Ajmer','Udaipur','Bhilwara','Alwar','Sikar','Bharatpur','Chittorgarh'],
+    'Tamil Nadu': ['Chennai','Coimbatore','Madurai','Tiruchirappalli','Trichy','Salem','Tirunelveli','Erode','Vellore','Thoothukudi','Dindigul','Tiruppur','Thanjavur','Ranipet','Sivakasi','Karur','Namakkal','Kanchipuram','Kumbakonam','Nagapattinam','Lalgudi','Ariyalur','Chidambaram','Cuddalore','Dharmapuri','Krishnagiri','Perambalur','Villupuram','Kallakurichi','Nagercoil','Ooty','Kodaikanal','Tiruvarur','Mayiladuthurai','Virudhunagar','Sivaganga','Ramanathapuram','Pudukottai','Tirupattur','Tenkasi','Batticola'],
+    'Telangana': ['Hyderabad','Warangal','Nizamabad','Karimnagar','Ramagundam','Khammam','Mahbubnagar','Nalgonda','Adilabad'],
+    'Tripura': ['Agartala','Dharmanagar','Udaipur'],
+    'Uttar Pradesh': ['Lucknow','Kanpur','Agra','Varanasi','Meerut','Allahabad','Bareilly','Aligarh','Moradabad','Saharanpur','Gorakhpur','Noida','Ghaziabad','Mathura','Jhansi'],
+    'Uttarakhand': ['Dehradun','Haridwar','Roorkee','Haldwani','Rishikesh','Nainital'],
+    'West Bengal': ['Kolkata','Asansol','Siliguri','Durgapur','Bardhaman','Malda','Baharampur'],
+    'Delhi': ['New Delhi','Central Delhi','North Delhi','South Delhi','East Delhi','West Delhi','Dwarka','Rohini','Noida Extension'],
+    'Chandigarh': ['Chandigarh'],
+    'Puducherry': ['Puducherry','Pondicherry','Karaikal','Mahe'],
+    'Jammu & Kashmir': ['Srinagar','Jammu','Anantnag','Baramulla'],
+    'Andaman & Nicobar': ['Port Blair']
+  },
+  'Sri Lanka': {
+    'Western Province': ['Colombo','Negombo','Kalutara','Panadura','Gampaha','Kelaniya','Dehiwala','Moratuwa','Homagama','Kaduwela'],
+    'Central Province': ['Kandy','Matale','Nuwara Eliya','Gampola','Hatton','Dambulla'],
+    'Southern Province': ['Galle','Matara','Hambantota','Tangalle','Weligama'],
+    'Northern Province': ['Jaffna','Vavuniya','Kilinochchi','Mannar','Mullaitivu'],
+    'Eastern Province': ['Batticaloa','Trincomalee','Ampara','Kalmunai','Akkaraipattu'],
+    'North Western Province': ['Kurunegala','Puttalam','Chilaw'],
+    'North Central Province': ['Anuradhapura','Polonnaruwa'],
+    'Uva Province': ['Badulla','Monaragala'],
+    'Sabaragamuwa Province': ['Ratnapura','Kegalle']
+  },
+  'UAE': {
+    'Dubai': ['Dubai Marina','Deira','Bur Dubai','Jumeirah','Business Bay','Downtown Dubai','Al Quoz','Al Barsha','Mirdif','International City','Jebel Ali'],
+    'Abu Dhabi': ['Abu Dhabi City','Al Ain','Mussafah','Khalifa City'],
+    'Sharjah': ['Sharjah City','Al Qasimia','Al Nahda'],
+    'Ajman': ['Ajman City'],
+    'Ras Al Khaimah': ['RAK City'],
+    'Fujairah': ['Fujairah City'],
+    'Umm Al Quwain': ['UAQ City']
+  },
+  'United Kingdom': {
+    'England': ['London','Manchester','Birmingham','Liverpool','Leeds','Sheffield','Bristol','Newcastle','Nottingham','Southampton','Leicester','Coventry','Bradford','Plymouth','Derby','Reading','Luton','Portsmouth','Norwich','Swindon','Bournemouth','Exeter'],
+    'Scotland': ['Edinburgh','Glasgow','Aberdeen','Dundee','Inverness'],
+    'Wales': ['Cardiff','Swansea','Newport','Wrexham'],
+    'Northern Ireland': ['Belfast','Derry','Lisburn']
+  },
+  'Singapore': {
+    'Singapore': ['Central','North','East','West','North-East','Jurong','Tampines','Woodlands','Yishun','Bishan','Clementi','Bedok','Buona Vista','Orchard','Marina Bay','Raffles Place']
+  },
+  'Malaysia': {
+    'Selangor': ['Petaling Jaya','Shah Alam','Subang Jaya','Klang','Ampang'],
+    'Kuala Lumpur': ['City Centre','Chow Kit','Bangsar','Mont Kiara','Bukit Bintang','Cheras','Kepong'],
+    'Penang': ['George Town','Butterworth','Bayan Lepas','Seberang Perai'],
+    'Johor': ['Johor Bahru','Skudai','Pasir Gudang','Batu Pahat'],
+    'Perak': ['Ipoh','Taiping','Teluk Intan'],
+    'Sabah': ['Kota Kinabalu','Sandakan','Tawau'],
+    'Sarawak': ['Kuching','Miri','Sibu']
+  },
+  'Australia': {
+    'New South Wales': ['Sydney','Newcastle','Wollongong','Central Coast','Wagga Wagga'],
+    'Victoria': ['Melbourne','Geelong','Ballarat','Bendigo','Shepparton'],
+    'Queensland': ['Brisbane','Gold Coast','Sunshine Coast','Townsville','Cairns'],
+    'Western Australia': ['Perth','Fremantle','Mandurah','Bunbury'],
+    'South Australia': ['Adelaide','Mount Gambier','Whyalla'],
+    'Tasmania': ['Hobart','Launceston'],
+    'ACT': ['Canberra']
+  },
+  'Germany': {
+    'Bavaria': ['Munich','Nuremberg','Augsburg','Regensburg'],
+    'Berlin': ['Berlin'],
+    'Hamburg': ['Hamburg'],
+    'North Rhine-Westphalia': ['Cologne','Dusseldorf','Dortmund','Essen','Bochum'],
+    'Baden-Wuerttemberg': ['Stuttgart','Mannheim','Karlsruhe','Freiburg'],
+    'Other States': ['Frankfurt','Leipzig','Dresden','Hannover','Bremen']
+  },
+  'United States': {
+    'California': ['Los Angeles','San Francisco','San Diego','San Jose','Sacramento','Fresno'],
+    'Texas': ['Houston','Dallas','San Antonio','Austin','Fort Worth'],
+    'New York': ['New York City','Buffalo','Rochester','Yonkers','Syracuse'],
+    'Florida': ['Miami','Orlando','Tampa','Jacksonville','Fort Lauderdale'],
+    'Other States': ['Chicago IL','Phoenix AZ','Philadelphia PA','Seattle WA','Denver CO','Boston MA','Atlanta GA']
+  },
+  'Canada': {
+    'Ontario': ['Toronto','Ottawa','Mississauga','Brampton','Hamilton','London','Markham'],
+    'Quebec': ['Montreal','Quebec City','Laval','Gatineau'],
+    'British Columbia': ['Vancouver','Surrey','Burnaby','Richmond'],
+    'Alberta': ['Calgary','Edmonton']
+  },
+  'Bangladesh': {
+    'Dhaka Division': ['Dhaka','Narayanganj','Gazipur','Mymensingh'],
+    'Chittagong Division': ['Chittagong','Comilla','Cox\'s Bazar'],
+    'Rajshahi Division': ['Rajshahi','Bogura'],
+    'Sylhet Division': ['Sylhet','Moulvibazar'],
+    'Khulna Division': ['Khulna','Jessore']
+  },
+  'Pakistan': {
+    'Punjab': ['Lahore','Faisalabad','Rawalpindi','Gujranwala','Multan','Sialkot'],
+    'Sindh': ['Karachi','Hyderabad','Sukkur'],
+    'Khyber Pakhtunkhwa': ['Peshawar','Mardan','Abbottabad'],
+    'Balochistan': ['Quetta'],
+    'Islamabad Capital Territory': ['Islamabad']
+  }
 };
 
-// Build flat searchable list
-var lgLocFlat = [];
-Object.keys(lgLocData).forEach(function(country) {
-    var d = lgLocData[country];
-    lgLocFlat.push({type:'country', label:country, flag:d.flag, search:country.toLowerCase()});
-    d.regions.forEach(function(r) {
-        lgLocFlat.push({type:'city', label:r, country:country, flag:d.flag, search:r.toLowerCase()+' '+country.toLowerCase()});
-    });
-});
+function populateCountryDropdown() {
+    var sel = document.getElementById('lg-country'); if (!sel) return;
+    var priority = ['India','Sri Lanka','UAE','United Kingdom','Singapore','Malaysia','Australia','United States','Canada','Germany','Bangladesh','Pakistan'];
+    var all = Object.keys(lgCountryData).sort();
+    var others = all.filter(function(c){return priority.indexOf(c)===-1;});
+    sel.innerHTML = '<option value="">Select Country</option>';
+    sel.innerHTML += '<optgroup label="Commonly Used">' + priority.filter(function(c){return lgCountryData[c];}).map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') + '</optgroup>';
+    if(others.length) sel.innerHTML += '<optgroup label="Others">' + others.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') + '</optgroup>';
+}
+function onCountryChange(country) {
+    var stateSel=document.getElementById('lg-state');
+    var citySel=document.getElementById('lg-city');
+    stateSel.innerHTML='<option value="">Select State / Province</option>';
+    citySel.innerHTML='<option value="">Select City / District</option>';
+    stateSel.disabled=true; citySel.disabled=true;
+    if(country&&lgCountryData[country]) {
+        Object.keys(lgCountryData[country]).sort().forEach(function(s){
+            var o=document.createElement('option'); o.value=s; o.textContent=s; stateSel.appendChild(o);
+        });
+        stateSel.disabled=false;
+    }
+    syncLocation();
+}
+function onStateChange(state) {
+    var country=document.getElementById('lg-country').value;
+    var citySel=document.getElementById('lg-city');
+    citySel.innerHTML='<option value="">Select City / District / Town</option>';
+    citySel.disabled=true;
+    if(state&&country&&lgCountryData[country]&&lgCountryData[country][state]) {
+        lgCountryData[country][state].forEach(function(c){
+            var o=document.createElement('option'); o.value=c; o.textContent=c; citySel.appendChild(o);
+        });
+        citySel.disabled=false;
+    }
+    syncLocation();
+}
+function onCityChange() { syncLocation(); }
+function syncLocation() {
+    var city    = document.getElementById('lg-city')?.value    || '';
+    var state   = document.getElementById('lg-state')?.value   || '';
+    var country = document.getElementById('lg-country')?.value || '';
+    var custom  = document.getElementById('lg-location');
+    if (!custom) return;
+    if (custom.dataset.manualEdit === '1') return; // user typed manually — don't override
+    var parts = [];
+    if (city)         parts.push(city);
+    else if (state)   parts.push(state);
+    if (country)      parts.push(country);
+    custom.value = parts.join(', ');
+}
 
-// Industry autocomplete data
+// ── INDUSTRY AUTOCOMPLETE ──
 var lgIndData = [
-    {g:'Web & Tech', items:['Web development','Mobile app development','Software company','IT services','Digital marketing agency','E-commerce store','Cybersecurity firm','Cloud services','AI / ML company','SEO agency']},
-    {g:'Hospitality', items:['Hotel','Restaurant','Restaurant chain','Cafe','Bar & lounge','Catering service','Event hall','Wedding venue','Resort','Bakery','Fast food']},
-    {g:'Healthcare', items:['Hospital','Private clinic','Dental clinic','Pharmacy chain','Physiotherapy center','Diagnostic lab','Eye clinic','Nursing home','Medical equipment']},
-    {g:'Education', items:['Private school','International school','College','University','Coaching center','Daycare center','Vocational training','Language institute']},
-    {g:'Retail & Trade', items:['Supermarket chain','Grocery store','Jewellery store','Clothing store','Electronics store','Automobile dealer','Furniture store','Hardware store','Pharmacy','Bookstore']},
-    {g:'Professional', items:['Law firm','Accounting firm','Architecture firm','Interior design firm','Real estate agency','Insurance agency','Financial advisor','HR consultancy','Recruitment agency']},
-    {g:'Industry', items:['Manufacturing company','Construction company','Logistics company','Printing press','Textile company','Chemical company','Packaging company','Engineering firm','Export company','Import company']},
-    {g:'Fitness & Wellness', items:['Fitness center','Gym','Yoga studio','Spa & salon','Beauty salon','Barber shop','Wellness center']},
-    {g:'Automotive', items:['Car workshop','Automobile dealer','Driving school','Car rental','Truck dealer','Two-wheeler dealer']},
-    {g:'Events & Media', items:['Event management','Photography studio','Videography','Advertising agency','Public relations','Radio station','Newspaper','Travel agency','Tour operator']},
+    {g:'Web & Technology', items:['Web development','Mobile app development','Software company','IT services','Digital marketing agency','E-commerce store','Cybersecurity firm','Cloud services','AI company','SEO agency','App development','Website design','IT consulting','Data analytics','ERP software','SaaS company','EdTech company','FinTech company']},
+    {g:'Hospitality & Food', items:['Hotel','Boutique hotel','Resort','Guest house','Restaurant','Restaurant chain','Fine dining restaurant','Fast food restaurant','Cafe','Coffee shop','Bar and lounge','Bakery','Catering service','Food delivery','Cloud kitchen','Ice cream parlor','Sweet shop','Dhaba','Canteen']},
+    {g:'Healthcare & Medical', items:['Hospital','Private hospital','Private clinic','Dental clinic','Eye clinic','Skin clinic','Orthopedic clinic','Pediatric clinic','Pharmacy','Pharmacy chain','Medical equipment dealer','Diagnostic lab','Pathology lab','Physiotherapy center','Ayurvedic clinic','Nursing home','Medical college']},
+    {g:'Education & Training', items:['Private school','International school','CBSE school','Montessori school','College','Engineering college','Medical college','University','Coaching center','Tuition center','IIT coaching','NEET coaching','MBA coaching','Language institute','Driving school','Vocational training','Daycare center','Yoga institute','Music school']},
+    {g:'Retail & Shopping', items:['Supermarket chain','Grocery store','Departmental store','Clothing store','Fashion boutique','Saree shop','Jewellery store','Gold jewellery shop','Furniture store','Electronics store','Mobile phone store','Computer shop','Hardware store','Book store','Stationery shop','Gift shop','Toy store','Sports shop','Shoe store','Cosmetics store']},
+    {g:'Professional Services', items:['Law firm','Lawyer','Chartered accountant','Accounting firm','Tax consultant','Financial advisor','Insurance agency','Real estate agency','Property dealer','Architecture firm','Interior design firm','Civil engineering firm','Consulting firm','HR consultancy','Recruitment agency','PR agency','Translation services']},
+    {g:'Construction & Real Estate', items:['Construction company','Building contractor','Civil contractor','Real estate developer','Apartment builder','Interior contractor','Renovation services','Plumbing services','Electrical contractor','Painting services','Waterproofing company','Roofing company','Flooring company','Fabrication works']},
+    {g:'Manufacturing & Industry', items:['Manufacturing company','Textile company','Garment factory','Food processing company','Packaging company','Printing press','Chemical company','Pharmaceutical manufacturer','Plastic products','Metal fabrication','Steel company','Rubber products','Paper products','Furniture manufacturer','Handicrafts','Export company','Trading company']},
+    {g:'Automotive', items:['Car workshop','Automobile dealer','Car dealer','Two-wheeler dealer','Truck dealer','Used car dealer','Driving school','Car rental','Auto parts store','Tire shop','Car wash','Fuel station','Car accessories']},
+    {g:'Finance & Banking', items:['Bank','Private bank','Microfinance company','Money exchange','Investment firm','Stock broker','Loan agency','Chit fund','Financial planning','Insurance company']},
+    {g:'Logistics & Transport', items:['Logistics company','Courier service','Freight company','Cargo company','Transport company','Packers and movers','Warehousing','Cold storage','Taxi service','Travel agency','Tour operator']},
+    {g:'Fitness & Wellness', items:['Fitness center','Gym','Ladies gym','Yoga studio','Spa','Massage center','Beauty salon','Hair salon','Barbershop','Nail salon','Wellness center','Slimming center','Swimming pool']},
+    {g:'Events & Entertainment', items:['Event management','Wedding planner','Birthday party planner','Photography studio','Wedding photographer','Videography','DJ service','Sound and light rental','Tent house','Flower decoration','Band and orchestra']},
+    {g:'Media & Advertising', items:['Advertising agency','Branding agency','Graphic design studio','Video production','Animation studio','Printing and signage','Social media agency','Content writing','Photography','Radio station']},
+    {g:'Agriculture & Farm', items:['Farm','Organic farm','Dairy farm','Poultry farm','Fish farm','Agri equipment dealer','Seed company','Pesticide dealer','Fertilizer dealer','Rice mill','Flour mill','Oil mill','Spice company']},
+    {g:'Small Business', items:['Small Businesses','Retail shop','Local store','Family business','Micro enterprise','Home business','Freelancer','Self employed','Cottage industry']}
 ];
 var lgIndFlat = [];
 lgIndData.forEach(function(g){g.items.forEach(function(item){lgIndFlat.push({group:g.g,label:item,search:item.toLowerCase()});});});
 
-var lgLocIdx=0, lgIndIdx=0;
-
-function lgLocInput(inp) {
-    var q = inp.value.trim().toLowerCase();
-    var drop = document.getElementById('lg-loc-drop');
-    if (!drop) return;
-    if (!q || q.length < 1) {
-        // Show top countries
-        var html = '<div class="lg-ac-group">Countries & Regions</div>';
-        var tops = ['India','Sri Lanka','UAE','United Kingdom','United States','Australia','Singapore','Malaysia'];
-        tops.forEach(function(c,i) {
-            var d = lgLocData[c]; if (!d) return;
-            html += '<div class="lg-ac-item" onclick="lgLocSelect(\''+c+'\')" data-idx="'+i+'">'
-                + '<span class="ac-flag">'+d.flag+'</span><span class="ac-label">'+c+'</span>'
-                + '<span class="ac-sub">'+d.regions.length+' cities</span></div>';
-        });
-        drop.innerHTML = html; drop.style.display = 'block'; lgLocIdx = -1; return;
-    }
-    var matches = lgLocFlat.filter(function(x){ return x.search.indexOf(q) !== -1; }).slice(0, 40);
-    if (!matches.length) { drop.style.display = 'none'; return; }
-    // Group by type
-    var countries = matches.filter(function(x){return x.type==='country';});
-    var cities    = matches.filter(function(x){return x.type==='city';});
-    var html = '';
-    if (countries.length) {
-        html += '<div class="lg-ac-group">Countries</div>';
-        countries.slice(0,5).forEach(function(m,i){
-            html += '<div class="lg-ac-item" onclick="lgLocSelect(\''+esc(m.label)+'\')" data-idx="'+i+'">'
-                +'<span class="ac-flag">'+m.flag+'</span><span class="ac-label">'+lgHighlight(m.label,q)+'</span></div>';
-        });
-    }
-    if (cities.length) {
-        html += '<div class="lg-ac-group">Cities / States</div>';
-        cities.slice(0,30).forEach(function(m,i){
-            html += '<div class="lg-ac-item" onclick="lgLocSelect(\''+esc(m.label)+'\')" data-idx="'+(countries.length+i)+'">'
-                +'<span class="ac-flag">'+m.flag+'</span><span class="ac-label">'+lgHighlight(m.label,q)+'</span>'
-                +'<span class="ac-sub">'+esc(m.country)+'</span></div>';
-        });
-    }
-    drop.innerHTML = html; drop.style.display = 'block'; lgLocIdx = -1;
-}
-function lgLocSelect(val) { document.getElementById('lg-location').value = val; lgLocHide(); }
-function lgLocHide() { var d=document.getElementById('lg-loc-drop'); if(d) d.style.display='none'; }
-function lgLocKey(e) {
-    var drop=document.getElementById('lg-loc-drop'); if(!drop||drop.style.display==='none') return;
-    var items=drop.querySelectorAll('.lg-ac-item'); if(!items.length) return;
-    if(e.key==='ArrowDown'){e.preventDefault();lgLocIdx=Math.min(lgLocIdx+1,items.length-1);}
-    else if(e.key==='ArrowUp'){e.preventDefault();lgLocIdx=Math.max(lgLocIdx-1,0);}
-    else if(e.key==='Enter'&&lgLocIdx>=0){e.preventDefault();items[lgLocIdx].click();return;}
-    else if(e.key==='Escape'){lgLocHide();return;}
-    items.forEach(function(it,i){it.classList.toggle('active',i===lgLocIdx);});
-    if(lgLocIdx>=0) items[lgLocIdx].scrollIntoView({block:'nearest'});
-}
-
 function lgIndInput(inp) {
-    var q = inp.value.trim().toLowerCase();
-    var drop = document.getElementById('lg-ind-drop');
-    if (!drop) return;
-    if (!q || q.length < 1) {
-        var html = '<div class="lg-ac-group">Quick Targets (high-value)</div>';
-        var tops = ['Web development','Hotel','Restaurant chain','Hospital','Private school','Real estate agency','Manufacturing company','Automobile dealer','Fitness center','Construction company'];
-        tops.forEach(function(item,i){
-            html += '<div class="lg-ac-item" onclick="lgIndSelect(\''+esc(item)+'\')" data-idx="'+i+'">'
-                +'<span class="ac-label">'+esc(item)+'</span></div>';
+    var q=inp.value.trim().toLowerCase();
+    var drop=document.getElementById('lg-ind-drop'); if(!drop) return;
+    if(!q||q.length<1) {
+        var html='<div class="lg-ac-group">Popular Categories</div>';
+        ['Web development','Hotel','Restaurant chain','Hospital','Private school','Real estate agency','Manufacturing company','Automobile dealer','Fitness center','Construction company','Pharmacy chain','Jewellery store'].forEach(function(item,i){
+            html+='<div class="lg-ac-item" onclick="lgIndSelect(\''+esc(item)+'\')" data-idx="'+i+'"><span class="ac-label">'+esc(item)+'</span></div>';
         });
-        drop.innerHTML = html; drop.style.display = 'block'; lgIndIdx = -1; return;
+        drop.innerHTML=html; drop.style.display='block'; lgIndIdx=-1; return;
     }
-    var matches = lgIndFlat.filter(function(x){return x.search.indexOf(q)!==-1;});
-    if (!matches.length) { drop.style.display = 'none'; return; }
-    // Group results
-    var grouped = {};
-    matches.slice(0,30).forEach(function(m){
-        if(!grouped[m.group]) grouped[m.group]=[];
-        grouped[m.group].push(m);
-    });
-    var html=''; var globalIdx=0;
+    var matches=lgIndFlat.filter(function(x){return x.search.indexOf(q)!==-1;});
+    if(!matches.length){drop.style.display='none';return;}
+    var grouped={};
+    matches.slice(0,30).forEach(function(m){if(!grouped[m.group])grouped[m.group]=[];grouped[m.group].push(m);});
+    var html=''; var gi=0;
     Object.keys(grouped).forEach(function(g){
         html+='<div class="lg-ac-group">'+esc(g)+'</div>';
-        grouped[g].forEach(function(m){
-            html+='<div class="lg-ac-item" onclick="lgIndSelect(\''+esc(m.label)+'\')" data-idx="'+globalIdx+'">'
-                +'<span class="ac-label">'+lgHighlight(m.label,q)+'</span></div>';
-            globalIdx++;
-        });
+        grouped[g].forEach(function(m){html+='<div class="lg-ac-item" onclick="lgIndSelect(\''+esc(m.label)+'\')" data-idx="'+gi+'"><span class="ac-label">'+lgHighlight(m.label,q)+'</span></div>';gi++;});
     });
-    drop.innerHTML = html; drop.style.display = 'block'; lgIndIdx = -1;
+    drop.innerHTML=html; drop.style.display='block'; lgIndIdx=-1;
 }
-function lgIndSelect(val) { document.getElementById('lg-industry').value = val; lgIndHide(); }
-function lgIndHide() { var d=document.getElementById('lg-ind-drop'); if(d) d.style.display='none'; }
-function lgIndKey(e) {
-    var drop=document.getElementById('lg-ind-drop'); if(!drop||drop.style.display==='none') return;
-    var items=drop.querySelectorAll('.lg-ac-item'); if(!items.length) return;
+function lgIndSelect(val){document.getElementById('lg-industry').value=val;lgIndHide();}
+function lgIndHide(){var d=document.getElementById('lg-ind-drop');if(d)d.style.display='none';}
+var lgIndIdx=-1;
+function lgIndKey(e){
+    var drop=document.getElementById('lg-ind-drop');if(!drop||drop.style.display==='none')return;
+    var items=drop.querySelectorAll('.lg-ac-item');if(!items.length)return;
     if(e.key==='ArrowDown'){e.preventDefault();lgIndIdx=Math.min(lgIndIdx+1,items.length-1);}
     else if(e.key==='ArrowUp'){e.preventDefault();lgIndIdx=Math.max(lgIndIdx-1,0);}
     else if(e.key==='Enter'&&lgIndIdx>=0){e.preventDefault();items[lgIndIdx].click();return;}
     else if(e.key==='Escape'){lgIndHide();return;}
     items.forEach(function(it,i){it.classList.toggle('active',i===lgIndIdx);});
-    if(lgIndIdx>=0) items[lgIndIdx].scrollIntoView({block:'nearest'});
+    if(lgIndIdx>=0)items[lgIndIdx].scrollIntoView({block:'nearest'});
 }
-
-function lgHighlight(text, q) {
-    var idx = text.toLowerCase().indexOf(q);
-    if (idx < 0) return esc(text);
+function lgHighlight(text,q){
+    var idx=text.toLowerCase().indexOf(q); if(idx<0)return esc(text);
     return esc(text.slice(0,idx))+'<mark>'+esc(text.slice(idx,idx+q.length))+'</mark>'+esc(text.slice(idx+q.length));
 }
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest || (!e.target.closest('#lg-location') && !e.target.closest('#lg-loc-drop'))) lgLocHide();
-    if (!e.target.closest || (!e.target.closest('#lg-industry') && !e.target.closest('#lg-ind-drop'))) lgIndHide();
+document.addEventListener('click',function(e){
+    if(!e.target.closest||(!e.target.closest('#lg-industry')&&!e.target.closest('#lg-ind-drop')))lgIndHide();
 });
+
+// lg-location manual edit flag
+document.addEventListener('DOMContentLoaded',function(){
+    var locInp=document.getElementById('lg-location');
+    if(locInp){
+        locInp.addEventListener('input',function(){
+            this.dataset.manualEdit=this.value?'1':'0';
+        });
+        locInp.addEventListener('focus',function(){
+            // Clear flag when they clear the field
+            if(!this.value)this.dataset.manualEdit='0';
+        });
+    }
+});
+
+var lgTotalStored=0, lgCurrentPage=1, lgPerPage=50;
 </script>
 
 <?php renderLayoutEnd(); ?>

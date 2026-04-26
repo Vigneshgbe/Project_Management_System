@@ -200,14 +200,14 @@ renderLayout('Stored Leads', 'lead_stored');
 </div>
 
 <!-- LEAD DETAIL MODAL -->
-<div id="ls-modal" class="ls-modal-backdrop" style="display:none" onclick="if(event.target===this)closeModal()">
+<div id="ls-modal" class="ls-modal-backdrop" style="display:none" onclick="if(event.target===this)lsCloseModal()">
   <div class="ls-modal">
     <div class="ls-modal-head">
       <div>
         <div style="font-size:16px;font-weight:800;color:var(--text)" id="modal-name">—</div>
         <div style="font-size:12px;color:var(--text3);margin-top:2px" id="modal-industry-loc">—</div>
       </div>
-      <button onclick="closeModal()" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 8px;flex-shrink:0;line-height:1" title="Close">✕</button>
+      <button onclick="lsCloseModal()" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 8px;flex-shrink:0;line-height:1" title="Close">✕</button>
     </div>
     <div class="ls-modal-body">
       <!-- Score badge -->
@@ -365,12 +365,13 @@ function showDetail(idx) {
     document.getElementById('modal-actions').innerHTML=actions||'<span style="color:var(--text3);font-size:13px">No contact info available</span>';
 
     document.getElementById('ls-modal').style.display='flex';
+    // modal is open
 }
-function closeModal() {
+function lsCloseModal() {
     var m = document.getElementById('ls-modal');
     if (m) m.style.display = 'none';
 }
-document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')lsCloseModal();});
 
 function renderPagination(total,cur,pp) {
     var tp=Math.ceil(total/pp);

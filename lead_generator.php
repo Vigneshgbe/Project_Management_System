@@ -78,6 +78,7 @@ renderLayout('Lead Generator', 'lead_generator');
 @media(max-width:700px){.lg-top{grid-template-columns:1fr}.lg-search-row{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.lg-search-row{grid-template-columns:1fr}}
 /* ── MODE LABELS ── */
+.mode-label{display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
 #lm-no_website.mode-active{background:rgba(16,185,129,.08)!important;border-color:#10b981!important}
 #lm-high_value.mode-active{background:rgba(249,115,22,.06)!important;border-color:var(--orange)!important}
 #lm-all.mode-active{background:var(--bg4)!important;border-color:var(--text3)!important}
@@ -287,13 +288,13 @@ renderLayout('Lead Generator', 'lead_generator');
   <div style="margin-bottom:14px">
     <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Search Mode</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <label id="lm-no_website" onclick="setMode('no_website')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:rgba(16,185,129,.08);border:2px solid #10b981;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
+      <label id="lm-no_website" class="mode-label" onclick="setMode('no_website')">
         <div><div style="font-size:13px;font-weight:700;color:#10b981">🔥 No Website Only</div><div style="font-size:11px;color:var(--text3)">Prime prospects — need a website built</div></div>
       </label>
-      <label id="lm-high_value" onclick="setMode('high_value')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
+      <label id="lm-high_value" class="mode-label" onclick="setMode('high_value')">
         <div><div style="font-size:13px;font-weight:700;color:var(--orange)">💎 High Value</div><div style="font-size:11px;color:var(--text3)">Established — bigger budgets (₹40k+)</div></div>
       </label>
-      <label id="lm-all" onclick="setMode('all')" style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;background:var(--bg3);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s">
+      <label id="lm-all" class="mode-label" onclick="setMode('all')">
         <div><div style="font-size:13px;font-weight:700;color:var(--text2)">📋 All Results</div><div style="font-size:11px;color:var(--text3)">All businesses sorted by score</div></div>
       </label>
     </div>
@@ -348,7 +349,8 @@ renderLayout('Lead Generator', 'lead_generator');
 </div>
 
 
-<!-- LOADING STATE -->" id="lg-loading">
+<!-- LOADING STATE -->
+<div class="lg-loading" id="lg-loading">
   <div class="lg-spinner"></div>
   <div style="font-size:14px;font-weight:600;color:var(--text2)" id="lg-load-text">Searching Google Maps...</div>
   <div style="font-size:12px;color:var(--text3);margin-top:4px" id="lg-load-sub"></div>

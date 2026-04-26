@@ -207,7 +207,7 @@ renderLayout('Stored Leads', 'lead_stored');
         <div style="font-size:16px;font-weight:800;color:var(--text)" id="modal-name">—</div>
         <div style="font-size:12px;color:var(--text3);margin-top:2px" id="modal-industry-loc">—</div>
       </div>
-      <button onclick="closeModal()" style="background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;padding:4px;flex-shrink:0">✕</button>
+      <button onclick="closeModal()" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 8px;flex-shrink:0;line-height:1" title="Close">✕</button>
     </div>
     <div class="ls-modal-body">
       <!-- Score badge -->
@@ -367,7 +367,15 @@ function showDetail(idx) {
     document.getElementById('ls-modal').style.display='flex';
     if(document&&document.body&&document.body.style)document.body.style.overflow='hidden';
 }
-function closeModal(){var m=document.getElementById('ls-modal');if(m)m.style.display='none';if(document&&document.body&&document.body.style)document.body.style.overflow='';}
+function closeModal() {
+    try {
+        var m = document.getElementById('ls-modal');
+        if (m) m.style.display = 'none';
+    } catch(e) {}
+    try {
+        if (document.body) document.body.style.overflow = '';
+    } catch(e) {}
+}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 
 function renderPagination(total,cur,pp) {

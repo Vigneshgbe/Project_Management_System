@@ -152,9 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$proj) { flash('Project name required.','error'); ob_end_clean(); header('Location: expenses.php?month='.$mid); exit; }
         if ($reid) {
             $stmt = $db->prepare("UPDATE month_revenue_entries SET project_name=?,client_name=?,payment_type=?,amount=?,currency=?,payment_date=?,notes=? WHERE id=?");
-            $stmt->bind_param("sssdsss i",$proj,$cli,$ptype,$amt,$cur,$pdate,$notes,$reid);
-            // fix spacing typo
-            $stmt = $db->prepare("UPDATE month_revenue_entries SET project_name=?,client_name=?,payment_type=?,amount=?,currency=?,payment_date=?,notes=? WHERE id=?");
             $stmt->bind_param("sssdsssi",$proj,$cli,$ptype,$amt,$cur,$pdate,$notes,$reid);
             $stmt->execute();
         } else {
@@ -355,7 +352,7 @@ renderLayout('Expenses', 'expenses');
 .s-box-lbl{font-size:11px;color:var(--text3);margin-top:3px}
 @media(max-width:900px){.exp-layout{flex-direction:column}.month-sidebar{width:100%!important;min-width:unset!important}}
 
-/* ── REVENUE TRACKER STYLES (NEW — additive only) ── */
+/* ── REVENUE TRACKER STYLES ── */
 .rev-subtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
 .rev-subtab{padding:7px 16px;font-size:12.5px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none}
 .rev-subtab.active{color:var(--orange);border-bottom-color:var(--orange)}
@@ -365,13 +362,22 @@ renderLayout('Expenses', 'expenses');
 .rev-sum-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
 .rev-sum-val{font-size:16px;font-weight:800;font-family:var(--font-display)}
 .rev-sum-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
-.rev-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.rev-tbl th{background:var(--bg3);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
-.rev-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+
+/* ── REVENUE TABLE: fixed-layout with controlled column widths ── */
+.rev-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.rev-tbl th{background:var(--bg3);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rev-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rev-tbl tr:last-child td{border-bottom:none}
 .rev-tbl tr:hover td{background:var(--bg3)}
-.rev-progress-wrap{background:var(--bg4);border-radius:99px;height:6px;overflow:hidden;margin-top:4px;min-width:80px}
-.rev-progress-bar{height:100%;border-radius:99px;transition:width .4s}
+/* Column widths: #, Project, Client, Type, Amount, Date, Notes, Actions */
+.rev-tbl th:nth-child(1),.rev-tbl td:nth-child(1){width:36px;text-align:center;color:var(--text3)}
+.rev-tbl th:nth-child(2),.rev-tbl td:nth-child(2){width:18%}
+.rev-tbl th:nth-child(3),.rev-tbl td:nth-child(3){width:16%}
+.rev-tbl th:nth-child(4),.rev-tbl td:nth-child(4){width:120px}
+.rev-tbl th:nth-child(5),.rev-tbl td:nth-child(5){width:140px;text-align:right}
+.rev-tbl th:nth-child(6),.rev-tbl td:nth-child(6){width:105px}
+.rev-tbl th:nth-child(7),.rev-tbl td:nth-child(7){width:auto}
+.rev-tbl th:nth-child(8),.rev-tbl td:nth-child(8){width:72px;text-align:center}
 
 /* ── FIX: Overview Month-by-Month table alignment ── */
 .overview-breakdown-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -576,7 +582,7 @@ renderLayout('Expenses', 'expenses');
     </div>
     </div><!-- end mtab-expenses -->
 
-    <!-- ══ REVENUE TRACKER SUB-TAB (NEW) ══ -->
+    <!-- ══ REVENUE TRACKER SUB-TAB ══ -->
     <div id="mtab-revenue" style="display:<?= $show_rtab?'block':'none' ?>">
       <div class="rev-tracker-wrap">
 
@@ -612,53 +618,6 @@ renderLayout('Expenses', 'expenses');
           </div>
         </div>
 
-        <!-- Project progress bars (group by project) -->
-        <?php if (!empty($project_names)): ?>
-        <div style="margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Project Revenue Breakdown</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-          <?php
-            // Group rev_entries by project
-            $proj_groups = [];
-            foreach ($rev_entries as $r) {
-                $pn = $r['project_name'];
-                if (!isset($proj_groups[$pn])) $proj_groups[$pn] = ['total'=>0,'advance'=>0,'milestone'=>0,'final'=>0,'other'=>0,'client'=>$r['client_name']];
-                $proj_groups[$pn]['total'] += $r['amount'];
-                $proj_groups[$pn][$r['payment_type']] += $r['amount'];
-            }
-            foreach ($proj_groups as $pname => $pg):
-              $adv_pct = $pg['total']>0 ? round($pg['advance']/$pg['total']*100) : 0;
-              $mil_pct = $pg['total']>0 ? round($pg['milestone']/$pg['total']*100) : 0;
-              $fin_pct = $pg['total']>0 ? round($pg['final']/$pg['total']*100) : 0;
-              $oth_pct = max(0, 100-$adv_pct-$mil_pct-$fin_pct);
-          ?>
-          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <div>
-                <span style="font-weight:700;font-size:13px;color:var(--text)"><?= h($pname) ?></span>
-                <?php if ($pg['client']): ?><span style="font-size:11px;color:var(--text3);margin-left:8px">· <?= h($pg['client']) ?></span><?php endif; ?>
-              </div>
-              <span style="font-weight:700;font-size:13px;color:var(--green)"><?= number_format($pg['total'],2) ?> INR</span>
-            </div>
-            <!-- Segmented progress bar -->
-            <div style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--bg4)">
-              <?php if ($adv_pct>0): ?><div style="width:<?= $adv_pct ?>%;background:#f59e0b" title="Advance: <?= number_format($pg['advance'],2) ?>"></div><?php endif; ?>
-              <?php if ($mil_pct>0): ?><div style="width:<?= $mil_pct ?>%;background:#6366f1" title="Milestone: <?= number_format($pg['milestone'],2) ?>"></div><?php endif; ?>
-              <?php if ($fin_pct>0): ?><div style="width:<?= $fin_pct ?>%;background:#10b981" title="Final: <?= number_format($pg['final'],2) ?>"></div><?php endif; ?>
-              <?php if ($oth_pct>0): ?><div style="width:<?= $oth_pct ?>%;background:#94a3b8" title="Other: <?= number_format($pg['other'],2) ?>"></div><?php endif; ?>
-            </div>
-            <div style="display:flex;gap:12px;margin-top:5px;font-size:10.5px;color:var(--text3)">
-              <?php if ($pg['advance']>0): ?><span>🟡 <?= number_format($pg['advance'],0) ?></span><?php endif; ?>
-              <?php if ($pg['milestone']>0): ?><span>🔵 <?= number_format($pg['milestone'],0) ?></span><?php endif; ?>
-              <?php if ($pg['final']>0): ?><span>🟢 <?= number_format($pg['final'],0) ?></span><?php endif; ?>
-              <?php if ($pg['other']>0): ?><span>⚪ <?= number_format($pg['other'],0) ?></span><?php endif; ?>
-            </div>
-          </div>
-          <?php endforeach; ?>
-          </div>
-        </div>
-        <?php endif; ?>
-
         <!-- Revenue entries table header + add button -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Payment Entries <span style="font-size:11px;color:var(--text3);font-weight:400">(<?= count($rev_entries) ?> records)</span></div>
@@ -678,14 +637,14 @@ renderLayout('Expenses', 'expenses');
         <table class="rev-tbl">
           <thead>
             <tr>
-              <th style="width:36px;text-align:center">#</th>
+              <th>#</th>
               <th>Project</th>
               <th>Client</th>
-              <th style="width:110px">Type</th>
-              <th style="width:120px;text-align:right">Amount</th>
-              <th style="width:100px">Date</th>
+              <th>Type</th>
+              <th style="text-align:right">Amount</th>
+              <th>Date</th>
               <th>Notes</th>
-              <th style="width:70px;text-align:center">Actions</th>
+              <th style="text-align:center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -693,18 +652,18 @@ renderLayout('Expenses', 'expenses');
               $tc = $PAY_COLORS[$r['payment_type']] ?? '#94a3b8';
             ?>
             <tr>
-              <td style="text-align:center;color:var(--text3);font-size:12px"><?= $i+1 ?></td>
-              <td style="font-weight:600;color:var(--text)"><?= h($r['project_name']) ?></td>
-              <td style="font-size:12.5px;color:var(--text2)"><?= h($r['client_name'] ?: '—') ?></td>
+              <td><?= $i+1 ?></td>
+              <td style="font-weight:600;color:var(--text)" title="<?= h($r['project_name']) ?>"><?= h($r['project_name']) ?></td>
+              <td style="font-size:12.5px" title="<?= h($r['client_name']) ?>"><?= h($r['client_name'] ?: '—') ?></td>
               <td>
                 <span class="rev-type-pill" style="background:<?= $tc ?>18;color:<?= $tc ?>;border:1px solid <?= $tc ?>35">
                   <?= $PAY_TYPES[$r['payment_type']] ?? $r['payment_type'] ?>
                 </span>
               </td>
-              <td style="text-align:right;font-weight:700;color:var(--green)"><?= h($r['currency']) ?> <?= number_format($r['amount'],2) ?></td>
-              <td style="font-size:12px;color:var(--text2)"><?= $r['payment_date'] ? fDate($r['payment_date'],'d-m-Y') : '—' ?></td>
-              <td style="font-size:12px;color:var(--text3);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h($r['notes'] ?: '—') ?></td>
-              <td style="text-align:center">
+              <td style="text-align:right;font-weight:700;color:var(--green);white-space:nowrap"><?= number_format($r['amount'],2) ?> <?= h($r['currency']) ?></td>
+              <td style="font-size:12px;color:var(--text2);white-space:nowrap"><?= $r['payment_date'] ? fDate($r['payment_date'],'d-m-Y') : '—' ?></td>
+              <td style="font-size:12px;color:var(--text3)" title="<?= h($r['notes']) ?>"><?= h($r['notes'] ?: '—') ?></td>
+              <td>
                 <div style="display:flex;gap:4px;justify-content:center">
                   <button class="btn btn-ghost btn-sm btn-icon" onclick='openEditRevModal(<?= htmlspecialchars(json_encode($r)) ?>)' title="Edit">✎</button>
                   <form method="POST" onsubmit="return confirm('Delete this payment entry?')" style="display:inline">
@@ -721,7 +680,7 @@ renderLayout('Expenses', 'expenses');
           <tfoot>
             <tr style="background:var(--bg3)">
               <td colspan="4" style="text-align:right;font-size:12px;font-weight:700;color:var(--text3);letter-spacing:.04em;padding:10px">TOTAL REVENUE</td>
-              <td style="text-align:right;font-weight:800;font-size:15px;color:var(--green);padding:10px"><?= number_format($rev_total,2) ?> INR</td>
+              <td style="text-align:right;font-weight:800;font-size:15px;color:var(--green);padding:10px;white-space:nowrap"><?= number_format($rev_total,2) ?> INR</td>
               <td colspan="3"></td>
             </tr>
           </tfoot>
@@ -1022,7 +981,7 @@ renderLayout('Expenses', 'expenses');
   </div>
 </div>
 
-<!-- Add/Edit Revenue Entry (NEW) -->
+<!-- Add/Edit Revenue Entry (UNCHANGED) -->
 <div class="modal-overlay" id="modal-rev-entry">
   <div class="modal">
     <div class="modal-header">
@@ -1235,7 +1194,7 @@ function openEditSw(s){
   openModal('modal-sw');
 }
 
-// ── REVENUE MODAL (NEW) ────────────────────────────────────────────────────
+// ── REVENUE MODAL (UNCHANGED) ──────────────────────────────────────────────
 function openRevModal(){
   document.getElementById('rev-modal-title').textContent='Add Revenue Payment';
   document.getElementById('rev-eid').value='';
@@ -1261,7 +1220,7 @@ function openEditRevModal(r){
   openModal('modal-rev-entry');
 }
 
-// ── MONTHLY SUB-TAB SWITCH (NEW) ──────────────────────────────────────────
+// ── MONTHLY SUB-TAB SWITCH (UNCHANGED) ────────────────────────────────────
 function switchMonthTab(tab){
   var tabs=['expenses','revenue'];
   tabs.forEach(function(t){

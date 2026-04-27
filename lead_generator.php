@@ -352,7 +352,7 @@ renderLayout('Lead Generator', 'lead_generator');
 <!-- LOADING STATE -->
 <div class="lg-loading" id="lg-loading">
   <div class="lg-spinner"></div>
-  <div style="font-size:14px;font-weight:600;color:var(--text2)" id="lg-load-text">Searching Google Maps...</div>
+  <div style="font-size:14px;font-weight:600;color:var(--text2)" id="lg-load-text">Searching ...</div>
   <div style="font-size:12px;color:var(--text3);margin-top:4px" id="lg-load-sub"></div>
 </div>
 
@@ -519,7 +519,7 @@ function doSearch() {
     btn.disabled=true; btn.textContent='Generating...';
     loading.style.display='block';
     if (results) results.style.display='none';
-    document.getElementById('lg-load-text').textContent='Searching Google Maps for "'+ind+'" in "'+loc+'"...';
+    document.getElementById('lg-load-text').textContent='Searching for "'+ind+'" in "'+loc+'"...';
     document.getElementById('lg-load-sub').textContent='Fetching phone numbers & website info for each result...';
 
     var fd=new FormData();

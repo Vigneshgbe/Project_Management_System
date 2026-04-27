@@ -564,7 +564,9 @@ function renderResults(leads,ind,loc) {
             ? '<a href="mailto:'+esc(l.email)+'" class="lg-mail-btn" title="Email '+esc(l.email)+'">✉</a>'
             : '';
         var web_badge=l.has_website
-            ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes">✅ Yes ↗</a>'
+            ? (l.website_found_by_crawler
+                ? '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes" title="Website found by deep search (not in Google Places)">🔍 Found ↗</a>'
+                : '<a href="'+esc(l.website)+'" target="_blank" class="lg-web-yes">✅ Yes ↗</a>')
             : '<span class="lg-web-no" style="font-weight:800;font-size:12px">🔥 No</span>';
         var imp_btn=l.imported
             ? '<span class="lg-imp-done">✓ In CRM</span>'

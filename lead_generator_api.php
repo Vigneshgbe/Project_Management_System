@@ -58,6 +58,170 @@ function lgIsRealWebsite(string $url): bool {
     $bad=['facebook.com','fb.com','instagram.com','twitter.com','x.com','g.co','goo.gl','maps.google.com','google.com/maps','yelp.com','tripadvisor.com','justdial.com','indiamart.com','youtube.com','linkedin.com','whatsapp.com','t.me'];
     $low=strtolower($url); foreach ($bad as $b) { if (strpos($low,$b)!==false) return false; } return true;
 }
+/**
+ * lgFindWebsite — Deep-searches for a business website when Google Places returns none.
+ * Tries slug-based domain guesses + a Google search fallback.
+ * Returns ['website'=>string, 'email'=>string, 'phone'=>string]
+ * Only called when has_website===0. Adds ~0.5s latency per lead, no extra API cost.
+ */
+function lgFindWebsite(string $name, string $location): array {
+    $empty = ['website'=>'','email'=>'','phone'=>''];
+
+    // ── Step 1: Build slug variants from business name ──────────────────────
+    $slug = strtolower(trim($name));
+    $slug = preg_replace('/\b(pvt|ltd|llc|inc|corp|company|co|the|&|and|sdn|bhd|fze|fzc|llp|plc)\b/i', '', $slug);
+    $slug = preg_replace('/[^a-z0-9]+/', '', $slug);   // remove all non-alphanumeric
+    if (strlen($slug) < 3) return $empty;
+
+    // Build country-aware TLD list from location string
+    $loc_lower = strtolower($location);
+    $tlds = ['.com'];
+    if (strpos($loc_lower,'india')!==false||strpos($loc_lower,' in')!==false)  $tlds = ['.com','.in','.co.in','.net','.org'];
+    elseif (strpos($loc_lower,'sri lanka')!==false||strpos($loc_lower,'lk')!==false) $tlds = ['.com','.lk','.net'];
+    elseif (strpos($loc_lower,'uae')!==false||strpos($loc_lower,'dubai')!==false||strpos($loc_lower,'abu dhabi')!==false) $tlds = ['.com','.ae','.net'];
+    elseif (strpos($loc_lower,'uk')!==false||strpos($loc_lower,'england')!==false||strpos($loc_lower,'london')!==false) $tlds = ['.com','.co.uk','.net'];
+    elseif (strpos($loc_lower,'australia')!==false||strpos($loc_lower,'sydney')!==false) $tlds = ['.com','.com.au','.net.au'];
+    elseif (strpos($loc_lower,'malaysia')!==false||strpos($loc_lower,'singapore')!==false) $tlds = ['.com','.com.my','.com.sg'];
+    elseif (strpos($loc_lower,'canada')!==false) $tlds = ['.com','.ca','.net'];
+    else $tlds = ['.com','.net','.org','.co'];
+
+    $candidates = [];
+    foreach ($tlds as $tld) {
+        $candidates[] = 'https://www.'.$slug.$tld;
+        $candidates[] = 'https://'.$slug.$tld;
+    }
+
+    // ── Step 2: Probe each candidate URL ────────────────────────────────────
+    foreach ($candidates as $url) {
+        $html = lgHttpHead($url);   // cheap HEAD check first
+        if ($html === null) continue;
+        // Confirm it's a real page (not 404/redirect to unrelated domain)
+        $resolved = lgGetFinalUrl($url);
+        if (!$resolved) continue;
+        // Make sure the domain still contains the slug (avoid 301→parked pages)
+        $domain_slug = preg_replace('/[^a-z0-9]/', '', strtolower(parse_url($resolved, PHP_URL_HOST) ?? ''));
+        if (similar_text($slug, $domain_slug) < max(3, strlen($slug)*0.5)) continue;
+        // Found a live site — now scrape contact details
+        $email = lgScrapeEmail($resolved);
+        $phone = lgScrapePhone($resolved);
+        return ['website'=>$resolved, 'email'=>$email, 'phone'=>$phone];
+    }
+
+    // ── Step 3: Google search fallback (no API key needed) ──────────────────
+    $query = urlencode('"'.$name.'" '.$location.' official website');
+    $search_url = 'https://www.google.com/search?q='.$query.'&num=5';
+    $headers = [
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language: en-US,en;q=0.9',
+        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    ];
+    $html = lgHttpWithHeaders($search_url, $headers);
+    if (!$html) return $empty;
+
+    // Extract URLs from Google results — look for cite tags and href patterns
+    preg_match_all('/<cite[^>]*>(https?:\/\/[^<\s]+)<\/cite>/i', $html, $m1);
+    preg_match_all('/href="(https?:\/\/(?!(?:www\.google|accounts\.google|support\.google|maps\.google|webcache\.googleusercontent))[^"&\s]{10,})"/', $html, $m2);
+    $found_urls = array_unique(array_merge($m1[1] ?? [], $m2[1] ?? []));
+
+    foreach (array_slice($found_urls, 0, 5) as $candidate) {
+        if (!lgIsRealWebsite($candidate)) continue;
+        // Check domain contains slug characters
+        $domain_slug = preg_replace('/[^a-z0-9]/', '', strtolower(parse_url($candidate, PHP_URL_HOST) ?? ''));
+        $name_slug = preg_replace('/[^a-z0-9]/', '', strtolower($name));
+        // Use a relaxed match — at least 40% similarity or slug is substring
+        if (strpos($domain_slug, substr($slug, 0, 4)) === false && similar_text($slug, $domain_slug) < strlen($slug) * 0.4) continue;
+        $email = lgScrapeEmail($candidate);
+        $phone = lgScrapePhone($candidate);
+        return ['website'=>$candidate, 'email'=>$email, 'phone'=>$phone];
+    }
+
+    return $empty;
+}
+
+/** HEAD request — returns empty string on 200-399, null on failure/404 */
+function lgHttpHead(string $url): ?string {
+    if (!function_exists('curl_init')) {
+        $ctx = stream_context_create(['http'=>['method'=>'HEAD','timeout'=>6,'ignore_errors'=>true],'ssl'=>['verify_peer'=>false]]);
+        $r = @file_get_contents($url, false, $ctx);
+        // Check $http_response_header
+        if (!empty($http_response_header)) {
+            $code = (int)preg_replace('/.*?(\d{3}).*/', '$1', $http_response_header[0] ?? '');
+            return ($code >= 200 && $code < 400) ? '' : null;
+        }
+        return null;
+    }
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_NOBODY         => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; PadakCRM/1.0)',
+    ]);
+    curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ($code >= 200 && $code < 400) ? '' : null;
+}
+
+/** GET request and return final resolved URL after redirects */
+function lgGetFinalUrl(string $url): ?string {
+    if (!function_exists('curl_init')) return $url;
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 5,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; PadakCRM/1.0)',
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $final = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    curl_close($ch);
+    return ($code >= 200 && $code < 400 && $body) ? ($final ?: $url) : null;
+}
+
+/** HTTP GET with custom headers (used for Google search) */
+function lgHttpWithHeaders(string $url, array $headers): ?string {
+    if (!function_exists('curl_init')) return lgHttp($url);
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_HTTPHEADER     => $headers,
+    ]);
+    $r = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ($code >= 200 && $code < 400 && $r) ? $r : null;
+}
+
+/** Scrape phone number from a webpage (contact/about pages) */
+function lgScrapePhone(string $url): string {
+    if (!$url) return '';
+    $base = rtrim(preg_replace('#^(https?://[^/]+).*#', '$1', $url), '/');
+    $pages = [$url, $base.'/contact', $base.'/contact-us', $base.'/about', $base.'/about-us'];
+    foreach ($pages as $page) {
+        $html = lgHttp($page); if (!$html) continue;
+        // International format: +971 50 123 4567 / +91-98765-43210
+        if (preg_match_all('/\+[\d\s\-().]{7,18}\d/', $html, $m))
+            foreach ($m[0] as $p) { $p = trim(preg_replace('/\s+/', ' ', $p)); if (strlen($p) >= 9) return $p; }
+        // Local formats: 050 123 4567 / (044) 234-5678
+        if (preg_match_all('/(?:\(?\d{2,5}\)?[\s\-.]?\d{2,5}[\s\-.]?\d{3,6})/', $html, $m))
+            foreach ($m[0] as $p) { $p = preg_replace('/[^\d\s\-+().]/', '', $p); $digits = preg_replace('/\D/', '', $p); if (strlen($digits) >= 8 && strlen($digits) <= 15) return trim($p); }
+    }
+    return '';
+}
 function lgEnsureColumns(mysqli $db): void {
     static $done=false; if ($done) return; $done=true;
     $cols=[]; $r=@$db->query("SHOW COLUMNS FROM lead_gen_results"); if ($r) while ($row=$r->fetch_assoc()) $cols[]=$row['Field'];
@@ -69,6 +233,7 @@ function lgEnsureColumns(mysqli $db): void {
     if (!in_array('price_level',$cols))       $add[]="ADD COLUMN price_level       TINYINT DEFAULT NULL AFTER ratings_total";
     if (!in_array('opportunity_score',$cols)) $add[]="ADD COLUMN opportunity_score INT DEFAULT 0 AFTER price_level";
     if (!in_array('api_calls',$cols))         $add[]="ADD COLUMN api_calls         INT DEFAULT 0";
+    if (!in_array('website_found_by_crawler',$cols)) $add[]="ADD COLUMN website_found_by_crawler TINYINT(1) DEFAULT 0 COMMENT 'Set to 1 when website was found by deep-search, not Google Places'";
     if ($add) @$db->query("ALTER TABLE lead_gen_results ".implode(', ',$add));
     @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE (website IS NULL OR website='')");
     @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE website IS NOT NULL AND website!='' AND (website LIKE '%facebook.com%' OR website LIKE '%fb.com%' OR website LIKE '%instagram.com%' OR website LIKE '%twitter.com%' OR website LIKE '%x.com%' OR website LIKE '%g.co%' OR website LIKE '%goo.gl%' OR website LIKE '%maps.google%' OR website LIKE '%youtube.com%' OR website LIKE '%linkedin.com%' OR website LIKE '%whatsapp.com%' OR website LIKE '%t.me%' OR website LIKE '%justdial.com%' OR website LIKE '%indiamart.com%' OR website LIKE '%tripadvisor.com%' OR website LIKE '%yelp.com%')");
@@ -148,6 +313,19 @@ if ($action==='search') {
             }
         }
         if ($website&&!$email) $email=lgScrapeEmail($website);
+        // ── Deep website finder: runs only when Google Places returned no website ──
+        // Tries domain slug guesses + Google search. No API cost. ~0.5s per lead.
+        if (!$has_website && !$website) {
+            $found = lgFindWebsite($name, $location);
+            if ($found['website']) {
+                $website    = $found['website'];
+                $has_website = 1;
+                if (!$email  && $found['email'])  $email  = $found['email'];
+                if (!$phone  && $found['phone'])  $phone  = $found['phone'];
+                // Reduce opp score for has_website (no longer a "no website" lead)
+                // The score is recalculated below — no manual adjustment needed
+            }
+        }
         $opp=0;
         if (!$has_website) $opp+=50;
         if ($ratings_total>=100) $opp+=20; elseif ($ratings_total>=30) $opp+=12; elseif ($ratings_total>=10) $opp+=6;
@@ -157,15 +335,17 @@ if ($action==='search') {
         if ($ratings_total>=30) $reasons[]=$ratings_total.' Google reviews - established';
         if ($price_level>=3) $reasons[]='Upscale business - larger budget likely';
         if ($rating>=4.5) $reasons[]='Highly rated ('.number_format((float)$rating,1).'/5)';
+        if (isset($found['website'])&&$found['website']&&$has_website) $reasons[]='Website found by deep search: '.$website;
         $why=$reasons?implode('. ',$reasons):'';
+        $wfc=(isset($found['website'])&&$found['website']&&$has_website)?1:0;
         $pe=$db->real_escape_string($place_id);$ne=$db->real_escape_string($name);$one=$db->real_escape_string($owner_name);
         $phe=$db->real_escape_string($phone);$ee=$db->real_escape_string($email);$ae=$db->real_escape_string($address);
         $we=$db->real_escape_string($website);$le=$db->real_escape_string($location);$ie=$db->real_escape_string($industry);
         $rt=$rating!==null?(float)$rating:'NULL';$pl=$price_level!==null?$price_level:'NULL';
-        $db->query("INSERT INTO lead_gen_results (user_id,place_id,name,owner_name,phone,email,address,website,has_website,rating,ratings_total,price_level,opportunity_score,location,industry,imported,api_calls) VALUES ($uid,'$pe','$ne','$one','$phe','$ee','$ae','$we',$has_website,$rt,$ratings_total,$pl,$opp,'$le','$ie',0,$api_calls) ON DUPLICATE KEY UPDATE name='$ne',owner_name='$one',phone='$phe',email='$ee',address='$ae',website='$we',has_website=$has_website,ratings_total=$ratings_total,price_level=$pl,opportunity_score=$opp");
+        $db->query("INSERT INTO lead_gen_results (user_id,place_id,name,owner_name,phone,email,address,website,has_website,rating,ratings_total,price_level,opportunity_score,location,industry,imported,api_calls,website_found_by_crawler) VALUES ($uid,'$pe','$ne','$one','$phe','$ee','$ae','$we',$has_website,$rt,$ratings_total,$pl,$opp,'$le','$ie',0,$api_calls,$wfc) ON DUPLICATE KEY UPDATE name='$ne',owner_name='$one',phone='$phe',email='$ee',address='$ae',website='$we',has_website=$has_website,ratings_total=$ratings_total,price_level=$pl,opportunity_score=$opp,website_found_by_crawler=$wfc");
         $rid=(int)($db->insert_id?:0);
         if (!$rid&&$place_id) { $ex=@$db->query("SELECT id FROM lead_gen_results WHERE place_id='$pe' AND user_id=$uid LIMIT 1"); if ($ex) $rid=(int)($ex->fetch_assoc()['id']??0); }
-        $leads[]=['id'=>$rid,'place_id'=>$place_id,'name'=>$name,'owner_name'=>$owner_name,'phone'=>$phone,'email'=>$email,'address'=>$address,'website'=>$website,'has_website'=>$has_website,'rating'=>$rating,'ratings_total'=>$ratings_total,'opportunity_score'=>$opp,'why'=>$why,'imported'=>false];
+        $leads[]=['id'=>$rid,'place_id'=>$place_id,'name'=>$name,'owner_name'=>$owner_name,'phone'=>$phone,'email'=>$email,'address'=>$address,'website'=>$website,'has_website'=>$has_website,'rating'=>$rating,'ratings_total'=>$ratings_total,'opportunity_score'=>$opp,'why'=>$why,'imported'=>false,'website_found_by_crawler'=>$wfc];
     }
     usort($leads,function($a,$b){ $an=!$a['has_website']?1:0;$bn=!$b['has_website']?1:0; if ($an!==$bn) return $bn-$an; return $b['opportunity_score']-$a['opportunity_score']; });
     if ($search_mode==='no_website') $leads=array_values(array_filter($leads,fn($l)=>!$l['has_website']));

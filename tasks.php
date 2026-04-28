@@ -380,9 +380,13 @@ $buckets = [
       </select>
     </div>
     <!-- View toggle -->
+    <?php
+    // Strip 'new' so switching view never re-triggers the create-modal auto-open
+    $vq = array_diff_key($_GET, ['new'=>1,'view'=>1]);
+    ?>
     <div class="tk-view-toggle">
-      <a href="?<?= http_build_query(array_merge($_GET,['view'=>'table'])) ?>" class="<?= $view_mode==='table'?'active':'' ?>">≡ Table</a>
-      <a href="?<?= http_build_query(array_merge($_GET,['view'=>'board'])) ?>" class="<?= $view_mode==='board'?'active':'' ?>">⊞ Board</a>
+      <a href="?<?= http_build_query(array_merge($vq,['view'=>'table'])) ?>" class="<?= $view_mode==='table'?'active':'' ?>">≡ Table</a>
+      <a href="?<?= http_build_query(array_merge($vq,['view'=>'board'])) ?>" class="<?= $view_mode==='board'?'active':'' ?>">⊞ Board</a>
     </div>
     <button class="btn btn-primary" onclick="openNewTask()">＋ New Task</button>
   </div>
@@ -675,7 +679,7 @@ foreach ($order as $gk):
   </div>
 </div>
 
-<?php if ($new_mode || $proj_filter): ?>
+<?php if ($new_mode): ?>
 <script>document.addEventListener('DOMContentLoaded',()=>openModal('modal-task'))</script>
 <?php endif; ?>
 

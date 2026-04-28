@@ -40,6 +40,7 @@ renderLayout('Stored Leads', 'lead_stored');
 .ls-owner{font-size:11px;color:var(--text3);margin-top:2px}
 /* badges */
 .ls-web-yes{background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block}
+.ls-web-found{background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block}
 .ls-web-no{background:rgba(249,115,22,.08);color:var(--orange);border:1px solid rgba(249,115,22,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-block}
 .ls-imp-done{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
 /* score */
@@ -227,7 +228,6 @@ var lsIds=[], lsAllData=[], lsDebTimer=null;
 document.addEventListener('DOMContentLoaded', function(){ load(1); loadStats(); });
 
 function loadStats() {
-    // Total
     fetch('lead_generator_api.php?action=get_all_stored&page=1&per_page=1').then(r=>r.json()).then(d=>{
         if(d.ok){ document.getElementById('st-total').textContent=d.total; document.getElementById('st-loc').textContent=(d.locations||[]).length; }
     });
@@ -271,6 +271,28 @@ function load(page) {
 
 function debounce(){clearTimeout(lsDebTimer);lsDebTimer=setTimeout(()=>load(1),300);}
 
+// FIX: webBadge now correctly distinguishes:
+// ✅ Yes ↗  = Google Places returned a real website
+// 🔍 Found ↗ = Crawler found the website (not in Google Places)  
+// 🔥 No     = No website found anywhere
+function makeWebBadge(l) {
+    var hasWeb = parseInt(l.has_website) === 1;
+    var wfc    = parseInt(l.website_found_by_crawler) === 1;
+    if (!hasWeb) {
+        return '<span class="ls-web-no">🔥 No</span>';
+    }
+    if (wfc && l.website) {
+        return '<a href="'+esc(l.website)+'" target="_blank" class="ls-web-found" '
+            +'title="Website found by deep search (not listed in Google Places)" '
+            +'onclick="event.stopPropagation()">🔍 Found ↗</a>';
+    }
+    if (l.website) {
+        return '<a href="'+esc(l.website)+'" target="_blank" class="ls-web-yes" onclick="event.stopPropagation()">✅ Yes ↗</a>';
+    }
+    // has_website=1 but no URL stored (edge case)
+    return '<span class="ls-web-yes">✅ Yes</span>';
+}
+
 function renderTable(leads) {
     var tb=document.getElementById('ls-tbody');
     if(!leads.length){
@@ -284,15 +306,13 @@ function renderTable(leads) {
         var scoreBg=score>=70?'rgba(16,185,129,.1)':score>=40?'rgba(245,158,11,.1)':'transparent';
         var scoreCell='<div class="ls-score-cell"><div class="ls-score-num" style="color:'+sc+'">'+score+'</div>'
             +(score>=70?'<span class="ls-score-hot" style="background:rgba(16,185,129,.12);color:#10b981">HOT</span>':'')+'</div>';
-        var hasWeb=parseInt(l.has_website)===1;
-        var webBadge=hasWeb
-            ?(l.website?'<a href="'+esc(l.website)+'" target="_blank" class="ls-web-yes" onclick="event.stopPropagation()">✅ Yes ↗</a>':'<span class="ls-web-yes">✅ Yes</span>')
-            :'<span class="ls-web-no">🔥 No</span>';
+        var webBadge = makeWebBadge(l);
         var phone=l.phone?('<a href="tel:'+esc(l.phone)+'" style="color:var(--text);font-family:monospace;text-decoration:none;font-size:12.5px" onclick="event.stopPropagation()">'+esc(l.phone)+'</a>'):'<span style="color:var(--text3)">—</span>';
         var email=l.email?('<a href="mailto:'+esc(l.email)+'" style="color:var(--orange);font-size:12px;word-break:break-all" onclick="event.stopPropagation()">'+esc(l.email)+'</a>'):'<span style="color:var(--text3)">—</span>';
         var rating=l.rating?('⭐ '+parseFloat(l.rating).toFixed(1)+(l.ratings_total?'<div style="font-size:10px;color:var(--text3)">'+l.ratings_total+'</div>':'')):'—';
         var imp_btn=l.imported?''
             :'<button onclick="impOne('+l.id+',this,event)" class="ls-btn ls-btn-imp" title="Import to CRM">⬇</button>';
+        var hasWeb=parseInt(l.has_website)===1;
         var row_bg=hasWeb?'':'background:rgba(249,115,22,.02)';
         return '<tr id="row-'+l.id+'" style="'+row_bg+'" onclick="showDetail('+i+')">'
             +'<td onclick="event.stopPropagation()"><input type="checkbox" class="ls-chk" data-id="'+l.id+'" onchange="updBulk()"></td>'
@@ -312,7 +332,6 @@ function renderTable(leads) {
             +'</div></td>'
             +'</tr>';
     }).join('');
-    // checkbox state
     document.getElementById('sel-all').checked=false;
     document.getElementById('sel-all').indeterminate=false;
 }
@@ -323,6 +342,7 @@ function showDetail(idx) {
     var sc=score>=70?'#10b981':score>=40?'#f59e0b':'#94a3b8';
     var scoreBg=score>=70?'rgba(16,185,129,.12)':score>=40?'rgba(245,158,11,.1)':'rgba(148,163,184,.08)';
     var hasWeb=parseInt(l.has_website)===1;
+    var wfc=parseInt(l.website_found_by_crawler)===1;
 
     document.getElementById('modal-name').textContent=l.name||'Unknown';
     document.getElementById('modal-industry-loc').textContent=(l.industry||'')+(l.location?' · '+l.location:'');
@@ -334,12 +354,28 @@ function showDetail(idx) {
         +'<div style="font-size:11px;font-weight:700;color:'+sc+'">'+(score>=70?'🔥 HOT LEAD':score>=40?'👍 Good Lead':'Potential Lead')+'</div>'
         +'</div>';
 
+    // FIX: Website field in modal now correctly shows based on wfc flag
+    var websiteVal, hasWebsiteVal;
+    if (hasWeb && l.website) {
+        if (wfc) {
+            websiteVal  = '<a href="'+esc(l.website)+'" target="_blank" style="color:var(--orange)">'+esc(l.website)+'</a>'
+                        + '<div style="font-size:11px;color:#6366f1;margin-top:3px">🔍 Found by deep search</div>';
+            hasWebsiteVal = '<span class="ls-web-found">🔍 Found by crawler</span>';
+        } else {
+            websiteVal  = '<a href="'+esc(l.website)+'" target="_blank" style="color:var(--orange)">'+esc(l.website)+'</a>';
+            hasWebsiteVal = '<span class="ls-web-yes">✅ Yes — listed in Google</span>';
+        }
+    } else {
+        websiteVal  = '(No website — prime prospect!)';
+        hasWebsiteVal = '<span class="ls-web-no">🔥 No — Needs one built!</span>';
+    }
+
     // Detail grid
     var items=[
         {label:'Phone', val: l.phone?'<a href="tel:'+esc(l.phone)+'" style="color:var(--orange)">'+esc(l.phone)+'</a>':'—'},
         {label:'Email', val: l.email?'<a href="mailto:'+esc(l.email)+'" style="color:var(--orange)">'+esc(l.email)+'</a>':'—'},
-        {label:'Website', val: hasWeb&&l.website?'<a href="'+esc(l.website)+'" target="_blank" style="color:var(--orange)">'+esc(l.website)+'</a>':'(No website — prime prospect!)'},
-        {label:'Has Website', val: hasWeb?'<span class="ls-web-yes">✅ Yes</span>':'<span class="ls-web-no">🔥 No — Needs one built!</span>'},
+        {label:'Website', val: websiteVal},
+        {label:'Has Website', val: hasWebsiteVal},
         {label:'Owner Name', val: l.owner_name?esc(l.owner_name):'Not found'},
         {label:'Industry', val: esc(l.industry||'—')},
         {label:'Location', val: esc(l.location||'—')},
@@ -365,7 +401,6 @@ function showDetail(idx) {
     document.getElementById('modal-actions').innerHTML=actions||'<span style="color:var(--text3);font-size:13px">No contact info available</span>';
 
     document.getElementById('ls-modal').style.display='flex';
-    // modal is open
 }
 function lsCloseModal() {
     var m = document.getElementById('ls-modal');
@@ -442,12 +477,9 @@ function impOne(id,btn,evt,fromModal) {
     fetch('lead_generator_api.php',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
         if(d.ok){
             toast(d.message,'success');
-            // Update row
             var row=document.getElementById('row-'+id);
             if(row){var imp_td=row.querySelector('.ls-btn-imp');if(imp_td)imp_td.remove();}
-            // Update modal actions if open
             if(fromModal){var ma=document.getElementById('modal-actions');if(ma){var ib=ma.querySelector('button[onclick*="impOne"]');if(ib)ib.remove();}}
-            // Update data
             var dataItem=lsAllData.find(l=>l.id==id);if(dataItem)dataItem.imported=true;
             loadStats();
         } else {if(btn){btn.disabled=false;btn.textContent='⬇';}toast(d.error||'Failed','error');}

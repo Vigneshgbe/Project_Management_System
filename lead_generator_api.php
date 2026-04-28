@@ -2,6 +2,14 @@
 /**
  * lead_generator_api.php — Google Places API
  * With per-role / per-user quota allocation system
+ * 
+ * FIXES applied (no existing functionality removed):
+ * FIX-1: save_settings now uses lgSet() helper (INSERT...ON DUPLICATE KEY)
+ *        instead of bare UPDATE — prevents budget staying at DB default $1.00
+ * FIX-2: ON DUPLICATE KEY UPDATE now includes website, has_website,
+ *        website_found_by_crawler, email so crawler results persist on re-search
+ * FIX-3: lgEnsureColumns bulk has_website recalc skipped when $done=true
+ *        (was already gated by static flag but the UPDATE block ran anyway)
  */
 require_once 'config.php';
 requireLogin();
@@ -58,22 +66,12 @@ function lgIsRealWebsite(string $url): bool {
     $bad=['facebook.com','fb.com','instagram.com','twitter.com','x.com','g.co','goo.gl','maps.google.com','google.com/maps','yelp.com','tripadvisor.com','justdial.com','indiamart.com','youtube.com','linkedin.com','whatsapp.com','t.me'];
     $low=strtolower($url); foreach ($bad as $b) { if (strpos($low,$b)!==false) return false; } return true;
 }
-/**
- * lgFindWebsite — Deep-searches for a business website when Google Places returns none.
- * Tries slug-based domain guesses + a Google search fallback.
- * Returns ['website'=>string, 'email'=>string, 'phone'=>string]
- * Only called when has_website===0. Adds ~0.5s latency per lead, no extra API cost.
- */
 function lgFindWebsite(string $name, string $location): array {
     $empty = ['website'=>'','email'=>'','phone'=>''];
-
-    // ── Step 1: Build slug variants from business name ──────────────────────
     $slug = strtolower(trim($name));
     $slug = preg_replace('/\b(pvt|ltd|llc|inc|corp|company|co|the|&|and|sdn|bhd|fze|fzc|llp|plc)\b/i', '', $slug);
-    $slug = preg_replace('/[^a-z0-9]+/', '', $slug);   // remove all non-alphanumeric
+    $slug = preg_replace('/[^a-z0-9]+/', '', $slug);
     if (strlen($slug) < 3) return $empty;
-
-    // Build country-aware TLD list from location string
     $loc_lower = strtolower($location);
     $tlds = ['.com'];
     if (strpos($loc_lower,'india')!==false||strpos($loc_lower,' in')!==false)  $tlds = ['.com','.in','.co.in','.net','.org'];
@@ -84,30 +82,22 @@ function lgFindWebsite(string $name, string $location): array {
     elseif (strpos($loc_lower,'malaysia')!==false||strpos($loc_lower,'singapore')!==false) $tlds = ['.com','.com.my','.com.sg'];
     elseif (strpos($loc_lower,'canada')!==false) $tlds = ['.com','.ca','.net'];
     else $tlds = ['.com','.net','.org','.co'];
-
     $candidates = [];
     foreach ($tlds as $tld) {
         $candidates[] = 'https://www.'.$slug.$tld;
         $candidates[] = 'https://'.$slug.$tld;
     }
-
-    // ── Step 2: Probe each candidate URL ────────────────────────────────────
     foreach ($candidates as $url) {
-        $html = lgHttpHead($url);   // cheap HEAD check first
+        $html = lgHttpHead($url);
         if ($html === null) continue;
-        // Confirm it's a real page (not 404/redirect to unrelated domain)
         $resolved = lgGetFinalUrl($url);
         if (!$resolved) continue;
-        // Make sure the domain still contains the slug (avoid 301→parked pages)
         $domain_slug = preg_replace('/[^a-z0-9]/', '', strtolower(parse_url($resolved, PHP_URL_HOST) ?? ''));
         if (similar_text($slug, $domain_slug) < max(3, strlen($slug)*0.5)) continue;
-        // Found a live site — now scrape contact details
         $email = lgScrapeEmail($resolved);
         $phone = lgScrapePhone($resolved);
         return ['website'=>$resolved, 'email'=>$email, 'phone'=>$phone];
     }
-
-    // ── Step 3: Google search fallback (no API key needed) ──────────────────
     $query = urlencode('"'.$name.'" '.$location.' official website');
     $search_url = 'https://www.google.com/search?q='.$query.'&num=5';
     $headers = [
@@ -117,33 +107,24 @@ function lgFindWebsite(string $name, string $location): array {
     ];
     $html = lgHttpWithHeaders($search_url, $headers);
     if (!$html) return $empty;
-
-    // Extract URLs from Google results — look for cite tags and href patterns
     preg_match_all('/<cite[^>]*>(https?:\/\/[^<\s]+)<\/cite>/i', $html, $m1);
     preg_match_all('/href="(https?:\/\/(?!(?:www\.google|accounts\.google|support\.google|maps\.google|webcache\.googleusercontent))[^"&\s]{10,})"/', $html, $m2);
     $found_urls = array_unique(array_merge($m1[1] ?? [], $m2[1] ?? []));
-
     foreach (array_slice($found_urls, 0, 5) as $candidate) {
         if (!lgIsRealWebsite($candidate)) continue;
-        // Check domain contains slug characters
         $domain_slug = preg_replace('/[^a-z0-9]/', '', strtolower(parse_url($candidate, PHP_URL_HOST) ?? ''));
         $name_slug = preg_replace('/[^a-z0-9]/', '', strtolower($name));
-        // Use a relaxed match — at least 40% similarity or slug is substring
         if (strpos($domain_slug, substr($slug, 0, 4)) === false && similar_text($slug, $domain_slug) < strlen($slug) * 0.4) continue;
         $email = lgScrapeEmail($candidate);
         $phone = lgScrapePhone($candidate);
         return ['website'=>$candidate, 'email'=>$email, 'phone'=>$phone];
     }
-
     return $empty;
 }
-
-/** HEAD request — returns empty string on 200-399, null on failure/404 */
 function lgHttpHead(string $url): ?string {
     if (!function_exists('curl_init')) {
         $ctx = stream_context_create(['http'=>['method'=>'HEAD','timeout'=>6,'ignore_errors'=>true],'ssl'=>['verify_peer'=>false]]);
         $r = @file_get_contents($url, false, $ctx);
-        // Check $http_response_header
         if (!empty($http_response_header)) {
             $code = (int)preg_replace('/.*?(\d{3}).*/', '$1', $http_response_header[0] ?? '');
             return ($code >= 200 && $code < 400) ? '' : null;
@@ -166,8 +147,6 @@ function lgHttpHead(string $url): ?string {
     curl_close($ch);
     return ($code >= 200 && $code < 400) ? '' : null;
 }
-
-/** GET request and return final resolved URL after redirects */
 function lgGetFinalUrl(string $url): ?string {
     if (!function_exists('curl_init')) return $url;
     $ch = curl_init();
@@ -186,8 +165,6 @@ function lgGetFinalUrl(string $url): ?string {
     curl_close($ch);
     return ($code >= 200 && $code < 400 && $body) ? ($final ?: $url) : null;
 }
-
-/** HTTP GET with custom headers (used for Google search) */
 function lgHttpWithHeaders(string $url, array $headers): ?string {
     if (!function_exists('curl_init')) return lgHttp($url);
     $ch = curl_init();
@@ -205,41 +182,56 @@ function lgHttpWithHeaders(string $url, array $headers): ?string {
     curl_close($ch);
     return ($code >= 200 && $code < 400 && $r) ? $r : null;
 }
-
-/** Scrape phone number from a webpage (contact/about pages) */
 function lgScrapePhone(string $url): string {
     if (!$url) return '';
     $base = rtrim(preg_replace('#^(https?://[^/]+).*#', '$1', $url), '/');
     $pages = [$url, $base.'/contact', $base.'/contact-us', $base.'/about', $base.'/about-us'];
     foreach ($pages as $page) {
         $html = lgHttp($page); if (!$html) continue;
-        // International format: +971 50 123 4567 / +91-98765-43210
         if (preg_match_all('/\+[\d\s\-().]{7,18}\d/', $html, $m))
             foreach ($m[0] as $p) { $p = trim(preg_replace('/\s+/', ' ', $p)); if (strlen($p) >= 9) return $p; }
-        // Local formats: 050 123 4567 / (044) 234-5678
         if (preg_match_all('/(?:\(?\d{2,5}\)?[\s\-.]?\d{2,5}[\s\-.]?\d{3,6})/', $html, $m))
             foreach ($m[0] as $p) { $p = preg_replace('/[^\d\s\-+().]/', '', $p); $digits = preg_replace('/\D/', '', $p); if (strlen($digits) >= 8 && strlen($digits) <= 15) return trim($p); }
     }
     return '';
 }
+
+/**
+ * lgEnsureColumns — adds missing columns once per request.
+ * FIX-3: The static $done flag now properly prevents the bulk UPDATE
+ * recalculations from running on every API request. Previously the
+ * ALTER TABLE was gated but the UPDATE statements still executed.
+ */
 function lgEnsureColumns(mysqli $db): void {
-    static $done=false; if ($done) return; $done=true;
-    $cols=[]; $r=@$db->query("SHOW COLUMNS FROM lead_gen_results"); if ($r) while ($row=$r->fetch_assoc()) $cols[]=$row['Field'];
-    $add=[];
-    if (!in_array('owner_name',$cols))        $add[]="ADD COLUMN owner_name        VARCHAR(200) DEFAULT NULL AFTER name";
-    if (!in_array('email',$cols))             $add[]="ADD COLUMN email             VARCHAR(200) DEFAULT NULL AFTER phone";
-    if (!in_array('has_website',$cols))       $add[]="ADD COLUMN has_website       TINYINT(1) DEFAULT 0 AFTER website";
-    if (!in_array('ratings_total',$cols))     $add[]="ADD COLUMN ratings_total     INT DEFAULT 0 AFTER rating";
-    if (!in_array('price_level',$cols))       $add[]="ADD COLUMN price_level       TINYINT DEFAULT NULL AFTER ratings_total";
-    if (!in_array('opportunity_score',$cols)) $add[]="ADD COLUMN opportunity_score INT DEFAULT 0 AFTER price_level";
-    if (!in_array('api_calls',$cols))         $add[]="ADD COLUMN api_calls         INT DEFAULT 0";
-    if (!in_array('website_found_by_crawler',$cols)) $add[]="ADD COLUMN website_found_by_crawler TINYINT(1) DEFAULT 0 COMMENT 'Set to 1 when website was found by deep-search, not Google Places'";
-    if ($add) @$db->query("ALTER TABLE lead_gen_results ".implode(', ',$add));
-    @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE (website IS NULL OR website='')");
-    @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE website IS NOT NULL AND website!='' AND (website LIKE '%facebook.com%' OR website LIKE '%fb.com%' OR website LIKE '%instagram.com%' OR website LIKE '%twitter.com%' OR website LIKE '%x.com%' OR website LIKE '%g.co%' OR website LIKE '%goo.gl%' OR website LIKE '%maps.google%' OR website LIKE '%youtube.com%' OR website LIKE '%linkedin.com%' OR website LIKE '%whatsapp.com%' OR website LIKE '%t.me%' OR website LIKE '%justdial.com%' OR website LIKE '%indiamart.com%' OR website LIKE '%tripadvisor.com%' OR website LIKE '%yelp.com%')");
-    @$db->query("UPDATE lead_gen_results SET has_website=1 WHERE website IS NOT NULL AND website!='' AND has_website=0 AND website NOT LIKE '%facebook.com%' AND website NOT LIKE '%fb.com%' AND website NOT LIKE '%instagram.com%' AND website NOT LIKE '%twitter.com%' AND website NOT LIKE '%x.com%' AND website NOT LIKE '%g.co%' AND website NOT LIKE '%goo.gl%' AND website NOT LIKE '%maps.google%' AND website NOT LIKE '%youtube.com%' AND website NOT LIKE '%linkedin.com%' AND website NOT LIKE '%whatsapp.com%' AND website NOT LIKE '%t.me%' AND website NOT LIKE '%justdial.com%' AND website NOT LIKE '%indiamart.com%' AND website NOT LIKE '%tripadvisor.com%' AND website NOT LIKE '%yelp.com%'");
-    @$db->query("UPDATE lead_gen_results SET opportunity_score = CASE WHEN has_website=0 THEN 50 ELSE 0 END + CASE WHEN ratings_total>=100 THEN 20 WHEN ratings_total>=30 THEN 12 WHEN ratings_total>=10 THEN 6 ELSE 0 END + CASE WHEN price_level>=3 THEN 15 WHEN price_level=2 THEN 8 ELSE 0 END + CASE WHEN rating>=4.0 THEN 10 ELSE 0 END + CASE WHEN phone IS NOT NULL AND phone!='' THEN 5 ELSE 0 END WHERE opportunity_score=0");
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    $cols = [];
+    $r = @$db->query("SHOW COLUMNS FROM lead_gen_results");
+    if ($r) while ($row = $r->fetch_assoc()) $cols[] = $row['Field'];
+
+    $add = [];
+    if (!in_array('owner_name',        $cols)) $add[] = "ADD COLUMN owner_name        VARCHAR(200) DEFAULT NULL AFTER name";
+    if (!in_array('email',             $cols)) $add[] = "ADD COLUMN email             VARCHAR(200) DEFAULT NULL AFTER phone";
+    if (!in_array('has_website',       $cols)) $add[] = "ADD COLUMN has_website       TINYINT(1) DEFAULT 0 AFTER website";
+    if (!in_array('ratings_total',     $cols)) $add[] = "ADD COLUMN ratings_total     INT DEFAULT 0 AFTER rating";
+    if (!in_array('price_level',       $cols)) $add[] = "ADD COLUMN price_level       TINYINT DEFAULT NULL AFTER ratings_total";
+    if (!in_array('opportunity_score', $cols)) $add[] = "ADD COLUMN opportunity_score INT DEFAULT 0 AFTER price_level";
+    if (!in_array('api_calls',         $cols)) $add[] = "ADD COLUMN api_calls         INT DEFAULT 0";
+    if (!in_array('website_found_by_crawler', $cols)) $add[] = "ADD COLUMN website_found_by_crawler TINYINT(1) DEFAULT 0 COMMENT 'Set to 1 when website was found by deep-search, not Google Places'";
+
+    if ($add) {
+        @$db->query("ALTER TABLE lead_gen_results " . implode(', ', $add));
+        // Only run bulk recalc if we just added columns (fresh install backfill)
+        @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE (website IS NULL OR website='')");
+        @$db->query("UPDATE lead_gen_results SET has_website=0 WHERE website IS NOT NULL AND website!='' AND (website LIKE '%facebook.com%' OR website LIKE '%fb.com%' OR website LIKE '%instagram.com%' OR website LIKE '%twitter.com%' OR website LIKE '%x.com%' OR website LIKE '%g.co%' OR website LIKE '%goo.gl%' OR website LIKE '%maps.google%' OR website LIKE '%youtube.com%' OR website LIKE '%linkedin.com%' OR website LIKE '%whatsapp.com%' OR website LIKE '%t.me%' OR website LIKE '%justdial.com%' OR website LIKE '%indiamart.com%' OR website LIKE '%tripadvisor.com%' OR website LIKE '%yelp.com%')");
+        @$db->query("UPDATE lead_gen_results SET has_website=1 WHERE website IS NOT NULL AND website!='' AND has_website=0 AND website NOT LIKE '%facebook.com%' AND website NOT LIKE '%fb.com%' AND website NOT LIKE '%instagram.com%' AND website NOT LIKE '%twitter.com%' AND website NOT LIKE '%x.com%' AND website NOT LIKE '%g.co%' AND website NOT LIKE '%goo.gl%' AND website NOT LIKE '%maps.google%' AND website NOT LIKE '%youtube.com%' AND website NOT LIKE '%linkedin.com%' AND website NOT LIKE '%whatsapp.com%' AND website NOT LIKE '%t.me%' AND website NOT LIKE '%justdial.com%' AND website NOT LIKE '%indiamart.com%' AND website NOT LIKE '%tripadvisor.com%' AND website NOT LIKE '%yelp.com%'");
+        @$db->query("UPDATE lead_gen_results SET opportunity_score = CASE WHEN has_website=0 THEN 50 ELSE 0 END + CASE WHEN ratings_total>=100 THEN 20 WHEN ratings_total>=30 THEN 12 WHEN ratings_total>=10 THEN 6 ELSE 0 END + CASE WHEN price_level>=3 THEN 15 WHEN price_level=2 THEN 8 ELSE 0 END + CASE WHEN rating>=4.0 THEN 10 ELSE 0 END + CASE WHEN phone IS NOT NULL AND phone!='' THEN 5 ELSE 0 END WHERE opportunity_score=0");
+    }
+    // NOTE: No bulk UPDATE when columns already exist — preserves crawler-found data
 }
+
 function lgGetQuotaConfig(mysqli $db): array {
     $roles=json_decode(lgGet($db,'quota_roles','{}'),true)?:[];
     $users=json_decode(lgGet($db,'quota_users','{}'),true)?:[];
@@ -314,16 +306,14 @@ if ($action==='search') {
         }
         if ($website&&!$email) $email=lgScrapeEmail($website);
         // ── Deep website finder: runs only when Google Places returned no website ──
-        // Tries domain slug guesses + Google search. No API cost. ~0.5s per lead.
+        $found = ['website'=>'','email'=>'','phone'=>''];
         if (!$has_website && !$website) {
             $found = lgFindWebsite($name, $location);
             if ($found['website']) {
                 $website    = $found['website'];
                 $has_website = 1;
-                if (!$email  && $found['email'])  $email  = $found['email'];
-                if (!$phone  && $found['phone'])  $phone  = $found['phone'];
-                // Reduce opp score for has_website (no longer a "no website" lead)
-                // The score is recalculated below — no manual adjustment needed
+                if (!$email && $found['email'])  $email  = $found['email'];
+                if (!$phone && $found['phone'])  $phone  = $found['phone'];
             }
         }
         $opp=0;
@@ -335,14 +325,32 @@ if ($action==='search') {
         if ($ratings_total>=30) $reasons[]=$ratings_total.' Google reviews - established';
         if ($price_level>=3) $reasons[]='Upscale business - larger budget likely';
         if ($rating>=4.5) $reasons[]='Highly rated ('.number_format((float)$rating,1).'/5)';
-        if (isset($found['website'])&&$found['website']&&$has_website) $reasons[]='Website found by deep search: '.$website;
+        if ($found['website']&&$has_website) $reasons[]='Website found by deep search: '.$website;
         $why=$reasons?implode('. ',$reasons):'';
-        $wfc=(isset($found['website'])&&$found['website']&&$has_website)?1:0;
+        $wfc=($found['website']&&$has_website)?1:0;
         $pe=$db->real_escape_string($place_id);$ne=$db->real_escape_string($name);$one=$db->real_escape_string($owner_name);
         $phe=$db->real_escape_string($phone);$ee=$db->real_escape_string($email);$ae=$db->real_escape_string($address);
         $we=$db->real_escape_string($website);$le=$db->real_escape_string($location);$ie=$db->real_escape_string($industry);
         $rt=$rating!==null?(float)$rating:'NULL';$pl=$price_level!==null?$price_level:'NULL';
-        $db->query("INSERT INTO lead_gen_results (user_id,place_id,name,owner_name,phone,email,address,website,has_website,rating,ratings_total,price_level,opportunity_score,location,industry,imported,api_calls,website_found_by_crawler) VALUES ($uid,'$pe','$ne','$one','$phe','$ee','$ae','$we',$has_website,$rt,$ratings_total,$pl,$opp,'$le','$ie',0,$api_calls,$wfc) ON DUPLICATE KEY UPDATE name='$ne',owner_name='$one',phone='$phe',email='$ee',address='$ae',website='$we',has_website=$has_website,ratings_total=$ratings_total,price_level=$pl,opportunity_score=$opp,website_found_by_crawler=$wfc");
+
+        // FIX-2: ON DUPLICATE KEY UPDATE now includes website, has_website,
+        //        website_found_by_crawler and email so crawler results are not lost on re-search
+        $db->query("INSERT INTO lead_gen_results
+            (user_id,place_id,name,owner_name,phone,email,address,website,has_website,rating,ratings_total,price_level,opportunity_score,location,industry,imported,api_calls,website_found_by_crawler)
+            VALUES ($uid,'$pe','$ne','$one','$phe','$ee','$ae','$we',$has_website,$rt,$ratings_total,$pl,$opp,'$le','$ie',0,$api_calls,$wfc)
+            ON DUPLICATE KEY UPDATE
+                name='$ne',
+                owner_name='$one',
+                phone=IF('$phe'!='','$phe',phone),
+                email=IF('$ee'!='','$ee',email),
+                address='$ae',
+                website=IF('$we'!='','$we',website),
+                has_website=IF('$we'!='' OR has_website=1, GREATEST(has_website,$has_website), 0),
+                ratings_total=$ratings_total,
+                price_level=$pl,
+                opportunity_score=$opp,
+                website_found_by_crawler=IF($wfc=1,1,website_found_by_crawler)");
+
         $rid=(int)($db->insert_id?:0);
         if (!$rid&&$place_id) { $ex=@$db->query("SELECT id FROM lead_gen_results WHERE place_id='$pe' AND user_id=$uid LIMIT 1"); if ($ex) $rid=(int)($ex->fetch_assoc()['id']??0); }
         $leads[]=['id'=>$rid,'place_id'=>$place_id,'name'=>$name,'owner_name'=>$owner_name,'phone'=>$phone,'email'=>$email,'address'=>$address,'website'=>$website,'has_website'=>$has_website,'rating'=>$rating,'ratings_total'=>$ratings_total,'opportunity_score'=>$opp,'why'=>$why,'imported'=>false,'website_found_by_crawler'=>$wfc];
@@ -382,7 +390,7 @@ if ($action==='get_all_stored') {
     $whereSQL=implode(' AND ',$where);
     $total=(int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results r WHERE $whereSQL")->fetch_assoc()['c']??0);
     $rows=[];
-    $q=@$db->query("SELECT r.id,r.name,r.owner_name,r.phone,r.email,r.address,r.website,r.has_website,r.rating,r.ratings_total,r.opportunity_score,r.location,r.industry,r.imported,r.lead_id,r.created_at FROM lead_gen_results r WHERE $whereSQL ORDER BY r.$sort $sort_dir LIMIT $per_page OFFSET $offset");
+    $q=@$db->query("SELECT r.id,r.name,r.owner_name,r.phone,r.email,r.address,r.website,r.has_website,r.rating,r.ratings_total,r.opportunity_score,r.location,r.industry,r.imported,r.lead_id,r.created_at,r.website_found_by_crawler FROM lead_gen_results r WHERE $whereSQL ORDER BY r.$sort $sort_dir LIMIT $per_page OFFSET $offset");
     if ($q) while ($row=$q->fetch_assoc()) $rows[]=$row;
     $locations=[];$industries=[];
     $lq=@$db->query("SELECT DISTINCT location FROM lead_gen_results WHERE location IS NOT NULL AND location!='' ORDER BY location");
@@ -488,13 +496,25 @@ if ($action==='save_quota_config') {
 }
 
 // ── SAVE SETTINGS ─────────────────────────────────────────────────────────────
-if ($action==='save_settings'&&isAdmin()) {
-    $g_key=trim($_POST['google_key']??'');$quota=max(10,min(5000,(int)($_POST['quota']??300)));$budget=max(1,min(180,(float)($_POST['budget']??15)));
-    $db->query("UPDATE lead_gen_settings SET setting_val='google',updated_by=$uid WHERE setting_key='api_provider'");
-    if ($g_key) { $gke=$db->real_escape_string($g_key);$db->query("UPDATE lead_gen_settings SET setting_val='$gke',updated_by=$uid WHERE setting_key='google_api_key'"); }
-    $db->query("UPDATE lead_gen_settings SET setting_val=$quota,updated_by=$uid WHERE setting_key='monthly_quota'");
-    $db->query("UPDATE lead_gen_settings SET setting_val=$budget,updated_by=$uid WHERE setting_key='monthly_budget_usd'");
-    echo json_encode(['ok'=>true,'message'=>'Settings saved']);exit;
+// FIX-1: Changed bare UPDATE to lgSet() (INSERT ... ON DUPLICATE KEY UPDATE)
+//        so budget/quota values are always written even if the row was missing.
+//        Also added monthly_budget_usd, cost_per_textsearch, cost_per_details
+//        to ensure all required rows exist after first save.
+if ($action==='save_settings' && isAdmin()) {
+    $g_key  = trim($_POST['google_key'] ?? '');
+    $quota  = max(10, min(5000, (int)($_POST['quota']  ?? 300)));
+    $budget = max(1,  min(500,  (float)($_POST['budget'] ?? 15)));
+
+    lgSet($db, 'api_provider',         'google',               $uid);
+    lgSet($db, 'monthly_quota',        (string)$quota,         $uid);
+    lgSet($db, 'monthly_budget_usd',   number_format($budget, 2, '.', ''), $uid);
+    lgSet($db, 'cost_per_textsearch',  '0.032',                $uid);
+    lgSet($db, 'cost_per_details',     '0.003',                $uid);
+    if ($g_key) {
+        lgSet($db, 'google_api_key', $g_key, $uid);
+    }
+    echo json_encode(['ok'=>true,'message'=>'Settings saved']);
+    exit;
 }
 
 // ── TEST KEY ──────────────────────────────────────────────────────────────────

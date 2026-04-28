@@ -30,14 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$title) { flash('Title required.','error'); ob_end_clean(); header('Location: tasks.php'); exit; }
         if ($action === 'create') {
             $stmt = $db->prepare("INSERT INTO tasks (title,description,project_id,assigned_to,created_by,status,priority,due_date,start_date,label) VALUES (?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("ssiiiissss",$title,$desc,$proj,$assign,$uid,$status,$prio,$due,$start,$label);
+            $stmt->bind_param("ssiiisssss",$title,$desc,$proj,$assign,$uid,$status,$prio,$due,$start,$label);
             $stmt->execute();
             $new_id = $db->insert_id;
             logActivity('created task',$title,$new_id);
             if ($assign && $assign !== $user['id']) {
-                require_once 'includes/mailer.php';
+                @include_once 'includes/mailer.php';
                 $proj_row = $proj ? $db->query("SELECT title FROM projects WHERE id=$proj")->fetch_assoc() : null;
-                pushNotification([
+                if (function_exists('pushNotification')) pushNotification([
                     'user_id'     => $assign,
                     'type'        => 'task_assigned',
                     'entity_type' => 'task',
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('Task created.','success');
         } else {
             $stmt = $db->prepare("UPDATE tasks SET title=?,description=?,project_id=?,assigned_to=?,status=?,priority=?,due_date=?,start_date=?,label=?,completed_at=IF(status='done',NOW(),NULL) WHERE id=?");
-            $stmt->bind_param("ssiissssssi",$title,$desc,$proj,$assign,$status,$prio,$due,$start,$label,$id);
+            $stmt->bind_param("ssiisssssi",$title,$desc,$proj,$assign,$status,$prio,$due,$start,$label,$id);
             $stmt->execute();
             logActivity('updated task',$title,$id);
             flash('Task updated.','success');

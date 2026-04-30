@@ -269,6 +269,9 @@ select.form-control{cursor:pointer}
     <a href="search.php" class="nav-item <?= $activePage==='search'?'active':'' ?>">
       <span class="icon">🔍</span> Search
     </a>
+    <a href="chatbot.php" class="nav-item <?= $activePage==='chatbot'?'active':'' ?>">
+      <span class="icon">🤖</span> Chatbot
+    </a>
     <a href="dashboard.php" class="nav-item <?= $activePage==='dashboard'?'active':'' ?>">
       <span class="icon">⬛</span> Dashboard
     </a>

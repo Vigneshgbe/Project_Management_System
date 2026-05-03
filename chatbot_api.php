@@ -31,21 +31,17 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 define('GEMINI_API_HOST', 'https://generativelanguage.googleapis.com');
 
-// All model+version combinations to try, in priority order.
-// Each entry: [api_version, model_id]
-// We try v1 before v1beta because v1 is the stable channel.
+// Replace the existing GEMINI_COMBOS define with this:
 define('GEMINI_COMBOS', [
-    ['v1',    'gemini-2.0-flash'],        // current free model, stable API
-    ['v1beta','gemini-2.0-flash'],        // same model, preview API
-    ['v1',    'gemini-1.5-flash'],        // older free model
-    ['v1beta','gemini-1.5-flash'],        // same, preview API
-    ['v1beta','gemini-1.5-flash-8b'],     // lighter fallback
-    ['v1',    'gemini-1.0-pro'],          // oldest stable
-    ['v1beta','gemini-1.0-pro'],          // oldest, preview
+    ['v1beta','gemini-2.5-flash'],        // FREE tier key's available model
+    ['v1',    'gemini-2.5-flash'],        // same, stable API
+    ['v1beta','gemini-2.0-flash'],        // fallback
+    ['v1',    'gemini-2.0-flash'],        // fallback stable
+    ['v1beta','gemini-2.0-flash-lite'],   // lighter fallback
 ]);
 
-define('FREE_DAILY_HARD_LIMIT', 1400); // Google allows 1,500 — we stop 100 short
-define('FREE_RPM_LIMIT', 12);          // Google allows 15 — we stop 3 short
+define('FREE_DAILY_HARD_LIMIT', 18);  // gemini-2.5-flash free = 20/day, stop 2 short
+define('FREE_RPM_LIMIT', 4);          // free = 5 RPM, stop 1 short
 
 // Helper: build URL from combo
 function cbModelUrl(array $combo, string $api_key): string {
@@ -575,7 +571,6 @@ if ($action === 'test_key') {
         echo json_encode(['ok' => false, 'error' => "No working model.$hint\n\nResults:\n$resultLines"]);
     }
     exit;
-}
 }
 
 // ── ACTION: CHAT ──

@@ -21,15 +21,20 @@ header('Content-Type: application/json');
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // ── MODEL CONSTANT — update here if Google renames the model ──
-define('GEMINI_MODEL', 'gemini-2.5-flash');
-define('GEMINI_BASE',  'https://generativelanguage.googleapis.com/v1beta/models/');
+// Primary: stable alias. Fallback: dated preview (used automatically on 403/404).
+define('GEMINI_MODEL',          'gemini-2.5-flash');
+define('GEMINI_MODEL_FALLBACK', 'gemini-2.5-flash-preview-05-20');
+define('GEMINI_BASE',           'https://generativelanguage.googleapis.com/v1beta/models/');
 
 // ── HELPERS ──
 function cbGet(mysqli $db, string $k, string $def = ''): string {
     $r = @$db->query("SELECT setting_val FROM chatbot_settings WHERE setting_key='".$db->real_escape_string($k)."' LIMIT 1");
     if (!$r) return $def;
     $row = $r->fetch_assoc();
-    return $row ? trim((string)($row['setting_val'] ?? $def)) : $def;
+    $val = $row ? (string)($row['setting_val'] ?? $def) : $def;
+    // Strip ALL whitespace including unicode zero-width chars that trim() misses.
+    // Critical for API keys pasted directly into phpMyAdmin.
+    return preg_replace('/[\s\x00-\x1F\x7F\xC2\xA0\xE2\x80\x8B]/u', '', $val);
 }
 
 function cbTableOk(mysqli $db): bool {
@@ -193,23 +198,59 @@ if ($action === 'test_key') {
     }
 
     $d = json_decode($raw, true);
+
+    // On 403/404 try the fallback model name before giving up
+    $errCode = $d['error']['code'] ?? 0;
+    if (($errCode === 403 || $errCode === 404) && GEMINI_MODEL !== GEMINI_MODEL_FALLBACK) {
+        $url2 = GEMINI_BASE.GEMINI_MODEL_FALLBACK.':generateContent?key='.$key;
+        $raw2 = cbHttp($url2, $body);
+        if ($raw2 !== null) {
+            $d2 = json_decode($raw2, true);
+            if (!empty($d2['candidates'][0]['content']['parts'][0]['text'])) {
+                // Fallback worked — tell user which model to use
+                echo json_encode(['ok'=>true,'message'=>"✅ Key works with model: ".GEMINI_MODEL_FALLBACK." (update GEMINI_MODEL constant in chatbot_api.php)"]);
+                exit;
+            }
+            // Use fallback error if it's more informative
+            if (empty($d2['error'])) $d = $d2;
+        }
+    }
+
     if (!empty($d['candidates'][0]['content']['parts'][0]['text'])) {
         echo json_encode(['ok'=>true,'message'=>'✅ Gemini API key works! Model: '.GEMINI_MODEL]);
     } elseif (!empty($d['error'])) {
         $code = $d['error']['code'] ?? 0;
         $msg  = $d['error']['message'] ?? 'Unknown error';
         if ($code === 403 || $code === 401) {
-            echo json_encode(['ok'=>false,'error'=>"API key rejected ($code).\n1. Get key from aistudio.google.com/apikey\n2. Enable Gemini API in that project\n3. Remove IP restrictions if any\n\nError: $msg"]);
+            echo json_encode(['ok'=>false,'error'=>"API key rejected (403).\n\nMost common cause: The key was created in Google Cloud Console but the 'Generative Language API' is not enabled in that project.\n\nFix:\n1. Get a NEW key from aistudio.google.com/apikey (not Cloud Console)\n   — AI Studio keys work immediately, no extra setup needed.\n\nOR if using Cloud Console key:\n2. Go to console.cloud.google.com → APIs → Enable 'Generative Language API'\n\nError: $msg"]);
         } elseif ($code === 429) {
-            echo json_encode(['ok'=>true,'message'=>"✅ Key is valid but rate-limited (429) — this is normal for free tier (10 RPM). Wait 60s and try again. Your key works fine."]);
+            echo json_encode(['ok'=>true,'message'=>"✅ Key is valid but rate-limited (429) — free tier 10 RPM. Wait 60s. Your key works fine."]);
         } elseif ($code === 400) {
-            echo json_encode(['ok'=>false,'error'=>"Bad request ($code). Model '"  .GEMINI_MODEL."' may not be available in your region or project.\n\nError: $msg"]);
+            echo json_encode(['ok'=>false,'error'=>"Bad request (400). Model '".GEMINI_MODEL."' may not be available.\n\nError: $msg"]);
         } else {
             echo json_encode(['ok'=>false,'error'=>"API error $code: $msg"]);
         }
     } else {
         echo json_encode(['ok'=>false,'error'=>'Unexpected response: '.substr($raw,0,300)]);
     }
+    exit;
+}
+
+// ── ACTION: KEY INFO (admin only — shows masked stored key for debugging) ──
+if ($action === 'key_info' && isAdmin()) {
+    $raw_key = cbGet($db, 'gemini_api_key');
+    $len     = strlen($raw_key);
+    $masked  = $len > 8 ? substr($raw_key, 0, 6).'...'.substr($raw_key, -4) : ($len > 0 ? str_repeat('*', $len) : '');
+    $has_spaces = preg_match('/\s/', $raw_key) ? 'YES — whitespace found!' : 'No';
+    echo json_encode([
+        'ok'         => true,
+        'key_length' => $len,
+        'key_masked' => $masked,
+        'has_spaces' => $has_spaces,
+        'starts_with'=> $len > 0 ? substr($raw_key, 0, 6) : '(empty)',
+        'model'      => GEMINI_MODEL,
+        'fallback'   => GEMINI_MODEL_FALLBACK,
+    ]);
     exit;
 }
 
@@ -290,7 +331,7 @@ if ($action === 'chat') {
     ]);
 
     $url = GEMINI_BASE.GEMINI_MODEL.':generateContent?key='.$api_key;
-    $raw = cbCallGemini($url, $request_body); // uses retry-aware wrapper
+    $raw = cbCallGemini($url, $request_body);
 
     // True network failure (curl couldn't connect at all)
     if ($raw === null) {
@@ -298,7 +339,22 @@ if ($action === 'chat') {
         exit;
     }
 
-    $resp = json_decode($raw, true);
+    $resp    = json_decode($raw, true);
+    $errCode = $resp['error']['code'] ?? 0;
+
+    // Auto-retry with fallback model on 403/404 (model renamed or not available in region)
+    if (($errCode === 403 || $errCode === 404) && GEMINI_MODEL !== GEMINI_MODEL_FALLBACK) {
+        $url2 = GEMINI_BASE.GEMINI_MODEL_FALLBACK.':generateContent?key='.$api_key;
+        $raw2 = cbCallGemini($url2, $request_body);
+        if ($raw2 !== null) {
+            $resp2 = json_decode($raw2, true);
+            // If fallback succeeded, use its response
+            if (!empty($resp2['candidates'][0]['content']['parts'][0]['text'])) {
+                $resp = $resp2;
+                $errCode = 0;
+            }
+        }
+    }
 
     // Handle API-level errors (now properly parsed instead of swallowed)
     if (!empty($resp['error'])) {
@@ -307,7 +363,7 @@ if ($action === 'chat') {
         if ($code === 429) {
             echo json_encode(['ok'=>false,'error'=>"Rate limit reached (429). Gemini free tier allows 10 requests/minute. Please wait a moment and try again."]);
         } elseif ($code === 403) {
-            echo json_encode(['ok'=>false,'error'=>"API key rejected (403). Please check your Gemini API key in Settings."]);
+            echo json_encode(['ok'=>false,'error'=>"API key rejected (403).\n\nMost common cause: Key created in Google Cloud Console without enabling 'Generative Language API', or key has IP restrictions.\n\nFix: Go to ⚙ Settings → re-save your key. Get a fresh key from aistudio.google.com/apikey if needed — AI Studio keys work immediately with no extra setup."]);
         } elseif ($code === 503) {
             echo json_encode(['ok'=>false,'error'=>"Gemini service temporarily unavailable (503). Please try again in a few seconds."]);
         } elseif ($code === 400 && str_contains($msg, 'model')) {

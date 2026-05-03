@@ -72,8 +72,6 @@ renderLayout('AI Assistant', 'chatbot');
 
 /* ── INPUT AREA ── */
 .cb-input-wrap{padding:14px 16px;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0}
-.cb-no-api{padding:14px;text-align:center;font-size:13px;color:var(--text3);background:rgba(249,115,22,.06);border-radius:var(--radius-sm);border:1px solid rgba(249,115,22,.2);margin-bottom:10px;display:none}
-.cb-no-api a{color:var(--orange);font-weight:700;cursor:pointer}
 .cb-input-row{display:flex;gap:10px;align-items:flex-end}
 .cb-textarea{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-size:13.5px;font-family:var(--font);resize:none;min-height:44px;max-height:140px;line-height:1.5;transition:border-color .15s}
 .cb-textarea:focus{outline:none;border-color:var(--orange)}
@@ -97,6 +95,8 @@ renderLayout('AI Assistant', 'chatbot');
 /* ── SETTINGS ── */
 .cb-settings-btn{background:none;border:1px solid var(--border);color:var(--text3);border-radius:var(--radius-sm);padding:4px 9px;font-size:11px;cursor:pointer;transition:all .12s}
 .cb-settings-btn:hover{border-color:var(--orange);color:var(--orange)}
+.cb-diagnose-btn{background:none;border:1px solid var(--border);color:var(--text3);border-radius:var(--radius-sm);padding:4px 9px;font-size:11px;cursor:pointer;transition:all .12s}
+.cb-diagnose-btn:hover{border-color:#6366f1;color:#6366f1}
 .cb-settings-panel{display:none;position:absolute;bottom:calc(100% + 8px);left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-lg);z-index:50}
 .cb-settings-panel.open{display:block}
 .cb-input-wrap{position:relative}
@@ -107,8 +107,13 @@ renderLayout('AI Assistant', 'chatbot');
 /* ── QUOTA ALERT ── */
 .cb-quota-warn{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:#ef4444;margin-bottom:8px;display:none}
 
-/* ── CONTEXT BADGE ── */
-.cb-context-badge{padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.2)}
+/* ── DIAGNOSE MODAL ── */
+.cb-diag-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.cb-diag-overlay.open{display:flex}
+.cb-diag-modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;max-width:680px;width:90%;max-height:80vh;display:flex;flex-direction:column;gap:12px}
+.cb-diag-modal h3{font-size:14px;font-weight:700;color:var(--text);margin:0}
+.cb-diag-pre{flex:1;overflow-y:auto;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-family:monospace;font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6;min-height:200px}
+.cb-diag-close{align-self:flex-end;padding:6px 14px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer}
 
 /* ── RESPONSIVE ── */
 @media(max-width:800px){
@@ -123,6 +128,17 @@ renderLayout('AI Assistant', 'chatbot');
   <strong>🔑 Gemini API key not configured.</strong>
   <?php if (isAdmin()): ?><a onclick="cbToggleSettings()" style="color:var(--orange);font-weight:700;cursor:pointer"> Click here to set it up (takes 2 minutes) →</a><?php else: ?> Ask your admin to configure it in Settings.<?php endif; ?>
 </div>
+
+<!-- Diagnose modal -->
+<?php if (isAdmin()): ?>
+<div class="cb-diag-overlay" id="cb-diag-overlay">
+  <div class="cb-diag-modal">
+    <h3>🔍 Network Diagnostics</h3>
+    <pre class="cb-diag-pre" id="cb-diag-pre">Running diagnostics...</pre>
+    <button class="cb-diag-close" onclick="document.getElementById('cb-diag-overlay').classList.remove('open')">Close</button>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="cb-wrap" id="cb-wrap">
   <!-- ── LEFT: SESSION HISTORY ── -->
@@ -141,7 +157,7 @@ renderLayout('AI Assistant', 'chatbot');
         <span id="cb-usage-text">0 / 200 msgs</span>
       </div>
       <div class="cb-qbar"><div class="cb-qfill" id="cb-qfill" style="width:0%"></div></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:5px" id="cb-quota-note">Gemini 2.5 Flash · Free tier</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px" id="cb-quota-note">gemini-1.5-flash · Free tier</div>
     </div>
   </div>
 
@@ -154,19 +170,19 @@ renderLayout('AI Assistant', 'chatbot');
         <div style="font-size:13px;font-weight:700;color:var(--text)">Padak AI Assistant</div>
         <div style="font-size:11px;color:var(--text3)">Internal CRM helper · Knows your team context</div>
       </div>
-      <span class="cb-model-badge">Gemini 2.5 Flash</span>
+      <span class="cb-model-badge" id="cb-model-badge">gemini-1.5-flash</span>
       <div class="cb-status">
         <div class="cb-status-dot" id="cb-status-dot"></div>
         <span id="cb-status-text">Ready</span>
       </div>
       <?php if (isAdmin()): ?>
+      <button class="cb-diagnose-btn" onclick="cbRunDiagnose()" title="Network diagnostic — shows exactly why API fails">🔍 Diagnose</button>
       <button class="cb-settings-btn" onclick="cbToggleSettings()">⚙ Settings</button>
       <?php endif; ?>
     </div>
 
     <!-- Messages area -->
     <div class="cb-messages" id="cb-messages">
-      <!-- Empty state shown by JS -->
       <div class="cb-empty" id="cb-empty">
         <div class="cb-empty-icon">🤖</div>
         <h3>Padak AI Assistant</h3>
@@ -199,16 +215,15 @@ renderLayout('AI Assistant', 'chatbot');
       <div class="cb-settings-panel" id="cb-settings-panel">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px">⚙ AI Chatbot Settings</div>
 
-        <!-- Setup guide -->
         <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;font-size:12px;line-height:1.7;color:var(--text2)">
           <div style="font-weight:700;color:var(--text);margin-bottom:6px">How to get your FREE Gemini API key (2 min setup):</div>
           <div><strong>1.</strong> Go to <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--orange);font-weight:600">aistudio.google.com/apikey</a> — login with Google</div>
-          <div><strong>2.</strong> Click <strong>"Create API key"</strong> → Select or create a new project</div>
+          <div><strong>2.</strong> Click <strong>"Create API key"</strong> → Select or create a project</div>
           <div><strong>3.</strong> Copy the key (starts with <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">AIzaSy...</code>)</div>
-          <div><strong>4.</strong> Paste it below and click Save</div>
+          <div><strong>4.</strong> Paste below and click Save, then Test</div>
           <div style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,.07);border-radius:var(--radius-sm);color:#10b981">
-            ✅ Gemini 2.5 Flash is 100% free — 250 requests/day, no credit card needed.<br>
-            ⚠️ This is a SEPARATE key/project from Places API — use a different project to keep quotas separate!
+            ✅ gemini-1.5-flash is 100% free — 1,500 req/day, no credit card needed.<br>
+            ⚠️ If API fails, click <strong>🔍 Diagnose</strong> in the header to find the exact cause.
           </div>
         </div>
 
@@ -219,30 +234,21 @@ renderLayout('AI Assistant', 'chatbot');
           </div>
           <div>
             <label style="font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px">Daily Limit</label>
-            <input type="number" id="cb-daily-limit" style="padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:var(--font);width:100%" value="200" min="10" max="240">
-            <div style="font-size:10px;color:var(--text3);margin-top:2px">Max: 240/day free</div>
+            <input type="number" id="cb-daily-limit" style="padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:var(--font);width:100%" value="200" min="10" max="1400">
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">Max: 1400/day free</div>
           </div>
           <div style="display:flex;gap:6px">
             <button onclick="cbSaveSettings()" style="padding:7px 14px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12.5px;font-weight:700;cursor:pointer">💾 Save</button>
             <button onclick="cbTestKey()" id="cb-test-btn" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius-sm);font-size:12px;cursor:pointer">🔌 Test</button>
           </div>
         </div>
-        <div id="cb-test-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);font-size:12.5px;white-space:pre-line"></div>
-
-        <!-- Cost reality check -->
-        <div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11.5px;color:var(--text2);line-height:1.7;border:1px solid var(--border)">
-          <div style="font-weight:700;color:var(--text);margin-bottom:4px">📊 Honest Free Tier Reality (as of April 2026):</div>
-          <div>🟢 <strong>Gemini 2.5 Flash</strong> — still FREE, 10 RPM, 250 req/day per project</div>
-          <div>🔴 Gemini 2.5 Pro — now paid-only (removed from free tier April 2026)</div>
-          <div>⚠️ Flash-Lite — 1,000 req/day free but weaker reasoning</div>
-          <div style="margin-top:6px">📍 <strong>Places API $200 credit + Gemini free tier are SEPARATE</strong> — different product families, different quotas. Using chatbot does NOT consume your Places API ₹1,000 credit. Safe!</div>
-        </div>
+        <div id="cb-test-result" style="display:none;margin-top:8px;padding:8px 10px;border-radius:var(--radius-sm);font-size:12px;white-space:pre-line;font-family:monospace;line-height:1.6"></div>
         <div style="text-align:right;margin-top:8px"><button onclick="cbToggleSettings()" style="background:none;border:none;font-size:12px;color:var(--text3);cursor:pointer">✕ Close</button></div>
       </div>
       <?php endif; ?>
 
       <!-- Quota warning -->
-      <div class="cb-quota-warn" id="cb-quota-warn">⚠ Approaching daily limit. <span id="cb-quota-warn-text"></span></div>
+      <div class="cb-quota-warn" id="cb-quota-warn">⚠ <span id="cb-quota-warn-text"></span></div>
 
       <!-- No API warning -->
       <div id="cb-no-api-input" style="display:none;text-align:center;padding:10px;font-size:12.5px;color:var(--text3)">
@@ -272,17 +278,15 @@ var CB = {
   dailyUsed: 0,
   dailyLimit: 200,
   sessions: [],
-  lastSendTime: 0
+  sending: false   // replaces the stale lastSendTime throttle — server enforces real RPM limits
 };
 
 document.addEventListener('DOMContentLoaded', function() {
   cbLoadStats();
   cbLoadSessions();
-  // Ctrl+Enter to send
   document.getElementById('cb-textarea').addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); cbSend(); }
   });
-  // Close settings on outside click
   document.addEventListener('click', function(e) {
     var panel = document.getElementById('cb-settings-panel');
     if (panel && panel.classList.contains('open') && !e.target.closest('.cb-input-wrap') && !e.target.closest('#cb-api-banner')) {
@@ -300,30 +304,31 @@ function cbLoadStats() {
     CB.dailyUsed  = d.daily_used;
     CB.dailyLimit = d.daily_limit;
 
-    // Banner
     document.getElementById('cb-api-banner').style.display = d.configured ? 'none' : 'block';
     document.getElementById('cb-no-api-input').style.display = d.configured ? 'none' : 'block';
     document.getElementById('cb-input-row').style.display = d.configured ? 'flex' : 'none';
 
-    // Quota bar
+    // Update model badge from what server reports
+    if (d.model && document.getElementById('cb-model-badge')) {
+      document.getElementById('cb-model-badge').textContent = d.model;
+    }
+
     var pct = CB.dailyLimit > 0 ? Math.min(100, Math.round(CB.dailyUsed / CB.dailyLimit * 100)) : 0;
     document.getElementById('cb-usage-text').textContent = CB.dailyUsed + ' / ' + CB.dailyLimit + ' msgs';
     document.getElementById('cb-qfill').style.width = pct + '%';
     document.getElementById('cb-qfill').style.background = pct > 80 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#10b981';
 
-    // Quota warning
     var rem = CB.dailyLimit - CB.dailyUsed;
     if (rem <= 30 && rem > 0) {
       document.getElementById('cb-quota-warn').style.display = 'block';
-      document.getElementById('cb-quota-warn-text').textContent = rem + ' messages remaining today. Resets at midnight Pacific time.';
+      document.getElementById('cb-quota-warn-text').textContent = 'Approaching daily limit: ' + rem + ' messages remaining. Resets at midnight.';
     }
     if (rem <= 0) {
       document.getElementById('cb-quota-warn').style.display = 'block';
-      document.getElementById('cb-quota-warn-text').textContent = 'Daily limit reached. Resets tomorrow at midnight Pacific time.';
+      document.getElementById('cb-quota-warn-text').textContent = 'Daily limit reached. Resets tomorrow at midnight.';
       document.getElementById('cb-send').disabled = true;
     }
 
-    // Prefill admin settings
     if (document.getElementById('cb-daily-limit')) document.getElementById('cb-daily-limit').value = d.daily_limit;
   })
   .catch(function(){});
@@ -363,23 +368,20 @@ function cbLoadSession(sid) {
     if (!d.ok) return;
     CB.messages = d.messages || [];
     cbRenderMessages();
-    cbRenderSessions(); // refresh active state
+    cbRenderSessions();
   });
 }
 
 function cbRenderMessages() {
   var container = document.getElementById('cb-messages');
   var empty = document.getElementById('cb-empty');
-
   if (!CB.messages.length) {
     if (empty) empty.style.display = 'flex';
-    // Remove non-empty bubbles
     container.querySelectorAll('.cb-msg').forEach(function(m){m.remove();});
     return;
   }
   if (empty) empty.style.display = 'none';
   container.querySelectorAll('.cb-msg').forEach(function(m){m.remove();});
-
   CB.messages.forEach(function(msg) {
     var el = document.createElement('div');
     el.className = 'cb-msg ' + msg.role;
@@ -397,44 +399,34 @@ function cbAppendMessage(role, content) {
   var container = document.getElementById('cb-messages');
   var empty = document.getElementById('cb-empty');
   if (empty) empty.style.display = 'none';
-
   var el = document.createElement('div');
   el.className = 'cb-msg ' + role;
   var initials = <?= json_encode(substr(implode('', array_map(fn($w) => strtoupper($w[0]), explode(' ', $user['name']))), 0, 2)) ?>;
   var avatarLabel = role === 'user' ? initials : 'AI';
   el.innerHTML = '<div class="cb-avatar '+role+'">'+avatarLabel+'</div>'
-    +'<div><div class="cb-bubble" id="cb-last-bubble">'+cbFormatContent(content)+'</div>'
+    +'<div><div class="cb-bubble">'+cbFormatContent(content)+'</div>'
     +'<div class="cb-time">just now</div></div>';
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
-
   CB.messages.push({role: role, content: content, ts: new Date().toISOString()});
   return el;
 }
 
 function cbSend() {
+  if (CB.sending) return; // prevent double-send; server enforces real RPM limits
   var ta = document.getElementById('cb-textarea');
   var msg = ta.value.trim();
   if (!msg) return;
   if (!CB.configured) { toast('Configure Gemini API key first','error'); cbToggleSettings(); return; }
   if (CB.dailyUsed >= CB.dailyLimit) { toast('Daily message limit reached. Resets tomorrow.','error'); return; }
 
-  var now = Date.now();
-  var wait = Math.ceil((6000 - (now - CB.lastSendTime)) / 1000);
-  if (CB.lastSendTime && (now - CB.lastSendTime) < 6000) {
-    toast('Please wait ' + wait + 's (Gemini free tier limit)', 'info');
-    return;
-  }
-  CB.lastSendTime = now;
-
+  CB.sending = true;
   ta.value = '';
   cbAutoResize(ta);
   cbUpdateChars(ta);
 
-  // Show user message
   cbAppendMessage('user', msg);
 
-  // Show typing
   var typing = document.getElementById('cb-typing');
   typing.style.display = 'flex';
   document.getElementById('cb-send').disabled = true;
@@ -451,28 +443,33 @@ function cbSend() {
   .then(function(d){
     typing.style.display = 'none';
     document.getElementById('cb-send').disabled = false;
+    CB.sending = false;
     document.getElementById('cb-status-text').textContent = 'Ready';
     document.getElementById('cb-status-dot').style.background = '#10b981';
 
-    if (!d.ok) { toast(d.error || 'AI error', 'error'); return; }
+    if (!d.ok) {
+      // Show the full error (with root cause and fix instructions)
+      cbAppendMessage('assistant', '❌ ' + (d.error || 'AI error'));
+      return;
+    }
 
-    // Set session ID if new
     if (d.session_id) CB.sessionId = d.session_id;
     CB.dailyUsed = d.daily_used || (CB.dailyUsed + 1);
 
-    // Show AI reply
+    // Update model badge if server switched models
+    if (d.model_used && document.getElementById('cb-model-badge')) {
+      document.getElementById('cb-model-badge').textContent = d.model_used;
+    }
+
     cbAppendMessage('assistant', d.reply);
 
-    // Update usage meter
     var pct = CB.dailyLimit > 0 ? Math.min(100, Math.round(CB.dailyUsed/CB.dailyLimit*100)) : 0;
     document.getElementById('cb-usage-text').textContent = CB.dailyUsed + ' / ' + CB.dailyLimit + ' msgs';
     document.getElementById('cb-qfill').style.width = pct+'%';
     document.getElementById('cb-qfill').style.background = pct>80?'#ef4444':pct>60?'#f59e0b':'#10b981';
 
-    // Refresh session list
     cbLoadSessions();
 
-    // Check quota warning
     var rem = CB.dailyLimit - CB.dailyUsed;
     if (rem <= 20) {
       document.getElementById('cb-quota-warn').style.display = 'block';
@@ -482,9 +479,10 @@ function cbSend() {
   .catch(function(e){
     typing.style.display = 'none';
     document.getElementById('cb-send').disabled = false;
+    CB.sending = false;
     document.getElementById('cb-status-text').textContent = 'Error';
     document.getElementById('cb-status-dot').style.background = '#ef4444';
-    toast('Network error', 'error');
+    toast('Network error — check browser console', 'error');
     console.error(e);
   });
 }
@@ -524,7 +522,7 @@ function cbToggleSettings() {
 }
 
 function cbSaveSettings() {
-  var key = (document.getElementById('cb-key-input')?.value||'').trim();
+  var key   = (document.getElementById('cb-key-input')?.value||'').trim();
   var limit = parseInt(document.getElementById('cb-daily-limit')?.value||200);
   if (!key) { toast('Enter Gemini API key','error'); return; }
   var fd = new FormData();
@@ -572,6 +570,23 @@ function cbTestKey() {
   .catch(function(){btn.disabled=false;btn.textContent='🔌 Test';});
 }
 
+// ── DIAGNOSE (admin only) ──
+function cbRunDiagnose() {
+  var overlay = document.getElementById('cb-diag-overlay');
+  var pre = document.getElementById('cb-diag-pre');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  pre.textContent = 'Running diagnostics... (takes ~10 seconds)';
+  fetch('chatbot_api.php?action=diagnose')
+  .then(function(r){return r.json();})
+  .then(function(d){
+    pre.textContent = d.diagnostic || d.error || 'No output';
+  })
+  .catch(function(e){
+    pre.textContent = 'Fetch error: ' + e.message;
+  });
+}
+
 // ── HELPERS ──
 function cbAutoResize(ta) {
   ta.style.height = 'auto';
@@ -584,17 +599,11 @@ function cbUpdateChars(ta) {
   el.className = 'cb-chars' + (len > 3500 ? ' warn' : '');
 }
 function cbFormatContent(text) {
-  // Basic markdown-like formatting
   text = escHtml(text);
-  // Code blocks
   text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  // Inline code
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bold
   text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Bullets
   text = text.replace(/\n- /g, '\n• ');
-  // Line breaks
   text = text.replace(/\n/g, '<br>');
   return text;
 }

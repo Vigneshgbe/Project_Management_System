@@ -1,44 +1,13 @@
 <?php
 /**
  * chatbot_api.php — Padak CRM AI Chatbot Backend
- * ─────────────────────────────────────────────
- * MODEL   : gemini-1.5-flash (FREE tier)
- * COST    : ₹0/month for normal company usage
- * FREE QUOTA:
- *   • 1,500 requests/day  (we hard-cap at 1,400 for safety)
- *   • 15 requests/minute  (we hard-cap at 12 for safety)
- *   • 1,000,000 tokens/minute
+ * MODEL   : gemini-1.5-flash (FREE tier — 1,500 req/day, 15 RPM, ₹0)
+ * FALLBACK: gemini-1.5-flash-8b → gemini-1.0-pro
  *
- * AI STUDIO SETUP (do this once):
- *   1. Go to https://aistudio.google.com/spend
- *   2. Set spend cap = ₹0  ← forces free quota only, NEVER charges
- *   3. Your ₹1,000 prepayment stays untouched as safety net
- *
- * WHY gemini-1.5-flash NOT gemini-2.5-flash:
- *   • 2.5-flash on Tier 1 = PAID (₹0.15/1M tokens)
- *   • 1.5-flash = genuinely FREE quota regardless of billing tier
- *   • 1.5-flash is fast, smart, and perfect for a company chatbot
- * ─────────────────────────────────────────────
- *
- * ROOT CAUSES IDENTIFIED FROM SCREENSHOTS:
- *
- * ISSUE 1 — 404 NotFound (introduced by previous "fix"):
- *   Model "gemini-2.5-flash-preview-05-20" does NOT exist in v1beta API.
- *   Your rate limit page shows "Gemini 2.5 Flash" — the correct API ID is
- *   "gemini-2.5-flash" (alias) or "gemini-2.5-flash-preview-04-17".
- *   Fixed: use working model chain with auto-discovery fallback.
- *
- * ISSUE 2 — 429 TooManyRequests (billing problem, NOT rate limit):
- *   Your billing page (Image 5) shows "There are issues with your payments
- *   account" in RED. When billing is suspended, Google returns 429 even with
- *   0 requests used. This is NOT a rate limit — it's a billing block.
- *   Action required: Fix billing at console.cloud.google.com/billing
- *
- * ISSUE 3 — 403 Forbidden:
- *   Also caused by the billing account issue, not a key problem.
- *
- * ISSUE 4 — sleep() blocking (from original code):
- *   Removed. All retries handled client-side.
+ * KEY FIX IN THIS VERSION:
+ *   cbHttp() now returns ['body'=>..., 'error'=>..., 'http_code'=>...]
+ *   so the REAL cURL error is surfaced in every error message.
+ *   The test_key and diagnose actions show full diagnostic output.
  */
 
 require_once 'config.php';
@@ -51,25 +20,17 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-// ── MODEL CHAIN (tried in order until one works) ──
-// Source: your rate limit page confirms "Gemini 2.5 Flash" is active on your account.
-// "gemini-2.5-flash" is the stable alias. Preview dates change — never hardcode them.
 define('GEMINI_BASE', 'https://generativelanguage.googleapis.com/v1beta/models/');
 
-// FREE TIER MODELS ONLY — all have genuine free quota (no billing needed)
-// gemini-1.5-flash: 1,500 req/day FREE, 1M TPM FREE — perfect for small company chatbot
-// gemini-1.5-flash-8b: lighter, also free — used as fallback
-// gemini-1.0-pro: oldest stable free model — last resort fallback
+// FREE TIER models only — ₹0 cost
 define('GEMINI_MODELS', [
-    'gemini-1.5-flash',     // PRIMARY — 1,500 req/day free, fast, smart
-    'gemini-1.5-flash-8b',  // FALLBACK — lighter model, also free tier
+    'gemini-1.5-flash',     // PRIMARY — 1,500 req/day free, 15 RPM
+    'gemini-1.5-flash-8b',  // FALLBACK — lighter, also free tier
     'gemini-1.0-pro',       // LAST RESORT — oldest stable, always free
 ]);
 
-// Free tier hard limits (stay under these to never get charged)
-// gemini-1.5-flash free quota: 1,500 RPD, 15 RPM, 1M TPM
-define('FREE_DAILY_HARD_LIMIT', 1400); // 100 below Google's 1,500 RPD — safety buffer
-define('FREE_RPM_LIMIT', 12);          // stay under 15 RPM limit
+define('FREE_DAILY_HARD_LIMIT', 1400); // Google allows 1,500 — we stop 100 short
+define('FREE_RPM_LIMIT', 12);          // Google allows 15 — we stop 3 short
 
 // ── HELPERS ──
 function cbGet(mysqli $db, string $k, string $def = ''): string {
@@ -89,121 +50,330 @@ function cbDailyUsed(mysqli $db, int $uid): int {
     return $r ? (int)($r->fetch_assoc()['c'] ?? 0) : 0;
 }
 
-// Single HTTP call — returns raw body string, or null ONLY on true connection failure
-function cbHttp(string $url, string $body): ?string {
+/**
+ * cbHttp() — now returns an array with full error detail.
+ * Returns: ['body' => string|null, 'error' => string, 'http_code' => int]
+ * 'body' is null ONLY on true connection failure (DNS fail, timeout, SSL error).
+ * 'error' is '' on success, otherwise the actual cURL/stream error message.
+ */
+function cbHttp(string $url, string $body): array {
+    $result = ['body' => null, 'error' => '', 'http_code' => 0];
+
     if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL            => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 25,
-            CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,   // keep SSL verification ON for security
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $body,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_USERAGENT      => 'PadakCRM/1.0',
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 3,
         ]);
         $r    = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err  = curl_error($ch);
+        $errno = curl_errno($ch);
         curl_close($ch);
-        if ($err || $code === 0) return null;
-        return ($r !== false && $r !== '') ? $r : null;
+
+        $result['http_code'] = $code;
+
+        if ($err || $r === false || $code === 0) {
+            // Connection-level failure — expose exact cURL error
+            $result['error'] = "cURL error $errno: $err" . ($code ? " (HTTP $code)" : '');
+            return $result;
+        }
+
+        $result['body'] = ($r !== '') ? $r : null;
+        if ($result['body'] === null) {
+            $result['error'] = "cURL returned empty body (HTTP $code)";
+        }
+        return $result;
     }
+
+    // Fallback: file_get_contents
     $ctx = stream_context_create([
-        'http' => ['method'=>'POST','content'=>$body,'timeout'=>25,
-                   'header'=>'Content-Type: application/json','ignore_errors'=>true],
-        'ssl'  => ['verify_peer'=>false],
+        'http' => [
+            'method'        => 'POST',
+            'content'       => $body,
+            'timeout'       => 30,
+            'header'        => "Content-Type: application/json\r\nUser-Agent: PadakCRM/1.0\r\n",
+            'ignore_errors' => true,
+        ],
+        'ssl' => ['verify_peer' => true],
     ]);
     $r = @file_get_contents($url, false, $ctx);
-    return ($r !== false && $r !== '') ? $r : null;
+    if ($r === false || $r === '') {
+        $result['error'] = 'file_get_contents failed — cURL not available and stream failed. Check allow_url_fopen and SSL.';
+        return $result;
+    }
+    // Parse HTTP status from response headers
+    if (isset($http_response_header)) {
+        foreach ($http_response_header as $h) {
+            if (preg_match('/HTTP\/\S+\s+(\d+)/', $h, $m)) {
+                $result['http_code'] = (int)$m[1];
+                break;
+            }
+        }
+    }
+    $result['body'] = $r;
+    return $result;
 }
 
 /**
  * Try each model in GEMINI_MODELS until one returns a non-404 response.
- * No sleep() — no blocking. Returns [raw_body, model_used] or [null, null].
+ * Returns ['body' => string, 'model' => string, 'curl_error' => string] or
+ *         ['body' => null, 'model' => null, 'curl_error' => string, 'all_errors' => array]
  */
 function cbCallWithFallback(string $body, string $api_key): array {
-    $models = GEMINI_MODELS;
-    foreach ($models as $model) {
-        $url = GEMINI_BASE . $model . ':generateContent?key=' . $api_key;
-        $raw = cbHttp($url, $body);
-        if ($raw === null) continue; // true network failure, try next
+    $allErrors = [];
+    $lastCurlError = '';
 
-        $d    = json_decode($raw, true);
+    foreach (GEMINI_MODELS as $model) {
+        $url = GEMINI_BASE . $model . ':generateContent?key=' . $api_key;
+        $r   = cbHttp($url, $body);
+
+        if ($r['body'] === null) {
+            // True connection failure
+            $lastCurlError = $r['error'];
+            $allErrors[$model] = 'CONNECT FAIL: ' . $r['error'];
+            continue;
+        }
+
+        $d    = json_decode($r['body'], true);
         $code = (int)($d['error']['code'] ?? 0);
 
-        // 404 = model doesn't exist → try next model
-        if ($code === 404) continue;
+        if ($code === 404) {
+            // Model doesn't exist — try next
+            $allErrors[$model] = '404 model not found';
+            continue;
+        }
 
-        // Any other response (success, 429, 403, 400, 503) → return it, stop trying
-        return [$raw, $model];
+        // Any other response (success, 429, 403, 400, 503) — stop and return it
+        return ['body' => $r['body'], 'model' => $model, 'curl_error' => '', 'all_errors' => $allErrors];
     }
-    return [null, null]; // all models failed with network error
+
+    return ['body' => null, 'model' => null, 'curl_error' => $lastCurlError, 'all_errors' => $allErrors];
 }
 
-/**
- * Translate Gemini billing/auth errors into clear, actionable messages.
- * This is the single most important function — must show the REAL reason.
- */
 function cbGeminiError(int $code, string $msg, string $model): array {
     switch ($code) {
         case 429:
-            // Spend cap hit — set cap to ₹0 at aistudio.google.com/spend to force free-only
-            if (str_contains($msg, 'spending cap') || str_contains($msg, 'spend')) {
-                return ['ok'=>false, 'error'=>
-                    "❌ Project spend cap exceeded.\n\n".
-                    "Since we use gemini-1.5-flash FREE tier, your spend cap should be ₹0.\n\n".
-                    "Fix (30 seconds):\n".
-                    "1. Go to https://aistudio.google.com/spend\n".
-                    "2. Find your Startup project\n".
-                    "3. Set spend cap to ₹0 (forces free quota only, never charges)\n".
-                    "4. Save — API works immediately on free quota.\n\n".
+            if (stripos($msg, 'spending cap') !== false || stripos($msg, 'spend') !== false) {
+                return ['ok' => false, 'error' =>
+                    "❌ Project spend cap exceeded.\n\n" .
+                    "Fix: Go to https://aistudio.google.com/spend → set spend cap to ₹0\n" .
+                    "(This forces free quota only and never charges your account)\n\n" .
                     "Raw: $msg"
                 ];
             }
-            // Free tier RPM exceeded (15 req/min for gemini-1.5-flash)
-            return ['ok'=>false,
-                'error'=>"Free tier rate limit (429). gemini-1.5-flash allows 15 requests/minute.\nWait a moment and try again.",
+            return ['ok' => false,
+                'error'       => "Free tier rate limit hit (429). gemini-1.5-flash allows 15 req/min.\nWait a few seconds and try again.",
                 'retry_after' => 8,
                 'error_code'  => 429
             ];
 
         case 403:
-            return ['ok'=>false, 'error'=>
-                "❌ Access denied (403).\n\n".
-                "Most likely cause: Your billing account has a payment issue (visible on your billing page).\n\n".
-                "Fix: Go to console.cloud.google.com/billing → resolve billing issue.\n\n".
-                "If billing is fine: regenerate your API key at aistudio.google.com/apikey\n\n".
+            return ['ok' => false, 'error' =>
+                "❌ Access denied (403).\n\n" .
+                "Most likely cause: billing account has a payment issue.\n" .
+                "Fix: console.cloud.google.com/billing → resolve the issue.\n\n" .
+                "If billing is fine: regenerate your API key at aistudio.google.com/apikey\n\n" .
                 "Raw: $msg"
             ];
 
         case 400:
-            return ['ok'=>false, 'error'=>"Bad request (400) for model '$model'.\n\nDetail: $msg"];
+            return ['ok' => false, 'error' => "Bad request (400) for model '$model'.\nDetail: $msg"];
 
         case 503:
-            return ['ok'=>false, 'error'=>"Gemini temporarily unavailable (503). Try again in 10 seconds.",
-                    'retry_after'=>10, 'error_code'=>503];
+            return ['ok' => false, 'error' => "Gemini temporarily unavailable (503). Try again in 10 seconds.",
+                'retry_after' => 10, 'error_code' => 503];
 
         default:
-            return ['ok'=>false, 'error'=>"Gemini error $code: $msg"];
+            return ['ok' => false, 'error' => "Gemini error $code: $msg"];
     }
 }
 
 // ── TABLE GUARD ──
 if (!cbTableOk($db)) {
-    echo json_encode(['ok'=>false,'error'=>'Run migration_chatbot.sql first.']);
+    echo json_encode(['ok' => false, 'error' => 'Run migration_chatbot.sql first.']);
+    exit;
+}
+
+// ══════════════════════════════════════════════════════
+// ACTION: DIAGNOSE — tells you EXACTLY what is blocking
+// Call: chatbot_api.php?action=diagnose
+// ══════════════════════════════════════════════════════
+if ($action === 'diagnose' && isAdmin()) {
+    $out = [];
+
+    // 1. PHP + cURL info
+    $out[] = '=== PHP & cURL ===';
+    $out[] = 'PHP version: ' . PHP_VERSION;
+    $out[] = 'cURL available: ' . (function_exists('curl_init') ? 'YES' : 'NO — install php-curl');
+    if (function_exists('curl_version')) {
+        $cv = curl_version();
+        $out[] = 'cURL version: ' . $cv['version'];
+        $out[] = 'SSL: ' . $cv['ssl_version'];
+        $out[] = 'libz: ' . $cv['libz_version'];
+    }
+    $out[] = 'allow_url_fopen: ' . (ini_get('allow_url_fopen') ? 'ON' : 'OFF');
+    $out[] = 'open_basedir: ' . (ini_get('open_basedir') ?: 'none (good)');
+
+    // 2. DNS resolution
+    $out[] = '';
+    $out[] = '=== DNS ===';
+    $host = 'generativelanguage.googleapis.com';
+    $ip   = gethostbyname($host);
+    if ($ip === $host) {
+        $out[] = "DNS FAIL: Cannot resolve $host — server has no internet or DNS is blocked";
+    } else {
+        $out[] = "DNS OK: $host → $ip";
+    }
+
+    // 3. TCP connect test (port 443)
+    $out[] = '';
+    $out[] = '=== TCP Connect (port 443) ===';
+    $sock = @fsockopen('ssl://' . $host, 443, $errno, $errstr, 5);
+    if ($sock) {
+        fclose($sock);
+        $out[] = "TCP OK: Connected to $host:443";
+    } else {
+        $out[] = "TCP FAIL ($errno): $errstr — port 443 is BLOCKED by firewall";
+    }
+
+    // 4. HTTP GET test (simple request, no API key)
+    $out[] = '';
+    $out[] = '=== HTTP GET test ===';
+    $testUrl = 'https://generativelanguage.googleapis.com/v1beta/models?key=INVALID_KEY_TEST';
+    $r = cbHttp($testUrl, '');  // Will be a GET via POST with empty body — adjust:
+    if (function_exists('curl_init')) {
+        $ch2 = curl_init($testUrl);
+        curl_setopt_array($ch2, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'PadakCRM/1.0',
+        ]);
+        $body2  = curl_exec($ch2);
+        $code2  = (int)curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+        $err2   = curl_error($ch2);
+        $errno2 = curl_errno($ch2);
+        curl_close($ch2);
+
+        if ($err2) {
+            $out[] = "HTTP GET FAIL — cURL $errno2: $err2";
+            // Common fixes
+            if ($errno2 === 6)  $out[] = '  → Fix: DNS not resolving. Check server DNS config or add 8.8.8.8 to /etc/resolv.conf';
+            if ($errno2 === 7)  $out[] = '  → Fix: Connection refused/timed out. Check firewall — allow outbound TCP 443 to googleapis.com';
+            if ($errno2 === 28) $out[] = '  → Fix: Timeout. Server is too slow or port 443 is being rate-limited by firewall';
+            if ($errno2 === 35 || $errno2 === 51 || $errno2 === 60) $out[] = '  → Fix: SSL error. Try: curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false) — or update ca-certificates on server';
+        } else {
+            $out[] = "HTTP GET OK — HTTP $code2";
+            $d2 = json_decode($body2, true);
+            if ($code2 === 400 || $code2 === 401 || isset($d2['error'])) {
+                $out[] = "  → Google responded (HTTP $code2) — connectivity is fine, API key issue";
+            } elseif ($code2 === 200) {
+                $out[] = '  → 200 OK — connectivity confirmed';
+            }
+        }
+    } else {
+        $out[] = 'cURL not available — cannot run HTTP test';
+    }
+
+    // 5. SSL verify-off test (if the above failed)
+    $out[] = '';
+    $out[] = '=== SSL verify=OFF test (if above failed) ===';
+    if (function_exists('curl_init')) {
+        $ch3 = curl_init($testUrl);
+        curl_setopt_array($ch3, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => false,  // bypass SSL
+            CURLOPT_USERAGENT      => 'PadakCRM/1.0',
+        ]);
+        $body3 = curl_exec($ch3);
+        $code3 = (int)curl_getinfo($ch3, CURLINFO_HTTP_CODE);
+        $err3  = curl_error($ch3);
+        curl_close($ch3);
+
+        if ($err3) {
+            $out[] = "SSL-off FAIL — $err3 (not an SSL issue, it's a network/firewall block)";
+        } else {
+            $out[] = "SSL-off OK — HTTP $code3";
+            if ($code3 > 0) {
+                $out[] = '  → SSL certificate is the problem. Fix: apt install ca-certificates && update-ca-certificates';
+                $out[] = '  → Or contact your hosting provider to update SSL certs';
+            }
+        }
+    }
+
+    // 6. Proxy check
+    $out[] = '';
+    $out[] = '=== Proxy / Network ===';
+    $proxy = getenv('https_proxy') ?: getenv('HTTPS_PROXY') ?: getenv('http_proxy') ?: getenv('HTTP_PROXY') ?: '';
+    $out[] = 'Detected proxy: ' . ($proxy ?: 'none');
+    $out[] = 'Server IP: ' . ($_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname()));
+
+    // 7. API key test (if configured)
+    $out[] = '';
+    $out[] = '=== API Key Test ===';
+    $key = cbGet($db, 'gemini_api_key');
+    if (!$key) {
+        $out[] = 'No API key configured yet — set it in Settings first';
+    } else {
+        $masked = substr($key, 0, 8) . '...' . substr($key, -4);
+        $out[] = "Key configured: $masked (length " . strlen($key) . ')';
+        $testBody = json_encode(['contents' => [['role' => 'user', 'parts' => [['text' => 'Hi']]]]]);
+        foreach (GEMINI_MODELS as $model) {
+            $url = GEMINI_BASE . $model . ':generateContent?key=' . $key;
+            if (function_exists('curl_init')) {
+                $ch4 = curl_init($url);
+                curl_setopt_array($ch4, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 15,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $testBody,
+                    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                    CURLOPT_USERAGENT      => 'PadakCRM/1.0',
+                ]);
+                $b4 = curl_exec($ch4);
+                $c4 = (int)curl_getinfo($ch4, CURLINFO_HTTP_CODE);
+                $e4 = curl_error($ch4);
+                curl_close($ch4);
+                if ($e4) {
+                    $out[] = "  $model → CONNECT FAIL: $e4";
+                } else {
+                    $d4 = json_decode($b4, true);
+                    $apiErr = $d4['error']['code'] ?? 0;
+                    $apiMsg = $d4['error']['message'] ?? '';
+                    $reply4 = $d4['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    if ($reply4) {
+                        $out[] = "  $model → ✅ SUCCESS (HTTP $c4)";
+                    } else {
+                        $out[] = "  $model → HTTP $c4, error $apiErr: " . substr($apiMsg, 0, 100);
+                    }
+                }
+            }
+        }
+    }
+
+    echo json_encode(['ok' => true, 'diagnostic' => implode("\n", $out)]);
     exit;
 }
 
 // ── ACTION: GET STATS ──
 if ($action === 'get_stats') {
-    $configured   = cbGet($db, 'gemini_api_key') !== '';
-    // Use the lower of: admin-set limit OR hard free tier limit (1,400/day)
-    $admin_limit  = max(10, (int)cbGet($db, 'daily_limit', '200'));
-    $daily_limit  = min($admin_limit, FREE_DAILY_HARD_LIMIT);
-    $daily_used   = cbDailyUsed($db, $uid);
+    $configured  = cbGet($db, 'gemini_api_key') !== '';
+    $admin_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
+    $daily_limit = min($admin_limit, FREE_DAILY_HARD_LIMIT);
+    $daily_used  = cbDailyUsed($db, $uid);
     $active_model = cbGet($db, 'active_model', GEMINI_MODELS[0]);
     echo json_encode([
         'ok'          => true,
@@ -220,86 +390,130 @@ if ($action === 'get_stats') {
 // ── ACTION: LIST SESSIONS ──
 if ($action === 'list_sessions') {
     $r = @$db->query("SELECT id,title,msg_count,updated_at FROM chatbot_sessions WHERE user_id=$uid ORDER BY updated_at DESC LIMIT 50");
-    echo json_encode(['ok'=>true,'sessions'=> $r ? $r->fetch_all(MYSQLI_ASSOC) : []]);
+    echo json_encode(['ok' => true, 'sessions' => $r ? $r->fetch_all(MYSQLI_ASSOC) : []]);
     exit;
 }
 
 // ── ACTION: GET SESSION ──
 if ($action === 'get_session') {
     $sid = (int)($_GET['session_id'] ?? 0);
-    if (!$sid) { echo json_encode(['ok'=>false,'error'=>'No session']); exit; }
+    if (!$sid) { echo json_encode(['ok' => false, 'error' => 'No session']); exit; }
     $r = @$db->query("SELECT id FROM chatbot_sessions WHERE id=$sid AND user_id=$uid LIMIT 1");
-    if (!$r || !$r->num_rows) { echo json_encode(['ok'=>false,'error'=>'Not found']); exit; }
+    if (!$r || !$r->num_rows) { echo json_encode(['ok' => false, 'error' => 'Not found']); exit; }
     $mr = @$db->query("SELECT role,content,created_at ts FROM chatbot_messages WHERE session_id=$sid ORDER BY id ASC LIMIT 200");
-    echo json_encode(['ok'=>true,'messages'=> $mr ? $mr->fetch_all(MYSQLI_ASSOC) : []]);
+    echo json_encode(['ok' => true, 'messages' => $mr ? $mr->fetch_all(MYSQLI_ASSOC) : []]);
     exit;
 }
 
 // ── ACTION: DELETE SESSION ──
 if ($action === 'delete_session') {
     $sid = (int)($_POST['session_id'] ?? 0);
-    if (!$sid) { echo json_encode(['ok'=>false,'error'=>'No session']); exit; }
+    if (!$sid) { echo json_encode(['ok' => false, 'error' => 'No session']); exit; }
     @$db->query("DELETE FROM chatbot_messages WHERE session_id=$sid AND session_id IN (SELECT id FROM chatbot_sessions WHERE user_id=$uid)");
     @$db->query("DELETE FROM chatbot_sessions WHERE id=$sid AND user_id=$uid");
-    echo json_encode(['ok'=>true]);
+    echo json_encode(['ok' => true]);
     exit;
 }
 
 // ── ACTION: SAVE SETTINGS (admin only) ──
 if ($action === 'save_settings' && isAdmin()) {
     $key   = trim($_POST['gemini_key'] ?? '');
-    $limit = max(10, min(FREE_DAILY_HARD_LIMIT, (int)($_POST['daily_limit'] ?? 200))); // capped at free tier max
+    $limit = max(10, min(FREE_DAILY_HARD_LIMIT, (int)($_POST['daily_limit'] ?? 200)));
     if ($key) {
         $ke = $db->real_escape_string($key);
         $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('gemini_api_key','$ke') ON DUPLICATE KEY UPDATE setting_val='$ke',updated_at=NOW()");
     }
     $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('daily_limit','$limit') ON DUPLICATE KEY UPDATE setting_val=$limit,updated_at=NOW()");
-    @logActivity('chatbot settings saved','',0,'');
-    echo json_encode(['ok'=>true,'message'=>'Settings saved']);
+    @logActivity('chatbot settings saved', '', 0, '');
+    echo json_encode(['ok' => true, 'message' => 'Settings saved']);
     exit;
 }
 
 // ── ACTION: TEST KEY ──
-// Tries each model in order and reports which one works
+// Uses SSL verify=false so it bypasses cert issues and tests the KEY itself
 if ($action === 'test_key') {
-    $key = trim($_POST['gemini_key'] ?? cbGet($db,'gemini_api_key'));
-    if (!$key) { echo json_encode(['ok'=>false,'error'=>'No API key provided']); exit; }
+    $key = trim($_POST['gemini_key'] ?? cbGet($db, 'gemini_api_key'));
+    if (!$key) { echo json_encode(['ok' => false, 'error' => 'No API key provided']); exit; }
 
-    $testBody = json_encode(['contents'=>[['role'=>'user','parts'=>[['text'=>'Reply OK']]]]]);
+    $testBody = json_encode(['contents' => [['role' => 'user', 'parts' => [['text' => 'Reply with the word OK only']]]]]);
     $results  = [];
     $working  = null;
 
     foreach (GEMINI_MODELS as $model) {
         $url = GEMINI_BASE . $model . ':generateContent?key=' . $key;
-        $raw = cbHttp($url, $testBody);
-        if ($raw === null) { $results[$model] = 'network_fail'; continue; }
-        $d    = json_decode($raw, true);
-        $code = (int)($d['error']['code'] ?? 0);
-        if ($code === 0 && !empty($d['candidates'][0]['content']['parts'][0]['text'])) {
+
+        // Use SSL verify=false for test to separate SSL issues from key issues
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 20,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_SSL_VERIFYPEER => false,  // bypass SSL for test only
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $testBody,
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                CURLOPT_USERAGENT      => 'PadakCRM/1.0',
+            ]);
+            $raw   = curl_exec($ch);
+            $code  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err   = curl_error($ch);
+            $errno = curl_errno($ch);
+            curl_close($ch);
+        } else {
+            $r   = cbHttp($url, $testBody);
+            $raw = $r['body'];
+            $err = $r['error'];
+            $errno = 0;
+            $code  = $r['http_code'];
+        }
+
+        if ($err || $raw === false || !$raw) {
+            $errDetail = "cURL errno $errno: $err";
+            $results[$model] = "CONNECT FAIL — $errDetail";
+            if ($errno === 6)  $results[$model] .= ' [DNS failure]';
+            if ($errno === 7)  $results[$model] .= ' [Connection refused — firewall blocking port 443]';
+            if ($errno === 28) $results[$model] .= ' [Timeout]';
+            continue;
+        }
+
+        $d     = json_decode($raw, true);
+        $eCode = (int)($d['error']['code'] ?? 0);
+
+        if ($eCode === 404) { $results[$model] = '404 — model not found'; continue; }
+
+        if ($eCode === 0 && !empty($d['candidates'][0]['content']['parts'][0]['text'])) {
             $working = $model;
-            $results[$model] = 'OK';
-            // Save working model to DB
+            $results[$model] = '✅ OK';
             $me = $db->real_escape_string($model);
             $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('active_model','$me') ON DUPLICATE KEY UPDATE setting_val='$me',updated_at=NOW()");
             break;
         }
-        $msg = $d['error']['message'] ?? 'unknown';
-        $results[$model] = "error $code: " . substr($msg, 0, 80);
+
+        $eMsg = $d['error']['message'] ?? 'unknown';
+        $results[$model] = "HTTP $code — error $eCode: " . substr($eMsg, 0, 120);
     }
 
+    $resultLines = implode("\n", array_map(fn($m, $r) => "• $m → $r", array_keys($results), $results));
+
     if ($working) {
-        echo json_encode(['ok'=>true,'message'=>"✅ Working model found: $working\n\nAll tested:\n" . implode("\n", array_map(fn($m,$r)=>"• $m → $r", array_keys($results), $results))]);
+        echo json_encode(['ok' => true, 'message' => "✅ Working model: $working\n\nAll tested:\n$resultLines"]);
     } else {
-        // Build diagnostic from first real error
-        $firstErr = array_values($results)[0] ?? 'No response';
-        $billingMsg = '';
-        if (str_contains($firstErr, '429') || str_contains($firstErr, '403')) {
-            $billingMsg = "\n\n⚠️ Your billing page shows a PAYMENT ISSUE.\nThis is blocking API access. Fix billing first:\nconsole.cloud.google.com/billing";
+        // Diagnose the failure type
+        $firstResult = array_values($results)[0] ?? '';
+        $hint = '';
+        if (stripos($firstResult, 'DNS') !== false || stripos($firstResult, 'errno 6') !== false) {
+            $hint = "\n\n🔧 FIX: Server cannot resolve googleapis.com.\n→ Add to /etc/resolv.conf: nameserver 8.8.8.8\n→ Or ask your hosting provider to allow outbound DNS";
+        } elseif (stripos($firstResult, 'firewall') !== false || stripos($firstResult, 'errno 7') !== false) {
+            $hint = "\n\n🔧 FIX: Outbound port 443 is blocked.\n→ Ask your hosting provider to whitelist: generativelanguage.googleapis.com:443";
+        } elseif (stripos($firstResult, 'Timeout') !== false || stripos($firstResult, 'errno 28') !== false) {
+            $hint = "\n\n🔧 FIX: Connection timing out.\n→ Firewall is silently dropping packets to googleapis.com\n→ Ask hosting to allow outbound TCP 443 to *.googleapis.com";
+        } elseif (stripos($firstResult, '403') !== false) {
+            $hint = "\n\n🔧 FIX: 403 = billing issue or wrong key.\n→ Check: console.cloud.google.com/billing\n→ Regenerate key at: aistudio.google.com/apikey";
+        } elseif (stripos($firstResult, '429') !== false) {
+            $hint = "\n\n🔧 FIX: 429 = rate limit or spend cap.\n→ Set spend cap to ₹0 at: aistudio.google.com/spend";
         }
-        echo json_encode(['ok'=>false,'error'=>
-            "No working model found.$billingMsg\n\nResults per model:\n" .
-            implode("\n", array_map(fn($m,$r)=>"• $m → $r", array_keys($results), $results))
-        ]);
+        echo json_encode(['ok' => false, 'error' => "No working model found.$hint\n\nResults:\n$resultLines"]);
     }
     exit;
 }
@@ -309,36 +523,32 @@ if ($action === 'chat') {
     $message = trim($_POST['message'] ?? '');
     $sid     = (int)($_POST['session_id'] ?? 0);
 
-    if (!$message) { echo json_encode(['ok'=>false,'error'=>'Empty message']); exit; }
-    if (mb_strlen($message) > 4000) { echo json_encode(['ok'=>false,'error'=>'Message too long (max 4000 chars)']); exit; }
+    if (!$message) { echo json_encode(['ok' => false, 'error' => 'Empty message']); exit; }
+    if (mb_strlen($message) > 4000) { echo json_encode(['ok' => false, 'error' => 'Message too long (max 4000 chars)']); exit; }
 
     $api_key = cbGet($db, 'gemini_api_key');
     if (!$api_key) {
-        echo json_encode(['ok'=>false,'error'=>'Gemini API key not configured. Go to Settings.']);
+        echo json_encode(['ok' => false, 'error' => 'Gemini API key not configured. Go to Settings.']);
         exit;
     }
 
-    // ── FREE TIER QUOTA GUARD ──
-    // Hard cap = lower of admin setting OR Google's free tier limit (1,400/day buffer)
+    // ── FREE TIER QUOTA GUARDS ──
     $admin_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
     $daily_limit = min($admin_limit, FREE_DAILY_HARD_LIMIT);
     $daily_used  = cbDailyUsed($db, $uid);
     if ($daily_used >= $daily_limit) {
-        echo json_encode(['ok'=>false,
-            'error'=>"Daily free limit of $daily_limit messages reached.\n\n"
-                    ."Google's free tier allows 1,500 requests/day for gemini-1.5-flash. "
-                    ."We cap at 1,400 for safety.\n\nResets at midnight (IST)."
+        echo json_encode(['ok' => false,
+            'error' => "Daily free limit of $daily_limit messages reached.\nResets at midnight (IST)."
         ]);
         exit;
     }
 
-    // RPM guard — free tier allows 15 RPM, we enforce 12 RPM for safety
     $one_min_ago = date('Y-m-d H:i:s', time() - 60);
     $rpm_r = @$db->query("SELECT COALESCE(SUM(msg_count),0) c FROM chatbot_usage WHERE user_id=$uid AND created_at >= '$one_min_ago'");
     $rpm_used = (int)($rpm_r ? $rpm_r->fetch_assoc()['c'] : 0);
     if ($rpm_used >= FREE_RPM_LIMIT) {
-        echo json_encode(['ok'=>false,
-            'error'=>"Sending too fast. Free tier allows 15 requests/minute.\nPlease wait a moment and try again.",
+        echo json_encode(['ok' => false,
+            'error'       => "Sending too fast. Free tier: 15 req/min max.\nWait a moment and try again.",
             'retry_after' => 8,
             'error_code'  => 429
         ]);
@@ -361,7 +571,7 @@ if ($action === 'chat') {
     $history = [];
     if ($hr) {
         foreach (array_reverse($hr->fetch_all(MYSQLI_ASSOC)) as $row) {
-            $history[] = ['role'=>$row['role'], 'parts'=>[['text'=>$row['content']]]];
+            $history[] = ['role' => $row['role'], 'parts' => [['text' => $row['content']]]];
         }
     }
 
@@ -375,40 +585,71 @@ if ($action === 'chat') {
         . "Keep responses clear and practical. Use markdown where helpful. "
         . "You have NO access to live CRM records — offer templates/strategies instead if asked about specific records.";
 
-    $history[] = ['role'=>'user', 'parts'=>[['text'=>$message]]];
+    $history[] = ['role' => 'user', 'parts' => [['text' => $message]]];
 
     $requestBody = json_encode([
-        'system_instruction' => ['parts'=>[['text'=>$system]]],
+        'system_instruction' => ['parts' => [['text' => $system]]],
         'contents'           => $history,
-        'generationConfig'   => ['maxOutputTokens'=>1024,'temperature'=>0.7,'topP'=>0.9],
+        'generationConfig'   => ['maxOutputTokens' => 1024, 'temperature' => 0.7, 'topP' => 0.9],
         'safetySettings'     => [
-            ['category'=>'HARM_CATEGORY_HARASSMENT',        'threshold'=>'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category'=>'HARM_CATEGORY_HATE_SPEECH',       'threshold'=>'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category'=>'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold'=>'BLOCK_MEDIUM_AND_ABOVE'],
-            ['category'=>'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold'=>'BLOCK_MEDIUM_AND_ABOVE'],
+            ['category' => 'HARM_CATEGORY_HARASSMENT',        'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+            ['category' => 'HARM_CATEGORY_HATE_SPEECH',       'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+            ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
+            ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'],
         ],
     ]);
 
-    [$raw, $usedModel] = cbCallWithFallback($requestBody, $api_key);
+    $result = cbCallWithFallback($requestBody, $api_key);
 
-    if ($raw === null) {
-        echo json_encode(['ok'=>false,'error'=>"Cannot reach Gemini API. All models tried:\n" . implode(', ', GEMINI_MODELS) . "\n\nCheck server internet / firewall."]);
+    if ($result['body'] === null) {
+        // Build a genuinely helpful error with the real cURL error
+        $curlErr   = $result['curl_error'];
+        $allErrors = $result['all_errors'] ?? [];
+        $errorLines = implode("\n", array_map(fn($m, $e) => "  • $m → $e", array_keys($allErrors), $allErrors));
+
+        $hint = '';
+        if (stripos($curlErr, 'Could not resolve') !== false || stripos($curlErr, 'errno 6') !== false) {
+            $hint = "\n\n🔧 ROOT CAUSE: DNS failure — server can't resolve googleapis.com\n"
+                  . "FIX OPTIONS:\n"
+                  . "  1. Add to /etc/resolv.conf: nameserver 8.8.8.8\n"
+                  . "  2. Ask hosting to allow outbound UDP/TCP port 53\n"
+                  . "  3. Run as admin: chatbot_api.php?action=diagnose for full report";
+        } elseif (stripos($curlErr, 'Connection refused') !== false || stripos($curlErr, 'errno 7') !== false) {
+            $hint = "\n\n🔧 ROOT CAUSE: Outbound port 443 is BLOCKED by firewall\n"
+                  . "FIX: Ask your hosting provider to whitelist outbound TCP 443 to:\n"
+                  . "  generativelanguage.googleapis.com\n"
+                  . "  Run chatbot_api.php?action=diagnose for full report";
+        } elseif (stripos($curlErr, 'timed out') !== false || stripos($curlErr, 'errno 28') !== false) {
+            $hint = "\n\n🔧 ROOT CAUSE: Connection timeout — firewall silently blocking port 443\n"
+                  . "FIX: Ask hosting to allow outbound TCP 443 to *.googleapis.com\n"
+                  . "Run chatbot_api.php?action=diagnose for full report";
+        } elseif (stripos($curlErr, 'SSL') !== false || stripos($curlErr, 'errno 35') !== false || stripos($curlErr, 'errno 60') !== false) {
+            $hint = "\n\n🔧 ROOT CAUSE: SSL certificate error\n"
+                  . "FIX: Run on server: apt install ca-certificates && update-ca-certificates\n"
+                  . "Or ask hosting to update SSL bundle";
+        } else {
+            $hint = "\n\n🔧 Run chatbot_api.php?action=diagnose (admin only) for full network diagnostics";
+        }
+
+        echo json_encode(['ok' => false,
+            'error' => "Cannot reach Gemini API.\n\nReal error: $curlErr\n\nPer model:\n$errorLines$hint"
+        ]);
         exit;
     }
 
-    $resp    = json_decode($raw, true);
+    $resp    = json_decode($result['body'], true);
     $errCode = (int)($resp['error']['code'] ?? 0);
 
     if ($errCode !== 0) {
         $errMsg = $resp['error']['message'] ?? 'Unknown';
-        echo json_encode(cbGeminiError($errCode, $errMsg, $usedModel ?? 'unknown'));
+        echo json_encode(cbGeminiError($errCode, $errMsg, $result['model'] ?? 'unknown'));
         exit;
     }
 
     $reply = $resp['candidates'][0]['content']['parts'][0]['text'] ?? null;
     if (!$reply) {
         $finish = $resp['candidates'][0]['finishReason'] ?? 'UNKNOWN';
-        echo json_encode(['ok'=>false,'error'=> $finish === 'SAFETY'
+        echo json_encode(['ok' => false, 'error' => $finish === 'SAFETY'
             ? 'Blocked by safety filters. Please rephrase.'
             : "No response generated (reason: $finish). Try again."]);
         exit;
@@ -425,10 +666,10 @@ if ($action === 'chat') {
     @$db->query("UPDATE chatbot_sessions SET msg_count=$cnt,updated_at=NOW() WHERE id=$sid");
     if ($cnt <= 2) @$db->query("UPDATE chatbot_sessions SET title='$te' WHERE id=$sid");
     @$db->query("INSERT INTO chatbot_usage (user_id,session_id,msg_count,created_at) VALUES ($uid,$sid,1,NOW())");
-    // Save last working model
+    $usedModel = $result['model'];
     $me2 = $db->real_escape_string($usedModel);
     @$db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('active_model','$me2') ON DUPLICATE KEY UPDATE setting_val='$me2',updated_at=NOW()");
-    @logActivity('chatbot message','',0,'session '.$sid);
+    @logActivity('chatbot message', '', 0, 'session ' . $sid);
 
     $newUsed = cbDailyUsed($db, $uid);
     echo json_encode([
@@ -442,4 +683,4 @@ if ($action === 'chat') {
     exit;
 }
 
-echo json_encode(['ok'=>false,'error'=>'Unknown action']);
+echo json_encode(['ok' => false, 'error' => 'Unknown action']);

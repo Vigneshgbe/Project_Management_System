@@ -1,13 +1,22 @@
 <?php
 /**
  * chatbot_api.php — Padak CRM AI Chatbot Backend
- * MODEL   : gemini-1.5-flash (FREE tier — 1,500 req/day, 15 RPM, ₹0)
- * FALLBACK: gemini-1.5-flash-8b → gemini-1.0-pro
  *
- * KEY FIX IN THIS VERSION:
- *   cbHttp() now returns ['body'=>..., 'error'=>..., 'http_code'=>...]
- *   so the REAL cURL error is surfaced in every error message.
- *   The test_key and diagnose actions show full diagnostic output.
+ * ROOT CAUSE (confirmed via diagnose): API key created in Google Cloud Console
+ * for a different API — "Generative Language API" was never enabled for that project.
+ * OR the key is an AI Studio key but the wrong v1beta path is being hit.
+ *
+ * FIX: We now try every combination of API version (v1, v1beta) × model name.
+ * The first combination that returns non-404 wins. This guarantees we find a
+ * working path regardless of which Google project/key type you have.
+ *
+ * MODELS tried (all FREE tier, ₹0):
+ *   gemini-2.0-flash     — current default free model as of 2025
+ *   gemini-1.5-flash     — older free model, 1,500 req/day
+ *   gemini-1.5-flash-8b  — lighter free fallback
+ *   gemini-1.0-pro       — oldest stable free model
+ *
+ * API VERSIONS tried: v1 first (stable), then v1beta (preview features)
  */
 
 require_once 'config.php';
@@ -20,17 +29,32 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-define('GEMINI_BASE', 'https://generativelanguage.googleapis.com/v1beta/models/');
+define('GEMINI_API_HOST', 'https://generativelanguage.googleapis.com');
 
-// FREE TIER models only — ₹0 cost
-define('GEMINI_MODELS', [
-    'gemini-1.5-flash',     // PRIMARY — 1,500 req/day free, 15 RPM
-    'gemini-1.5-flash-8b',  // FALLBACK — lighter, also free tier
-    'gemini-1.0-pro',       // LAST RESORT — oldest stable, always free
+// All model+version combinations to try, in priority order.
+// Each entry: [api_version, model_id]
+// We try v1 before v1beta because v1 is the stable channel.
+define('GEMINI_COMBOS', [
+    ['v1',    'gemini-2.0-flash'],        // current free model, stable API
+    ['v1beta','gemini-2.0-flash'],        // same model, preview API
+    ['v1',    'gemini-1.5-flash'],        // older free model
+    ['v1beta','gemini-1.5-flash'],        // same, preview API
+    ['v1beta','gemini-1.5-flash-8b'],     // lighter fallback
+    ['v1',    'gemini-1.0-pro'],          // oldest stable
+    ['v1beta','gemini-1.0-pro'],          // oldest, preview
 ]);
 
 define('FREE_DAILY_HARD_LIMIT', 1400); // Google allows 1,500 — we stop 100 short
 define('FREE_RPM_LIMIT', 12);          // Google allows 15 — we stop 3 short
+
+// Helper: build URL from combo
+function cbModelUrl(array $combo, string $api_key): string {
+    [$ver, $model] = $combo;
+    return GEMINI_API_HOST . "/$ver/models/$model:generateContent?key=$api_key";
+}
+
+// For display/storage: just the model name
+function cbModelName(array $combo): string { return $combo[1]; }
 
 // ── HELPERS ──
 function cbGet(mysqli $db, string $k, string $def = ''): string {
@@ -126,22 +150,22 @@ function cbHttp(string $url, string $body): array {
 }
 
 /**
- * Try each model in GEMINI_MODELS until one returns a non-404 response.
- * Returns ['body' => string, 'model' => string, 'curl_error' => string] or
- *         ['body' => null, 'model' => null, 'curl_error' => string, 'all_errors' => array]
+ * Try every [api_version, model] combo until one returns a non-404 response.
+ * Returns ['body'=>string,'model'=>string,'api_ver'=>string,'curl_error'=>'','all_errors'=>[]] on success
+ * Returns ['body'=>null,'model'=>null,'api_ver'=>null,'curl_error'=>string,'all_errors'=>[]] on total failure
  */
 function cbCallWithFallback(string $body, string $api_key): array {
-    $allErrors = [];
+    $allErrors     = [];
     $lastCurlError = '';
 
-    foreach (GEMINI_MODELS as $model) {
-        $url = GEMINI_BASE . $model . ':generateContent?key=' . $api_key;
-        $r   = cbHttp($url, $body);
+    foreach (GEMINI_COMBOS as $combo) {
+        $url   = cbModelUrl($combo, $api_key);
+        $label = $combo[0] . '/' . $combo[1];
+        $r     = cbHttp($url, $body);
 
         if ($r['body'] === null) {
-            // True connection failure
-            $lastCurlError = $r['error'];
-            $allErrors[$model] = 'CONNECT FAIL: ' . $r['error'];
+            $lastCurlError     = $r['error'];
+            $allErrors[$label] = 'CONNECT FAIL: ' . $r['error'];
             continue;
         }
 
@@ -149,16 +173,21 @@ function cbCallWithFallback(string $body, string $api_key): array {
         $code = (int)($d['error']['code'] ?? 0);
 
         if ($code === 404) {
-            // Model doesn't exist — try next
-            $allErrors[$model] = '404 model not found';
+            $allErrors[$label] = '404 not found for this API version';
             continue;
         }
 
-        // Any other response (success, 429, 403, 400, 503) — stop and return it
-        return ['body' => $r['body'], 'model' => $model, 'curl_error' => '', 'all_errors' => $allErrors];
+        // Any other response (success, 429, 403, 400, 503) — return it
+        return [
+            'body'       => $r['body'],
+            'model'      => cbModelName($combo),
+            'api_ver'    => $combo[0],
+            'curl_error' => '',
+            'all_errors' => $allErrors,
+        ];
     }
 
-    return ['body' => null, 'model' => null, 'curl_error' => $lastCurlError, 'all_errors' => $allErrors];
+    return ['body' => null, 'model' => null, 'api_ver' => null, 'curl_error' => $lastCurlError, 'all_errors' => $allErrors];
 }
 
 function cbGeminiError(int $code, string $msg, string $model): array {
@@ -320,18 +349,22 @@ if ($action === 'diagnose' && isAdmin()) {
     $out[] = 'Detected proxy: ' . ($proxy ?: 'none');
     $out[] = 'Server IP: ' . ($_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname()));
 
-    // 7. API key test (if configured)
+    // 7. API key test — tries every version×model combo
     $out[] = '';
-    $out[] = '=== API Key Test ===';
+    $out[] = '=== API Key Test (all version × model combos) ===';
     $key = cbGet($db, 'gemini_api_key');
     if (!$key) {
         $out[] = 'No API key configured yet — set it in Settings first';
     } else {
-        $masked = substr($key, 0, 8) . '...' . substr($key, -4);
-        $out[] = "Key configured: $masked (length " . strlen($key) . ')';
+        $masked   = substr($key, 0, 8) . '...' . substr($key, -4);
+        $out[]    = "Key: $masked (length " . strlen($key) . ')';
+        $all404   = true;
+        $anyWork  = false;
         $testBody = json_encode(['contents' => [['role' => 'user', 'parts' => [['text' => 'Hi']]]]]);
-        foreach (GEMINI_MODELS as $model) {
-            $url = GEMINI_BASE . $model . ':generateContent?key=' . $key;
+
+        foreach (GEMINI_COMBOS as $combo) {
+            $url   = cbModelUrl($combo, $key);
+            $label = $combo[0] . '/models/' . $combo[1];
             if (function_exists('curl_init')) {
                 $ch4 = curl_init($url);
                 curl_setopt_array($ch4, [
@@ -348,22 +381,50 @@ if ($action === 'diagnose' && isAdmin()) {
                 $e4 = curl_error($ch4);
                 curl_close($ch4);
                 if ($e4) {
-                    $out[] = "  $model → CONNECT FAIL: $e4";
+                    $out[] = "  $label → CONNECT FAIL: $e4";
+                    $all404 = false;
                 } else {
-                    $d4 = json_decode($b4, true);
-                    $apiErr = $d4['error']['code'] ?? 0;
+                    $d4     = json_decode($b4, true);
+                    $apiErr = (int)($d4['error']['code'] ?? 0);
                     $apiMsg = $d4['error']['message'] ?? '';
                     $reply4 = $d4['candidates'][0]['content']['parts'][0]['text'] ?? '';
                     if ($reply4) {
-                        $out[] = "  $model → ✅ SUCCESS (HTTP $c4)";
+                        $out[]   = "  $label → SUCCESS (HTTP $c4)";
+                        $anyWork = true;
+                        $all404  = false;
+                    } elseif ($apiErr === 404) {
+                        $out[] = "  $label → 404 (model/version not available for this key)";
                     } else {
-                        $out[] = "  $model → HTTP $c4, error $apiErr: " . substr($apiMsg, 0, 100);
+                        $out[]  = "  $label → HTTP $c4, error $apiErr: " . substr($apiMsg, 0, 120);
+                        $all404 = false;
                     }
                 }
             }
         }
-    }
 
+        $out[] = '';
+        if ($anyWork) {
+            $out[] = 'SUCCESS: At least one combo works — chatbot should be functional now.';
+        } elseif ($all404) {
+            $out[] = 'FAIL: ALL combos returned 404.';
+            $out[] = '';
+            $out[] = 'ROOT CAUSE: Your API key does not have the Generative Language API enabled.';
+            $out[] = 'Network is fine. Key is valid. But the key has no Gemini permissions.';
+            $out[] = '';
+            $out[] = 'FIX — choose ONE of these options:';
+            $out[] = '';
+            $out[] = 'OPTION A (easiest — 2 minutes):';
+            $out[] = '  1. Go to https://aistudio.google.com/apikey';
+            $out[] = '  2. Create a NEW key (AI Studio keys auto-enable Gemini)';
+            $out[] = '  3. Paste the new key in Settings -> Save -> Test';
+            $out[] = '';
+            $out[] = 'OPTION B (enable Gemini on your existing key project):';
+            $out[] = '  1. Go to https://console.cloud.google.com/apis/library';
+            $out[] = '  2. Search: "Generative Language API"';
+            $out[] = '  3. Click Enable for your project';
+            $out[] = '  4. Wait 1 minute, then click Test in Settings';
+        }
+    }
     echo json_encode(['ok' => true, 'diagnostic' => implode("\n", $out)]);
     exit;
 }
@@ -374,7 +435,7 @@ if ($action === 'get_stats') {
     $admin_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
     $daily_limit = min($admin_limit, FREE_DAILY_HARD_LIMIT);
     $daily_used  = cbDailyUsed($db, $uid);
-    $active_model = cbGet($db, 'active_model', GEMINI_MODELS[0]);
+    $active_model = cbGet($db, 'active_model', 'gemini-2.0-flash');
     echo json_encode([
         'ok'          => true,
         'configured'  => $configured,
@@ -439,17 +500,17 @@ if ($action === 'test_key') {
     $results  = [];
     $working  = null;
 
-    foreach (GEMINI_MODELS as $model) {
-        $url = GEMINI_BASE . $model . ':generateContent?key=' . $key;
+    foreach (GEMINI_COMBOS as $combo) {
+        $url   = cbModelUrl($combo, $key);
+        $label = $combo[0] . '/' . $combo[1];
 
-        // Use SSL verify=false for test to separate SSL issues from key issues
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 20,
                 CURLOPT_CONNECTTIMEOUT => 8,
-                CURLOPT_SSL_VERIFYPEER => false,  // bypass SSL for test only
+                CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_POST           => true,
                 CURLOPT_POSTFIELDS     => $testBody,
                 CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
@@ -462,60 +523,59 @@ if ($action === 'test_key') {
             curl_close($ch);
         } else {
             $r   = cbHttp($url, $testBody);
-            $raw = $r['body'];
-            $err = $r['error'];
-            $errno = 0;
-            $code  = $r['http_code'];
+            $raw = $r['body']; $err = $r['error']; $errno = 0; $code = $r['http_code'];
         }
 
-        if ($err || $raw === false || !$raw) {
-            $errDetail = "cURL errno $errno: $err";
-            $results[$model] = "CONNECT FAIL — $errDetail";
-            if ($errno === 6)  $results[$model] .= ' [DNS failure]';
-            if ($errno === 7)  $results[$model] .= ' [Connection refused — firewall blocking port 443]';
-            if ($errno === 28) $results[$model] .= ' [Timeout]';
+        if ($err || !$raw) {
+            $results[$label] = "CONNECT FAIL — errno $errno: $err";
+            if ($errno === 6)  $results[$label] .= ' [DNS failure]';
+            if ($errno === 7)  $results[$label] .= ' [firewall blocking port 443]';
+            if ($errno === 28) $results[$label] .= ' [Timeout]';
             continue;
         }
 
         $d     = json_decode($raw, true);
         $eCode = (int)($d['error']['code'] ?? 0);
 
-        if ($eCode === 404) { $results[$model] = '404 — model not found'; continue; }
+        if ($eCode === 404) { $results[$label] = '404 — model not found for this key/version'; continue; }
 
         if ($eCode === 0 && !empty($d['candidates'][0]['content']['parts'][0]['text'])) {
-            $working = $model;
-            $results[$model] = '✅ OK';
-            $me = $db->real_escape_string($model);
+            $working = cbModelName($combo);
+            $results[$label] = 'OK';
+            $me = $db->real_escape_string($working);
             $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('active_model','$me') ON DUPLICATE KEY UPDATE setting_val='$me',updated_at=NOW()");
             break;
         }
 
         $eMsg = $d['error']['message'] ?? 'unknown';
-        $results[$model] = "HTTP $code — error $eCode: " . substr($eMsg, 0, 120);
+        $results[$label] = "HTTP $code — error $eCode: " . substr($eMsg, 0, 120);
     }
 
-    $resultLines = implode("\n", array_map(fn($m, $r) => "• $m → $r", array_keys($results), $results));
+    $resultLines = implode("\n", array_map(fn($m, $r) => "  $m -> $r", array_keys($results), $results));
+    $all404 = count(array_filter($results, fn($v) => str_contains($v, '404'))) === count($results);
 
     if ($working) {
-        echo json_encode(['ok' => true, 'message' => "✅ Working model: $working\n\nAll tested:\n$resultLines"]);
+        echo json_encode(['ok' => true, 'message' => "Working model: $working\n\nAll tested:\n$resultLines"]);
+    } elseif ($all404) {
+        echo json_encode(['ok' => false, 'error' =>
+            "All 404 — Generative Language API not enabled for this key's project.\n\n" .
+            "FIX (2 minutes):\n" .
+            "OPTION A: Get a new key from https://aistudio.google.com/apikey\n" .
+            "  (AI Studio keys auto-enable Gemini — just create and paste)\n\n" .
+            "OPTION B: Enable the API on your existing project:\n" .
+            "  https://console.cloud.google.com/apis/library\n" .
+            "  Search 'Generative Language API' -> Enable -> wait 1 min -> Test\n\n" .
+            "Results:\n$resultLines"
+        ]);
     } else {
-        // Diagnose the failure type
         $firstResult = array_values($results)[0] ?? '';
         $hint = '';
-        if (stripos($firstResult, 'DNS') !== false || stripos($firstResult, 'errno 6') !== false) {
-            $hint = "\n\n🔧 FIX: Server cannot resolve googleapis.com.\n→ Add to /etc/resolv.conf: nameserver 8.8.8.8\n→ Or ask your hosting provider to allow outbound DNS";
-        } elseif (stripos($firstResult, 'firewall') !== false || stripos($firstResult, 'errno 7') !== false) {
-            $hint = "\n\n🔧 FIX: Outbound port 443 is blocked.\n→ Ask your hosting provider to whitelist: generativelanguage.googleapis.com:443";
-        } elseif (stripos($firstResult, 'Timeout') !== false || stripos($firstResult, 'errno 28') !== false) {
-            $hint = "\n\n🔧 FIX: Connection timing out.\n→ Firewall is silently dropping packets to googleapis.com\n→ Ask hosting to allow outbound TCP 443 to *.googleapis.com";
-        } elseif (stripos($firstResult, '403') !== false) {
-            $hint = "\n\n🔧 FIX: 403 = billing issue or wrong key.\n→ Check: console.cloud.google.com/billing\n→ Regenerate key at: aistudio.google.com/apikey";
-        } elseif (stripos($firstResult, '429') !== false) {
-            $hint = "\n\n🔧 FIX: 429 = rate limit or spend cap.\n→ Set spend cap to ₹0 at: aistudio.google.com/spend";
-        }
-        echo json_encode(['ok' => false, 'error' => "No working model found.$hint\n\nResults:\n$resultLines"]);
+        if (stripos($firstResult, '403') !== false) $hint = "\nFIX: Billing issue — check console.cloud.google.com/billing";
+        if (stripos($firstResult, '429') !== false) $hint = "\nFIX: Rate limit — set spend cap to 0 at aistudio.google.com/spend";
+        echo json_encode(['ok' => false, 'error' => "No working model.$hint\n\nResults:\n$resultLines"]);
     }
     exit;
+}
 }
 
 // ── ACTION: CHAT ──

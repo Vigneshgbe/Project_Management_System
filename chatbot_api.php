@@ -22,8 +22,10 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // ── MODEL CONSTANT — update here if Google renames the model ──
 // Primary: stable alias. Fallback: dated preview (used automatically on 403/404).
+// Lite: higher RPM (15 vs 10), higher RPD (1000 vs 500) — auto-used on persistent 429.
 define('GEMINI_MODEL',          'gemini-2.5-flash');
 define('GEMINI_MODEL_FALLBACK', 'gemini-2.5-flash-preview-05-20');
+define('GEMINI_MODEL_LITE',     'gemini-2.5-flash-lite'); // 15 RPM, 1000 RPD free
 define('GEMINI_BASE',           'https://generativelanguage.googleapis.com/v1beta/models/');
 
 // ── HELPERS ──
@@ -98,22 +100,55 @@ function cbHttp(string $url, string $body, array $headers = []): ?string {
 }
 
 /**
- * cbCallGemini — wraps cbHttp with one automatic retry on 429 / 503.
- * Gemini free tier allows 10 RPM; a rapid second message can hit rate limit.
- * One 2-second retry resolves this transparently without user-visible errors.
+ * cbCallGemini — POST to Gemini with exponential backoff + model fallback.
+ *
+ * Free tier: 10 RPM for gemini-2.5-flash, 15 RPM for gemini-2.5-flash-lite.
+ * Strategy:
+ *  1. Try primary model.
+ *  2. On 429: wait 6s, retry primary.
+ *  3. Still 429: wait 6s more, try flash-lite (15 RPM — higher quota, still free).
+ *  4. On 403/404: try dated preview model.
+ *
+ * Returns raw response body, or null only on true connection failure.
  */
-function cbCallGemini(string $url, string $body): ?string {
+function cbCallGemini(string $url, string $body, string $api_key = ''): ?string {
+    // Attempt 1
     $raw = cbHttp($url, $body);
-    if ($raw === null) return null; // true connection failure
+    if ($raw === null) return null;
 
-    $decoded = json_decode($raw, true);
-    $errCode = $decoded['error']['code'] ?? 0;
+    $d       = json_decode($raw, true);
+    $errCode = $d['error']['code'] ?? 0;
 
-    // Retry once on rate-limit (429) or temporary server error (503)
+    // 429: wait 6s, retry same model
     if ($errCode === 429 || $errCode === 503) {
-        sleep(2);
+        sleep(6);
         $raw = cbHttp($url, $body);
+        if ($raw === null) return null;
+        $d       = json_decode($raw, true);
+        $errCode = $d['error']['code'] ?? 0;
     }
+
+    // Still 429: fall back to flash-lite (15 RPM, 1000 RPD — higher free quota)
+    if (($errCode === 429 || $errCode === 503) && $api_key) {
+        sleep(6);
+        $lite_url = GEMINI_BASE.GEMINI_MODEL_LITE.':generateContent?key='.$api_key;
+        $raw2 = cbHttp($lite_url, $body);
+        if ($raw2 !== null) {
+            $d2 = json_decode($raw2, true);
+            // If lite worked or gave a different error, use it
+            if (empty($d2['error']) || ($d2['error']['code'] ?? 0) !== 429) {
+                return $raw2;
+            }
+        }
+    }
+
+    // 403/404: try dated preview name
+    if (($errCode === 403 || $errCode === 404) && $api_key) {
+        $fallback_url = GEMINI_BASE.GEMINI_MODEL_FALLBACK.':generateContent?key='.$api_key;
+        $raw3 = cbHttp($fallback_url, $body);
+        if ($raw3 !== null) return $raw3;
+    }
+
     return $raw;
 }
 
@@ -331,7 +366,7 @@ if ($action === 'chat') {
     ]);
 
     $url = GEMINI_BASE.GEMINI_MODEL.':generateContent?key='.$api_key;
-    $raw = cbCallGemini($url, $request_body);
+    $raw = cbCallGemini($url, $request_body, $api_key);
 
     // True network failure (curl couldn't connect at all)
     if ($raw === null) {

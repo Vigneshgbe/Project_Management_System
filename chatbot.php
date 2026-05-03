@@ -267,11 +267,12 @@ renderLayout('AI Assistant', 'chatbot');
 // ── STATE ──
 var CB = {
   sessionId: null,
-  messages: [],   // {role, content, ts}
+  messages: [],
   configured: false,
   dailyUsed: 0,
   dailyLimit: 200,
-  sessions: []
+  sessions: [],
+  lastSendTime: 0
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -417,6 +418,14 @@ function cbSend() {
   if (!msg) return;
   if (!CB.configured) { toast('Configure Gemini API key first','error'); cbToggleSettings(); return; }
   if (CB.dailyUsed >= CB.dailyLimit) { toast('Daily message limit reached. Resets tomorrow.','error'); return; }
+
+  var now = Date.now();
+  var wait = Math.ceil((6000 - (now - CB.lastSendTime)) / 1000);
+  if (CB.lastSendTime && (now - CB.lastSendTime) < 6000) {
+    toast('Please wait ' + wait + 's (Gemini free tier limit)', 'info');
+    return;
+  }
+  CB.lastSendTime = now;
 
   ta.value = '';
   cbAutoResize(ta);

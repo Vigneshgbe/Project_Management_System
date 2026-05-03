@@ -123,22 +123,21 @@ function cbCallWithFallback(string $body, string $api_key): array {
 function cbGeminiError(int $code, string $msg, string $model): array {
     switch ($code) {
         case 429:
-            // Check if this is billing suspension (common when billing has issues)
-            $isBilling = str_contains(strtolower($msg), 'quota') ||
-                         str_contains(strtolower($msg), 'billing') ||
-                         str_contains(strtolower($msg), 'exceeded');
-            if ($isBilling) {
+            // Spend cap exceeded — most common 429 on AI Studio Tier 1 accounts
+            if (str_contains($msg, 'spending cap') || str_contains($msg, 'spend')) {
                 return ['ok'=>false, 'error'=>
-                    "❌ API quota/billing error (429).\n\n".
-                    "Your Google Cloud billing page shows 'There are issues with your payments account'.\n\n".
-                    "This is blocking ALL API calls regardless of how many requests you've made.\n\n".
-                    "Fix:\n".
-                    "1. Go to console.cloud.google.com/billing\n".
-                    "2. Click 'My Billing Account' → resolve the payment issue\n".
-                    "3. Once billing is fixed, the API will work immediately.\n\n".
+                    "❌ Monthly spend cap exceeded.\n\n".
+                    "Your project hit its AI Studio spend cap — your ₹1,000 prepayment is fine, ".
+                    "this is a separate per-project limit.\n\n".
+                    "Fix (30 seconds):\n".
+                    "1. Go to https://aistudio.google.com/spend\n".
+                    "2. Find your Startup project\n".
+                    "3. Increase the monthly spend cap\n".
+                    "4. Save — API works immediately.\n\n".
                     "Raw: $msg"
                 ];
             }
+            // True rate limit (too many requests per minute)
             return ['ok'=>false, 'error'=>"Rate limited (429). Wait 30 seconds and retry.\n\nDetail: $msg",
                     'retry_after'=>30, 'error_code'=>429];
 

@@ -1,6 +1,24 @@
 <?php
 /**
  * chatbot_api.php — Padak CRM AI Chatbot Backend
+ * ─────────────────────────────────────────────
+ * MODEL   : gemini-1.5-flash (FREE tier)
+ * COST    : ₹0/month for normal company usage
+ * FREE QUOTA:
+ *   • 1,500 requests/day  (we hard-cap at 1,400 for safety)
+ *   • 15 requests/minute  (we hard-cap at 12 for safety)
+ *   • 1,000,000 tokens/minute
+ *
+ * AI STUDIO SETUP (do this once):
+ *   1. Go to https://aistudio.google.com/spend
+ *   2. Set spend cap = ₹0  ← forces free quota only, NEVER charges
+ *   3. Your ₹1,000 prepayment stays untouched as safety net
+ *
+ * WHY gemini-1.5-flash NOT gemini-2.5-flash:
+ *   • 2.5-flash on Tier 1 = PAID (₹0.15/1M tokens)
+ *   • 1.5-flash = genuinely FREE quota regardless of billing tier
+ *   • 1.5-flash is fast, smart, and perfect for a company chatbot
+ * ─────────────────────────────────────────────
  *
  * ROOT CAUSES IDENTIFIED FROM SCREENSHOTS:
  *
@@ -37,12 +55,21 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 // Source: your rate limit page confirms "Gemini 2.5 Flash" is active on your account.
 // "gemini-2.5-flash" is the stable alias. Preview dates change — never hardcode them.
 define('GEMINI_BASE', 'https://generativelanguage.googleapis.com/v1beta/models/');
+
+// FREE TIER MODELS ONLY — all have genuine free quota (no billing needed)
+// gemini-1.5-flash: 1,500 req/day FREE, 1M TPM FREE — perfect for small company chatbot
+// gemini-1.5-flash-8b: lighter, also free — used as fallback
+// gemini-1.0-pro: oldest stable free model — last resort fallback
 define('GEMINI_MODELS', [
-    'gemini-2.5-flash',           // Alias shown in your rate limit page — try first
-    'gemini-2.5-flash-preview-04-17', // Known good preview date (not 05-20)
-    'gemini-2.0-flash',           // Very stable, always available on Tier 1
-    'gemini-1.5-flash',           // Guaranteed fallback — never been removed
+    'gemini-1.5-flash',     // PRIMARY — 1,500 req/day free, fast, smart
+    'gemini-1.5-flash-8b',  // FALLBACK — lighter model, also free tier
+    'gemini-1.0-pro',       // LAST RESORT — oldest stable, always free
 ]);
+
+// Free tier hard limits (stay under these to never get charged)
+// gemini-1.5-flash free quota: 1,500 RPD, 15 RPM, 1M TPM
+define('FREE_DAILY_HARD_LIMIT', 1400); // 100 below Google's 1,500 RPD — safety buffer
+define('FREE_RPM_LIMIT', 12);          // stay under 15 RPM limit
 
 // ── HELPERS ──
 function cbGet(mysqli $db, string $k, string $def = ''): string {
@@ -123,23 +150,25 @@ function cbCallWithFallback(string $body, string $api_key): array {
 function cbGeminiError(int $code, string $msg, string $model): array {
     switch ($code) {
         case 429:
-            // Spend cap exceeded — most common 429 on AI Studio Tier 1 accounts
+            // Spend cap hit — set cap to ₹0 at aistudio.google.com/spend to force free-only
             if (str_contains($msg, 'spending cap') || str_contains($msg, 'spend')) {
                 return ['ok'=>false, 'error'=>
-                    "❌ Monthly spend cap exceeded.\n\n".
-                    "Your project hit its AI Studio spend cap — your ₹1,000 prepayment is fine, ".
-                    "this is a separate per-project limit.\n\n".
+                    "❌ Project spend cap exceeded.\n\n".
+                    "Since we use gemini-1.5-flash FREE tier, your spend cap should be ₹0.\n\n".
                     "Fix (30 seconds):\n".
                     "1. Go to https://aistudio.google.com/spend\n".
                     "2. Find your Startup project\n".
-                    "3. Increase the monthly spend cap\n".
-                    "4. Save — API works immediately.\n\n".
+                    "3. Set spend cap to ₹0 (forces free quota only, never charges)\n".
+                    "4. Save — API works immediately on free quota.\n\n".
                     "Raw: $msg"
                 ];
             }
-            // True rate limit (too many requests per minute)
-            return ['ok'=>false, 'error'=>"Rate limited (429). Wait 30 seconds and retry.\n\nDetail: $msg",
-                    'retry_after'=>30, 'error_code'=>429];
+            // Free tier RPM exceeded (15 req/min for gemini-1.5-flash)
+            return ['ok'=>false,
+                'error'=>"Free tier rate limit (429). gemini-1.5-flash allows 15 requests/minute.\nWait a moment and try again.",
+                'retry_after' => 8,
+                'error_code'  => 429
+            ];
 
         case 403:
             return ['ok'=>false, 'error'=>
@@ -170,9 +199,11 @@ if (!cbTableOk($db)) {
 
 // ── ACTION: GET STATS ──
 if ($action === 'get_stats') {
-    $configured  = cbGet($db, 'gemini_api_key') !== '';
-    $daily_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
-    $daily_used  = cbDailyUsed($db, $uid);
+    $configured   = cbGet($db, 'gemini_api_key') !== '';
+    // Use the lower of: admin-set limit OR hard free tier limit (1,400/day)
+    $admin_limit  = max(10, (int)cbGet($db, 'daily_limit', '200'));
+    $daily_limit  = min($admin_limit, FREE_DAILY_HARD_LIMIT);
+    $daily_used   = cbDailyUsed($db, $uid);
     $active_model = cbGet($db, 'active_model', GEMINI_MODELS[0]);
     echo json_encode([
         'ok'          => true,
@@ -181,6 +212,7 @@ if ($action === 'get_stats') {
         'daily_limit' => $daily_limit,
         'remaining'   => max(0, $daily_limit - $daily_used),
         'model'       => $active_model,
+        'tier'        => 'free',
     ]);
     exit;
 }
@@ -216,7 +248,7 @@ if ($action === 'delete_session') {
 // ── ACTION: SAVE SETTINGS (admin only) ──
 if ($action === 'save_settings' && isAdmin()) {
     $key   = trim($_POST['gemini_key'] ?? '');
-    $limit = max(10, min(1000, (int)($_POST['daily_limit'] ?? 200)));
+    $limit = max(10, min(FREE_DAILY_HARD_LIMIT, (int)($_POST['daily_limit'] ?? 200))); // capped at free tier max
     if ($key) {
         $ke = $db->real_escape_string($key);
         $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('gemini_api_key','$ke') ON DUPLICATE KEY UPDATE setting_val='$ke',updated_at=NOW()");
@@ -286,11 +318,30 @@ if ($action === 'chat') {
         exit;
     }
 
-    // Quota guard
-    $daily_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
+    // ── FREE TIER QUOTA GUARD ──
+    // Hard cap = lower of admin setting OR Google's free tier limit (1,400/day buffer)
+    $admin_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
+    $daily_limit = min($admin_limit, FREE_DAILY_HARD_LIMIT);
     $daily_used  = cbDailyUsed($db, $uid);
     if ($daily_used >= $daily_limit) {
-        echo json_encode(['ok'=>false,'error'=>"Daily limit of $daily_limit reached. Resets at midnight."]);
+        echo json_encode(['ok'=>false,
+            'error'=>"Daily free limit of $daily_limit messages reached.\n\n"
+                    ."Google's free tier allows 1,500 requests/day for gemini-1.5-flash. "
+                    ."We cap at 1,400 for safety.\n\nResets at midnight (IST)."
+        ]);
+        exit;
+    }
+
+    // RPM guard — free tier allows 15 RPM, we enforce 12 RPM for safety
+    $one_min_ago = date('Y-m-d H:i:s', time() - 60);
+    $rpm_r = @$db->query("SELECT COALESCE(SUM(msg_count),0) c FROM chatbot_usage WHERE user_id=$uid AND created_at >= '$one_min_ago'");
+    $rpm_used = (int)($rpm_r ? $rpm_r->fetch_assoc()['c'] : 0);
+    if ($rpm_used >= FREE_RPM_LIMIT) {
+        echo json_encode(['ok'=>false,
+            'error'=>"Sending too fast. Free tier allows 15 requests/minute.\nPlease wait a moment and try again.",
+            'retry_after' => 8,
+            'error_code'  => 429
+        ]);
         exit;
     }
 

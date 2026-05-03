@@ -3,7 +3,6 @@
  * chatbot_api.php
  * Padak CRM — AI Chatbot Backend
  * Uses Google Gemini 2.5 Flash (FREE tier: 10 RPM, 250 RPD per project)
- * Cost: $0.00 — fully free, completely separate from Places API quota
  *
  * HONEST FREE TIER FACTS (April 2026):
  *  - Gemini 2.5 Flash: 10 RPM, 250 req/day FREE → we cap at 200/day to stay safe
@@ -20,6 +19,10 @@ mysqli_report(MYSQLI_REPORT_OFF);
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// ── MODEL CONSTANT — update here if Google renames the model ──
+define('GEMINI_MODEL', 'gemini-2.5-flash');
+define('GEMINI_BASE',  'https://generativelanguage.googleapis.com/v1beta/models/');
 
 // ── HELPERS ──
 function cbGet(mysqli $db, string $k, string $def = ''): string {
@@ -38,39 +41,80 @@ function cbDailyUsed(mysqli $db, int $uid): int {
     return $r ? (int)($r->fetch_assoc()['c'] ?? 0) : 0;
 }
 
+/**
+ * cbHttp — POST to an API endpoint and return the raw response body.
+ *
+ * FIX: Previously returned null for any non-2xx HTTP code, which meant a
+ * 429 Rate-Limit or 503 Temporary Error from Gemini looked identical to a
+ * complete network failure ("Cannot reach Gemini API"). Now we only return
+ * null when there is a true network/connection error (curl error or HTTP 0).
+ * All API error responses (4xx, 5xx) are returned as-is so the caller can
+ * parse the JSON error body and show the real error message.
+ *
+ * Returns: response body string, or null ONLY on true connection failure.
+ */
 function cbHttp(string $url, string $body, array $headers = []): ?string {
     if (function_exists('curl_init')) {
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
+            CURLOPT_URL            => $url,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $body,
-            CURLOPT_HTTPHEADER => array_merge(['Content-Type: application/json'], $headers),
-            CURLOPT_USERAGENT => 'PadakCRM/1.0',
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/json'], $headers),
+            CURLOPT_USERAGENT      => 'PadakCRM/1.0',
         ]);
-        $r = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $r    = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err  = curl_error($ch);
         curl_close($ch);
-        if ($err || $code < 200 || $code >= 300) return null;
-        return $r ?: null;
+        // Return null ONLY on true network failure (curl error or no response at all)
+        if ($err || $code === 0) return null;
+        // Return body for ALL HTTP codes — 4xx/5xx contain JSON error details we need
+        return ($r !== false && $r !== '') ? $r : null;
     }
+    // stream_context fallback (no curl)
     $ctx = stream_context_create([
-        'http' => ['method'=>'POST','content'=>$body,'timeout'=>30,
-            'header' => implode("\r\n", array_merge(['Content-Type: application/json'],$headers)),
-            'ignore_errors' => true,'user_agent'=>'PadakCRM/1.0'],
-        'ssl'  => ['verify_peer'=>false]
+        'http' => [
+            'method'         => 'POST',
+            'content'        => $body,
+            'timeout'        => 30,
+            'header'         => implode("\r\n", array_merge(['Content-Type: application/json'], $headers)),
+            'ignore_errors'  => true,   // returns body even on 4xx/5xx
+            'user_agent'     => 'PadakCRM/1.0',
+        ],
+        'ssl' => ['verify_peer' => false],
     ]);
     $r = @file_get_contents($url, false, $ctx);
-    return $r !== false ? $r : null;
+    return ($r !== false && $r !== '') ? $r : null;
+}
+
+/**
+ * cbCallGemini — wraps cbHttp with one automatic retry on 429 / 503.
+ * Gemini free tier allows 10 RPM; a rapid second message can hit rate limit.
+ * One 2-second retry resolves this transparently without user-visible errors.
+ */
+function cbCallGemini(string $url, string $body): ?string {
+    $raw = cbHttp($url, $body);
+    if ($raw === null) return null; // true connection failure
+
+    $decoded = json_decode($raw, true);
+    $errCode = $decoded['error']['code'] ?? 0;
+
+    // Retry once on rate-limit (429) or temporary server error (503)
+    if ($errCode === 429 || $errCode === 503) {
+        sleep(2);
+        $raw = cbHttp($url, $body);
+    }
+    return $raw;
 }
 
 // ── TABLE GUARD ──
 if (!cbTableOk($db)) {
-    echo json_encode(['ok'=>false,'error'=>'Run migration_chatbot.sql first. See instructions in the migration file.']);
+    echo json_encode(['ok'=>false,'error'=>'Run migration_chatbot.sql first.']);
     exit;
 }
 
@@ -79,7 +123,6 @@ if ($action === 'get_stats') {
     $configured  = cbGet($db, 'gemini_api_key') !== '';
     $daily_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
     $daily_used  = cbDailyUsed($db, $uid);
-
     echo json_encode([
         'ok'          => true,
         'configured'  => $configured,
@@ -124,18 +167,11 @@ if ($action === 'delete_session') {
 if ($action === 'save_settings' && isAdmin()) {
     $key   = trim($_POST['gemini_key'] ?? '');
     $limit = max(10, min(240, (int)($_POST['daily_limit'] ?? 200)));
-
     if ($key) {
         $ke = $db->real_escape_string($key);
-        $db->query("UPDATE chatbot_settings SET setting_val='$ke',updated_at=NOW() WHERE setting_key='gemini_api_key'");
-        if (!$db->affected_rows) {
-            $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('gemini_api_key','$ke') ON DUPLICATE KEY UPDATE setting_val='$ke'");
-        }
+        $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('gemini_api_key','$ke') ON DUPLICATE KEY UPDATE setting_val='$ke',updated_at=NOW()");
     }
-    $db->query("UPDATE chatbot_settings SET setting_val=$limit,updated_at=NOW() WHERE setting_key='daily_limit'");
-    if (!$db->affected_rows) {
-        $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('daily_limit','$limit') ON DUPLICATE KEY UPDATE setting_val=$limit");
-    }
+    $db->query("INSERT INTO chatbot_settings (setting_key,setting_val) VALUES ('daily_limit','$limit') ON DUPLICATE KEY UPDATE setting_val=$limit,updated_at=NOW()");
     @logActivity('chatbot settings saved','',0,'');
     echo json_encode(['ok'=>true,'message'=>'Settings saved']);
     exit;
@@ -146,28 +182,33 @@ if ($action === 'test_key') {
     $key = trim($_POST['gemini_key'] ?? cbGet($db,'gemini_api_key'));
     if (!$key) { echo json_encode(['ok'=>false,'error'=>'No API key provided']); exit; }
 
-    $url  = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$key";
+    $url  = GEMINI_BASE.GEMINI_MODEL.':generateContent?key='.$key;
     $body = json_encode(['contents'=>[['role'=>'user','parts'=>[['text'=>'Reply with exactly: OK']]]]]);
     $raw  = cbHttp($url, $body);
 
-    if (!$raw) { echo json_encode(['ok'=>false,'error'=>'Cannot reach Gemini API. Check your server internet connection.']); exit; }
-    $d = json_decode($raw, true);
+    // True network failure
+    if ($raw === null) {
+        echo json_encode(['ok'=>false,'error'=>"Cannot reach Gemini API.\n\nPossible causes:\n• Server has no internet access to googleapis.com\n• Firewall blocking outbound HTTPS on port 443\n• PHP curl extension disabled\n\nTry: ping generativelanguage.googleapis.com from your server."]);
+        exit;
+    }
 
+    $d = json_decode($raw, true);
     if (!empty($d['candidates'][0]['content']['parts'][0]['text'])) {
-        $reply = $d['candidates'][0]['content']['parts'][0]['text'];
-        echo json_encode(['ok'=>true,'message'=>'✅ Gemini API key works! Response: '.$reply]);
+        echo json_encode(['ok'=>true,'message'=>'✅ Gemini API key works! Model: '.GEMINI_MODEL]);
     } elseif (!empty($d['error'])) {
         $code = $d['error']['code'] ?? 0;
         $msg  = $d['error']['message'] ?? 'Unknown error';
-        if ($code == 403 || $code == 401) {
-            echo json_encode(['ok'=>false,'error'=>"API key rejected (403/401). Make sure:\n1. Key is from aistudio.google.com/apikey\n2. Gemini API is enabled in that project\n3. Key has no IP restrictions blocking your server\n\nError: $msg"]);
-        } elseif ($code == 429) {
-            echo json_encode(['ok'=>false,'error'=>"Rate limit hit (429). The key works but you've hit free tier limits. Try again in a minute.\n\nError: $msg"]);
+        if ($code === 403 || $code === 401) {
+            echo json_encode(['ok'=>false,'error'=>"API key rejected ($code).\n1. Get key from aistudio.google.com/apikey\n2. Enable Gemini API in that project\n3. Remove IP restrictions if any\n\nError: $msg"]);
+        } elseif ($code === 429) {
+            echo json_encode(['ok'=>true,'message'=>"✅ Key is valid but rate-limited (429) — this is normal for free tier (10 RPM). Wait 60s and try again. Your key works fine."]);
+        } elseif ($code === 400) {
+            echo json_encode(['ok'=>false,'error'=>"Bad request ($code). Model '"  .GEMINI_MODEL."' may not be available in your region or project.\n\nError: $msg"]);
         } else {
             echo json_encode(['ok'=>false,'error'=>"API error $code: $msg"]);
         }
     } else {
-        echo json_encode(['ok'=>false,'error'=>'Unexpected response: '.substr($raw,0,200)]);
+        echo json_encode(['ok'=>false,'error'=>'Unexpected response: '.substr($raw,0,300)]);
     }
     exit;
 }
@@ -181,31 +222,29 @@ if ($action === 'chat') {
     if (mb_strlen($message) > 4000) { echo json_encode(['ok'=>false,'error'=>'Message too long (max 4000 chars)']); exit; }
 
     $api_key = cbGet($db, 'gemini_api_key');
-    if (!$api_key) { echo json_encode(['ok'=>false,'error'=>'Gemini API key not configured. Ask admin to set it up in chatbot settings.']); exit; }
+    if (!$api_key) { echo json_encode(['ok'=>false,'error'=>'Gemini API key not configured. Ask admin to set it up in Settings.']); exit; }
 
     // ── QUOTA GUARD ──
     $daily_limit = max(10, (int)cbGet($db, 'daily_limit', '200'));
     $daily_used  = cbDailyUsed($db, $uid);
     if ($daily_used >= $daily_limit) {
-        echo json_encode(['ok'=>false,'error'=>"Daily message limit of $daily_limit reached. Resets at midnight Pacific time. (Free tier: 250 req/day, we cap at $daily_limit to stay safe)"]);
+        echo json_encode(['ok'=>false,'error'=>"Daily message limit of $daily_limit reached. Resets at midnight. (Free tier: 250 req/day, capped at $daily_limit for safety)"]);
         exit;
     }
 
     // ── GET/CREATE SESSION ──
     if ($sid) {
-        // Verify ownership
         $sr = @$db->query("SELECT id FROM chatbot_sessions WHERE id=$sid AND user_id=$uid LIMIT 1");
         if (!$sr || !$sr->num_rows) $sid = 0;
     }
     if (!$sid) {
-        // Create new session — title = first 60 chars of first message
         $title = mb_substr($message, 0, 60);
         $te = $db->real_escape_string($title);
         $db->query("INSERT INTO chatbot_sessions (user_id,title,msg_count) VALUES ($uid,'$te',0)");
         $sid = (int)$db->insert_id;
     }
 
-    // ── LOAD HISTORY (last 20 exchanges = 40 messages to keep tokens low) ──
+    // ── LOAD HISTORY (last 40 messages to keep context without hitting token limits) ──
     $hr = @$db->query("SELECT role,content FROM chatbot_messages WHERE session_id=$sid ORDER BY id DESC LIMIT 40");
     $history = [];
     if ($hr) {
@@ -215,7 +254,7 @@ if ($action === 'chat') {
         }
     }
 
-    // ── BUILD SYSTEM PROMPT ──
+    // ── SYSTEM PROMPT ──
     $crm_name  = defined('SITE_NAME') ? SITE_NAME : 'Padak CRM';
     $user_name = $user['name'];
     $user_role = $user['role'];
@@ -231,8 +270,7 @@ if ($action === 'chat') {
         . "You have NO access to live CRM data — if asked about specific records, politely clarify this "
         . "and offer to help with templates, strategies, or general advice instead.";
 
-    // ── BUILD GEMINI REQUEST ──
-    // Add user message to history
+    // ── BUILD REQUEST ──
     $history[] = ['role' => 'user', 'parts' => [['text' => $message]]];
 
     $request_body = json_encode([
@@ -251,34 +289,39 @@ if ($action === 'chat') {
         ],
     ]);
 
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$api_key";
-    $raw = cbHttp($url, $request_body);
+    $url = GEMINI_BASE.GEMINI_MODEL.':generateContent?key='.$api_key;
+    $raw = cbCallGemini($url, $request_body); // uses retry-aware wrapper
 
-    if (!$raw) {
-        echo json_encode(['ok'=>false,'error'=>'Cannot reach Gemini API. Check server internet connection.']);
+    // True network failure (curl couldn't connect at all)
+    if ($raw === null) {
+        echo json_encode(['ok'=>false,'error'=>"Cannot reach Gemini API. Check server internet connection.\n\nIf this worked before and stopped, possible causes:\n• Temporary Gemini outage (check status.cloud.google.com)\n• Server firewall now blocking googleapis.com\n• Daily quota exhausted on Google's side (resets midnight Pacific)"]);
         exit;
     }
 
     $resp = json_decode($raw, true);
 
-    // Handle errors
+    // Handle API-level errors (now properly parsed instead of swallowed)
     if (!empty($resp['error'])) {
         $code = $resp['error']['code'] ?? 0;
         $msg  = $resp['error']['message'] ?? 'Unknown error';
-        if ($code == 429) {
-            echo json_encode(['ok'=>false,'error'=>"Gemini rate limit hit (429). Free tier allows 10 requests/minute. Please wait 10 seconds and try again."]);
-        } elseif ($code == 403) {
-            echo json_encode(['ok'=>false,'error'=>"API key rejected. Please check your Gemini API key in Settings."]);
+        if ($code === 429) {
+            echo json_encode(['ok'=>false,'error'=>"Rate limit reached (429). Gemini free tier allows 10 requests/minute. Please wait a moment and try again."]);
+        } elseif ($code === 403) {
+            echo json_encode(['ok'=>false,'error'=>"API key rejected (403). Please check your Gemini API key in Settings."]);
+        } elseif ($code === 503) {
+            echo json_encode(['ok'=>false,'error'=>"Gemini service temporarily unavailable (503). Please try again in a few seconds."]);
+        } elseif ($code === 400 && str_contains($msg, 'model')) {
+            // Model not found — suggest fix
+            echo json_encode(['ok'=>false,'error'=>"Model '".GEMINI_MODEL."' not available (400). Please check aistudio.google.com for the current free model name and update chatbot_api.php line: define('GEMINI_MODEL', ...)"]);
         } else {
             echo json_encode(['ok'=>false,'error'=>"Gemini API error $code: $msg"]);
         }
         exit;
     }
 
-    // Extract reply
+    // Extract reply text
     $reply = $resp['candidates'][0]['content']['parts'][0]['text'] ?? null;
     if (!$reply) {
-        // Safety blocked?
         $finish = $resp['candidates'][0]['finishReason'] ?? 'UNKNOWN';
         if ($finish === 'SAFETY') {
             echo json_encode(['ok'=>false,'error'=>'Response blocked by safety filters. Please rephrase your message.']);
@@ -288,25 +331,21 @@ if ($action === 'chat') {
         exit;
     }
 
-    // ── SAVE MESSAGES TO DB ──
+    // ── SAVE TO DB ──
     $me = $db->real_escape_string($message);
     $re = $db->real_escape_string($reply);
     @$db->query("INSERT INTO chatbot_messages (session_id,role,content) VALUES ($sid,'user','$me')");
     @$db->query("INSERT INTO chatbot_messages (session_id,role,content) VALUES ($sid,'assistant','$re')");
 
-    // ── UPDATE SESSION ──
     $new_msg_count_r = @$db->query("SELECT COUNT(*) c FROM chatbot_messages WHERE session_id=$sid");
     $new_msg_count   = (int)($new_msg_count_r ? $new_msg_count_r->fetch_assoc()['c'] : 0);
     $te = $db->real_escape_string(mb_substr($message, 0, 60));
     @$db->query("UPDATE chatbot_sessions SET msg_count=$new_msg_count,updated_at=NOW() WHERE id=$sid");
-    // Update title if only 2 messages (first exchange)
     if ($new_msg_count <= 2) {
         @$db->query("UPDATE chatbot_sessions SET title='$te' WHERE id=$sid");
     }
 
-    // ── LOG DAILY USAGE ──
     @$db->query("INSERT INTO chatbot_usage (user_id,session_id,msg_count,created_at) VALUES ($uid,$sid,1,NOW())");
-
     $new_daily_used = cbDailyUsed($db, $uid);
     @logActivity('chatbot message', '', 0, 'session '.$sid);
 

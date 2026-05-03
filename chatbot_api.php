@@ -1,24 +1,4 @@
 <?php
-/**
- * chatbot_api.php — Padak CRM AI Chatbot Backend
- *
- * ROOT CAUSE (confirmed via diagnose): API key created in Google Cloud Console
- * for a different API — "Generative Language API" was never enabled for that project.
- * OR the key is an AI Studio key but the wrong v1beta path is being hit.
- *
- * FIX: We now try every combination of API version (v1, v1beta) × model name.
- * The first combination that returns non-404 wins. This guarantees we find a
- * working path regardless of which Google project/key type you have.
- *
- * MODELS tried (all FREE tier, ₹0):
- *   gemini-2.0-flash     — current default free model as of 2025
- *   gemini-1.5-flash     — older free model, 1,500 req/day
- *   gemini-1.5-flash-8b  — lighter free fallback
- *   gemini-1.0-pro       — oldest stable free model
- *
- * API VERSIONS tried: v1 first (stable), then v1beta (preview features)
- */
-
 require_once 'config.php';
 requireLogin();
 $db   = getCRMDB();

@@ -154,10 +154,10 @@ renderLayout('AI Assistant', 'chatbot');
     <div class="cb-quota-bar">
       <div class="cb-quota-label">
         <span>Daily usage</span>
-        <span id="cb-usage-text">0 / 200 msgs</span>
+        <span id="cb-usage-text">0 / 18 msgs</span>
       </div>
       <div class="cb-qbar"><div class="cb-qfill" id="cb-qfill" style="width:0%"></div></div>
-      <div style="font-size:10px;color:var(--text3);margin-top:5px" id="cb-quota-note">gemini-1.5-flash · Free tier</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:5px" id="cb-quota-note">gemini-2.5-flash · Free tier</div>
     </div>
   </div>
 
@@ -170,7 +170,7 @@ renderLayout('AI Assistant', 'chatbot');
         <div style="font-size:13px;font-weight:700;color:var(--text)">Padak AI Assistant</div>
         <div style="font-size:11px;color:var(--text3)">Internal CRM helper · Knows your team context</div>
       </div>
-      <span class="cb-model-badge" id="cb-model-badge">gemini-1.5-flash</span>
+      <span class="cb-model-badge" id="cb-model-badge">gemini-2.5-flash</span>
       <div class="cb-status">
         <div class="cb-status-dot" id="cb-status-dot"></div>
         <span id="cb-status-text">Ready</span>
@@ -222,7 +222,7 @@ renderLayout('AI Assistant', 'chatbot');
           <div><strong>3.</strong> Copy the key (starts with <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">AIzaSy...</code>)</div>
           <div><strong>4.</strong> Paste below and click Save, then Test</div>
           <div style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,.07);border-radius:var(--radius-sm);color:#10b981">
-            ✅ gemini-1.5-flash is 100% free — 1,500 req/day, no credit card needed.<br>
+            ✅ gemini-2.5-flash is 100% free — 18 req/day, no credit card needed.<br>
             ⚠️ If API fails, click <strong>🔍 Diagnose</strong> in the header to find the exact cause.
           </div>
         </div>

@@ -1,10 +1,16 @@
 <?php
 require_once 'config.php';
 require_once 'includes/layout.php';
-requireLogin();
 $user = currentUser();
 $db   = getCRMDB();
 $uid  = (int)$user['id'];
+
+requireLogin();
+// Members and interns are redirected to My Work — dashboard is admin/manager only
+if (!isManager()) {
+    header('Location: mywork.php');
+    exit;
+}
 
 // ── STATS (role-aware) ──
 $s = [];

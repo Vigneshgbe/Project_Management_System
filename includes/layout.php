@@ -273,9 +273,13 @@ select.form-control{cursor:pointer}
     <a href="chatbot.php" class="nav-item <?= $activePage==='chatbot'?'active':'' ?>">
         <span class="icon">🤖</span> Chatbot
     </a>
+
+   <?php if (isManager()): ?>
     <a href="dashboard.php" class="nav-item <?= $activePage==='dashboard'?'active':'' ?>">
         <span class="icon">⬛</span> Dashboard
     </a>
+   <?php endif; ?>
+
     <a href="mywork.php" class="nav-item <?= $activePage==='mywork'?'active':'' ?>">
         <span class="icon">👤</span> My Work
     </a>

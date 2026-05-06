@@ -266,86 +266,108 @@ select.form-control{cursor:pointer}
   </div>
   <div class="nav-section">
     <div class="nav-label">Main</div>
+    <!-- MAIN -->
     <a href="search.php" class="nav-item <?= $activePage==='search'?'active':'' ?>">
-      <span class="icon">🔍</span> Search
+        <span class="icon">🔍</span> Search
     </a>
     <a href="chatbot.php" class="nav-item <?= $activePage==='chatbot'?'active':'' ?>">
-      <span class="icon">🤖</span> Chatbot
+        <span class="icon">🤖</span> Chatbot
     </a>
     <a href="dashboard.php" class="nav-item <?= $activePage==='dashboard'?'active':'' ?>">
-      <span class="icon">⬛</span> Dashboard
+        <span class="icon">⬛</span> Dashboard
     </a>
     <a href="mywork.php" class="nav-item <?= $activePage==='mywork'?'active':'' ?>">
-      <span class="icon">👤</span> My Work
+        <span class="icon">👤</span> My Work
     </a>
+
+    <?php if (deptCan(['general','software_developer'])): ?>
     <a href="projects.php" class="nav-item <?= $activePage==='projects'?'active':'' ?>">
-      <span class="icon">📁</span> Projects
+        <span class="icon">📁</span> Projects
     </a>
+    <?php endif; ?>
+
     <a href="tasks.php" class="nav-item <?= $activePage==='tasks'?'active':'' ?>">
-      <span class="icon">✅</span> Tasks
+        <span class="icon">✅</span> Tasks
     </a>
     <a href="calendar.php" class="nav-item <?= $activePage==='calendar'?'active':'' ?>">
-      <span class="icon">📅</span> Calendar
+        <span class="icon">📅</span> Calendar
     </a>
     <a href="chat.php" class="nav-item <?= $activePage==='chat'?'active':'' ?>">
-      <span class="icon">💬</span> Chat
+        <span class="icon">💬</span> Chat
     </a>
-    <div class="nav-label" style="margin-top:12px">Resources</div>
+
+    <!-- RESOURCES -->
+    <?php if (deptCan(['general'])): // Emails: admin/manager/general member only ?>
     <a href="emails.php" class="nav-item <?= $activePage==='emails'?'active':'' ?>">
-      <span class="icon">📬</span> Email Hub
-    </a>
-    <a href="email_template.php" class="nav-item <?= $activePage==='email_template'?'active':'' ?>">
-      <span class="icon">📧</span> Email Template
-    </a>
-    <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
-      <span class="icon">📄</span> Documents
-    </a>
-    <a href="contacts.php" class="nav-item <?= $activePage==='contacts'?'active':'' ?>">
-      <span class="icon">👥</span> Contacts
-    </a>
-    <?php if (isManager()): ?>
-    <div class="nav-label" style="margin-top:12px">Business</div>
-    <a href="invoices.php" class="nav-item <?= $activePage==='invoices'?'active':'' ?>">
-      <span class="icon">🧾</span> Invoices
-    </a>
-    <a href="lead_generator.php" class="nav-item <?= $activePage==='lead_generator'?'active':'' ?>">
-      <span class="icon">🔍</span> Lead Generator
-    </a>
-    <?php if (isManager()): ?>
-    <a href="lead_stored.php" class="nav-item <?= $activePage==='lead_stored'?'active':'' ?>">
-      <span class="icon">📚</span> Stored Leads
+        <span class="icon">📧</span> Email Hub
     </a>
     <?php endif; ?>
+
+    <?php if (deptCan(['general','digital_marketing'])): ?>
+    <a href="email_template.php" class="nav-item <?= $activePage==='email_template'?'active':'' ?>">
+        <span class="icon">📄</span> Email Template
+    </a>
+    <?php endif; ?>
+
+    <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
+        <span class="icon">📋</span> Documents
+    </a>
+
+    <?php if (deptCan(['general'])): ?>
+    <a href="contacts.php" class="nav-item <?= $activePage==='contacts'?'active':'' ?>">
+        <span class="icon">👥</span> Contacts
+    </a>
+    <?php endif; ?>
+
+    <!-- BUSINESS -->
+    <?php if (deptCan(['tele_caller','general'])): // Lead-focused pages ?>
+    <a href="lead_generator.php" class="nav-item <?= $activePage==='lead_generator'?'active':'' ?>">
+        <span class="icon">🔍</span> Lead Generator
+    </a>
+    <a href="lead_stored.php" class="nav-item <?= $activePage==='lead_stored'?'active':'' ?>">
+        <span class="icon">📚</span> Stored Leads
+    </a>
     <a href="leads.php" class="nav-item <?= $activePage==='leads'?'active':'' ?>">
-      <span class="icon">🎯</span> Leads Pipeline
-    </a>
-    <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
-      <span class="icon">💰</span> Expenses
-    </a>
-    <a href="payslip.php" class="nav-item <?= $activePage==='payslip'?'active':'' ?>">
-      <span class="icon">💵</span> Payslips
+        <span class="icon">🎯</span> Leads Pipeline
     </a>
     <a href="whatsapp.php" class="nav-item <?= $activePage==='whatsapp'?'active':'' ?>">
-      <span class="icon">💬</span> WhatsApp
-    </a>
-    <a href="social_media.php" class="nav-item <?= $activePage==='social_media'?'active':'' ?>">
-      <span class="icon">📱</span> Social Media
-    </a>
-    <div class="nav-label" style="margin-top:12px">Admin</div>
-    <a href="portal_admin.php" class="nav-item <?= $activePage==='portal_admin'?'active':'' ?>">
-      <span class="icon">🌐</span> Client Portal
-    </a>
-    <a href="analytics.php" class="nav-item <?= $activePage==='analytics'?'active':'' ?>">
-      <span class="icon">📊</span> Analytics
-    </a>
-    <a href="users.php" class="nav-item <?= $activePage==='users'?'active':'' ?>">
-      <span class="icon">👤</span> Team
-    </a>
-    <?php if (isAdmin()): ?>
-    <a href="activity.php" class="nav-item <?= $activePage==='activity'?'active':'' ?>">
-      <span class="icon">📋</span> Activity Log
+        <span class="icon">💬</span> WhatsApp
     </a>
     <?php endif; ?>
+
+    <?php if (isManager()): ?>
+    <a href="invoices.php" class="nav-item <?= $activePage==='invoices'?'active':'' ?>">
+        <span class="icon">🧾</span> Invoices
+    </a>
+    <a href="expenses.php" class="nav-item <?= $activePage==='expenses'?'active':'' ?>">
+        <span class="icon">💰</span> Expenses
+    </a>
+    <?php endif; ?>
+
+    <a href="payslip.php" class="nav-item <?= $activePage==='payslip'?'active':'' ?>">
+        <span class="icon">💵</span> Payslips
+    </a>
+
+    <?php if (deptCan(['digital_marketing','general'])): ?>
+    <a href="social_media.php" class="nav-item <?= $activePage==='social_media'?'active':'' ?>">
+        <span class="icon">📱</span> Social Media
+    </a>
+    <?php endif; ?>
+
+    <!-- ADMIN -->
+    <?php if (isManager()): ?>
+    <a href="portal_admin.php" class="nav-item <?= $activePage==='portal_admin'?'active':'' ?>">
+        <span class="icon">🌐</span> Client Portal
+    </a>
+    <a href="analytics.php" class="nav-item <?= $activePage==='analytics'?'active':'' ?>">
+        <span class="icon">📊</span> Analytics
+    </a>
+    <a href="users.php" class="nav-item <?= $activePage==='users'?'active':'' ?>">
+        <span class="icon">👤</span> Team
+    </a>
+    <a href="activity.php" class="nav-item <?= $activePage==='activity'?'active':'' ?>">
+        <span class="icon">📋</span> Activity Log
+    </a>
     <?php endif; ?>
   </div>
   <div class="sidebar-footer">

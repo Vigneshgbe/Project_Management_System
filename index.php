@@ -22,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['crm_name']       = $u['name'];
             $_SESSION['crm_email']      = $u['email'];
             $_SESSION['crm_role']       = $u['role'];
+            // After: $_SESSION['role'] = $user['role'];
+            $_SESSION['dept_role'] = $user['department_role'] ?? 'general';
             $_SESSION['crm_avatar']     = $u['avatar'];
             $_SESSION['crm_last_activity'] = time();
             $db->query("UPDATE users SET last_login=NOW() WHERE id=".(int)$u['id']);

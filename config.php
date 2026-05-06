@@ -82,6 +82,20 @@ function currentUser(): array {
 function isAdmin(): bool { return ($_SESSION['crm_role'] ?? '') === 'admin'; }
 function isManager(): bool { return in_array($_SESSION['crm_role'] ?? '', ['admin','manager']); }
 
+// Get current user's department role (intern specialization)
+function getDeptRole(): string {
+    return $_SESSION['dept_role'] ?? 'general';
+}
+
+// Check if user can access a page based on dept role
+// $allowed_depts = [] means ALL roles can access
+function deptCan(array $allowed_depts): bool {
+    if (isAdmin() || isManager()) return true; // always full access
+    $dept = getDeptRole();
+    if (empty($allowed_depts)) return true;    // open to all
+    return in_array($dept, $allowed_depts, true);
+}
+
 // Log activity
 function logActivity(string $action, string $entity = '', int $entityId = 0, string $details = ''): void {
     $db = getCRMDB();

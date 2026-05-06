@@ -6,6 +6,14 @@ $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];
 
+requireLogin();
+// Block intern department roles from accessing this page directly
+if (!isManager() && in_array(getDeptRole(), ['tele_caller','digital_marketing','software_developer','graphics_designer'])) {
+    flash('Access restricted.', 'error');
+    header('Location: mywork.php');
+    exit;
+}
+
 // ── CURRENCY SYMBOL ──
 function invSym(string $c): string {
     return match($c) { 'USD'=>'$','EUR'=>'€','GBP'=>'£','INR'=>'₹', default=>'Rs. ' };

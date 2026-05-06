@@ -7,48 +7,65 @@ $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];
 
-// ── POST HANDLERS ──
+// ── ENSURE COLUMNS EXIST (upgrade-safe) ──────────────────────────────────
+@$db->query("ALTER TABLE payslips ADD COLUMN IF NOT EXISTS nic_number VARCHAR(30) DEFAULT NULL AFTER employee_phone");
+@$db->query("ALTER TABLE payslips ADD COLUMN IF NOT EXISTS epf_member_no VARCHAR(30) DEFAULT NULL AFTER nic_number");
+@$db->query("ALTER TABLE payslips ADD COLUMN IF NOT EXISTS working_days INT DEFAULT NULL AFTER epf_member_no");
+@$db->query("ALTER TABLE payslips ADD COLUMN IF NOT EXISTS days_paid INT DEFAULT NULL AFTER working_days");
+@$db->query("ALTER TABLE payslips ADD COLUMN IF NOT EXISTS payslip_ref VARCHAR(50) DEFAULT NULL AFTER days_paid");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS company_reg_no VARCHAR(100) DEFAULT NULL AFTER company_name");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS company_phone VARCHAR(50) DEFAULT NULL AFTER company_reg_no");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS company_email VARCHAR(150) DEFAULT NULL AFTER company_phone");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS epf_employer_no VARCHAR(50) DEFAULT NULL AFTER company_email");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS authorized_by VARCHAR(150) DEFAULT NULL AFTER epf_employer_no");
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS authorized_title VARCHAR(150) DEFAULT NULL AFTER authorized_by");
+
+// ── POST HANDLERS ──────────────────────────────────────────────────────────
 ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // ── SAVE TEMPLATE ──
+    // ── SAVE TEMPLATE ──────────────────────────────────────────────────────
     if ($action === 'save_template') {
-        $name  = trim($_POST['tpl_name'] ?? '');
-        $cname = trim($_POST['company_name'] ?? '');
-        $caddr = trim($_POST['company_address'] ?? '');
-        $foot  = trim($_POST['footer_note'] ?? '');
-        $def   = (int)($_POST['is_default'] ?? 0);
-        $tid   = (int)($_POST['template_id'] ?? 0);
+        $name      = trim($_POST['tpl_name'] ?? '');
+        $cname     = trim($_POST['company_name'] ?? '');
+        $creg      = trim($_POST['company_reg_no'] ?? '');
+        $cphone    = trim($_POST['company_phone'] ?? '');
+        $cemail    = trim($_POST['company_email'] ?? '');
+        $caddr     = trim($_POST['company_address'] ?? '');
+        $epf_eno   = trim($_POST['epf_employer_no'] ?? '');
+        $auth_by   = trim($_POST['authorized_by'] ?? '');
+        $auth_ttl  = trim($_POST['authorized_title'] ?? '');
+        $foot      = trim($_POST['footer_note'] ?? '');
+        $def       = (int)($_POST['is_default'] ?? 0);
+        $tid       = (int)($_POST['template_id'] ?? 0);
         if ($name && $cname) {
-            // Handle logo upload
             $logo = null;
             if (!empty($_FILES['company_logo']['tmp_name']) && $_FILES['company_logo']['error'] === 0) {
                 $ext = strtolower(pathinfo($_FILES['company_logo']['name'], PATHINFO_EXTENSION));
                 if (in_array($ext, ['png','jpg','jpeg'])) {
                     if (!is_dir(UPLOAD_DOC_DIR)) mkdir(UPLOAD_DOC_DIR, 0755, true);
                     $fn = 'logo_'.uniqid().'.'.$ext;
-                    if (move_uploaded_file($_FILES['company_logo']['tmp_name'], UPLOAD_DOC_DIR.$fn)) {
+                    if (move_uploaded_file($_FILES['company_logo']['tmp_name'], UPLOAD_DOC_DIR.$fn))
                         $logo = 'uploads/documents/'.$fn;
-                    }
                 }
             }
             if ($def) $db->query("UPDATE payslip_templates SET is_default=0");
             if ($tid) {
                 if ($logo) {
-                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_address=?,company_logo=?,footer_note=?,is_default=? WHERE id=$tid");
-                    $stmt->bind_param("sssssi",$name,$cname,$caddr,$logo,$foot,$def);
+                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,company_logo=?,footer_note=?,is_default=? WHERE id=?");
+                    $stmt->bind_param("sssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$logo,$foot,$def,$tid);
                 } else {
-                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_address=?,footer_note=?,is_default=? WHERE id=$tid");
-                    $stmt->bind_param("ssssi",$name,$cname,$caddr,$foot,$def);
+                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,footer_note=?,is_default=? WHERE id=?");
+                    $stmt->bind_param("ssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$tid);
                 }
             } else {
                 if ($logo) {
-                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_address,company_logo,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?,?)");
-                    $stmt->bind_param("sssssii",$name,$cname,$caddr,$logo,$foot,$def,$uid);
+                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,company_logo,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                    $stmt->bind_param("sssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$logo,$foot,$def,$uid);
                 } else {
-                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_address,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?)");
-                    $stmt->bind_param("ssssii",$name,$cname,$caddr,$foot,$def,$uid);
+                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+                    $stmt->bind_param("ssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$uid);
                 }
             }
             $stmt->execute();
@@ -57,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: payslip.php?section=templates'); exit;
     }
 
-    // ── DELETE TEMPLATE ──
+    // ── DELETE TEMPLATE ────────────────────────────────────────────────────
     if ($action === 'delete_template' && isAdmin()) {
         $tid = (int)($_POST['template_id'] ?? 0);
         $db->query("DELETE FROM payslip_templates WHERE id=$tid");
@@ -65,16 +82,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: payslip.php?section=templates'); exit;
     }
 
-    // ── SAVE PAYSLIP ──
+    // ── SAVE PAYSLIP ───────────────────────────────────────────────────────
     if ($action === 'save_payslip') {
         $emp_name  = trim($_POST['employee_name'] ?? '');
         $emp_email = trim($_POST['employee_email'] ?? '');
         $emp_phone = trim($_POST['employee_phone'] ?? '');
+        $nic_no    = trim($_POST['nic_number'] ?? '');
+        $epf_mno   = trim($_POST['epf_member_no'] ?? '');
         $desig     = trim($_POST['designation'] ?? '');
         $dept      = trim($_POST['department'] ?? '');
         $emp_no    = trim($_POST['employee_id_no'] ?? '');
         $period    = trim($_POST['pay_period'] ?? '');
         $pay_date  = $_POST['pay_date'] ?: null;
+        $wdays     = (int)($_POST['working_days'] ?? 0) ?: null;
+        $ddays     = (int)($_POST['days_paid'] ?? 0) ?: null;
         $basic     = (float)($_POST['basic_salary'] ?? 0);
         $currency  = $_POST['currency'] ?? 'LKR';
         $bank_name = trim($_POST['bank_name'] ?? '');
@@ -84,6 +105,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emp_id    = (int)($_POST['employee_id'] ?? 0) ?: null;
         $status    = $_POST['ps_status'] ?? 'draft';
 
+        // Auto-generate payslip ref if new
+        $pid = (int)($_POST['payslip_id'] ?? 0);
+        $ps_ref = trim($_POST['payslip_ref'] ?? '');
+        if (!$ps_ref) {
+            $ps_ref = 'PS-'.strtoupper(substr(preg_replace('/[^a-z]/i','',($emp_name?:'EMP')),0,3)).'-'.date('Ym').'-'.str_pad(rand(1,999),3,'0',STR_PAD_LEFT);
+        }
+
         $allowances = $deductions = [];
         foreach ($_POST['allowance_name'] ?? [] as $i => $n) {
             $amt = (float)($_POST['allowance_amount'][$i] ?? 0);
@@ -91,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         foreach ($_POST['deduction_name'] ?? [] as $i => $n) {
             $amt = (float)($_POST['deduction_amount'][$i] ?? 0);
-            if (trim($n) && $amt > 0) $deductions[] = ['name'=>trim($n),'amount'=>$amt];
+            if (trim($n)) $deductions[] = ['name'=>trim($n),'amount'=>$amt];
         }
         $total_allow = array_sum(array_column($allowances,'amount'));
         $total_ded   = array_sum(array_column($deductions,'amount'));
@@ -100,13 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allow_json  = json_encode($allowances);
         $ded_json    = json_encode($deductions);
 
-        $pid = (int)($_POST['payslip_id'] ?? 0);
         if ($pid) {
-            $stmt = $db->prepare("UPDATE payslips SET template_id=?,employee_id=?,employee_name=?,employee_email=?,employee_phone=?,designation=?,department=?,employee_id_no=?,pay_period=?,pay_date=?,basic_salary=?,allowances=?,deductions=?,gross_salary=?,total_deductions=?,net_salary=?,currency=?,bank_name=?,account_no=?,notes=?,status=? WHERE id=$pid");
-            $stmt->bind_param("iissssssssdssdddsssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$desig,$dept,$emp_no,$period,$pay_date,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status);
+            $stmt = $db->prepare("UPDATE payslips SET template_id=?,employee_id=?,employee_name=?,employee_email=?,employee_phone=?,nic_number=?,epf_member_no=?,designation=?,department=?,employee_id_no=?,pay_period=?,pay_date=?,working_days=?,days_paid=?,basic_salary=?,allowances=?,deductions=?,gross_salary=?,total_deductions=?,net_salary=?,currency=?,bank_name=?,account_no=?,notes=?,status=?,payslip_ref=? WHERE id=$pid");
+            $stmt->bind_param("iissssssssssiiidssdddssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         } else {
-            $stmt = $db->prepare("INSERT INTO payslips (template_id,employee_id,employee_name,employee_email,employee_phone,designation,department,employee_id_no,pay_period,pay_date,basic_salary,allowances,deductions,gross_salary,total_deductions,net_salary,currency,bank_name,account_no,notes,status,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("iissssssssdssdddsssssi",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$desig,$dept,$emp_no,$period,$pay_date,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$uid);
+            $stmt = $db->prepare("INSERT INTO payslips (template_id,employee_id,employee_name,employee_email,employee_phone,nic_number,epf_member_no,designation,department,employee_id_no,pay_period,pay_date,working_days,days_paid,basic_salary,allowances,deductions,gross_salary,total_deductions,net_salary,currency,bank_name,account_no,notes,status,payslip_ref,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("iissssssssssiiidssdddsssssssi",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref,$uid);
         }
         $stmt->execute();
         $new_pid = $pid ?: (int)$db->insert_id;
@@ -115,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header("Location: payslip.php?view=$new_pid"); exit;
     }
 
-    // ── DELETE PAYSLIP ──
+    // ── DELETE PAYSLIP ─────────────────────────────────────────────────────
     if ($action === 'delete_payslip' && isAdmin()) {
         $pid = (int)($_POST['payslip_id'] ?? 0);
         $db->query("DELETE FROM payslips WHERE id=$pid");
@@ -125,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ob_end_clean();
 
-// ── EXPORT ──
+// ── EXPORT ─────────────────────────────────────────────────────────────────
 if (isset($_GET['export'])) {
     $pid = (int)($_GET['pid'] ?? 0);
     $fmt = $_GET['export'];
@@ -136,7 +163,7 @@ if (isset($_GET['export'])) {
     }
 }
 
-// ── DATA ──
+// ── DATA ───────────────────────────────────────────────────────────────────
 $section  = $_GET['section'] ?? 'list';
 $view_id  = (int)($_GET['view'] ?? 0);
 $edit_id  = (int)($_GET['edit'] ?? 0);
@@ -152,31 +179,30 @@ $payslips = $db->query("
     ORDER BY p.created_at DESC LIMIT 100
 ")->fetch_all(MYSQLI_ASSOC);
 
-$templates = $db->query("SELECT * FROM payslip_templates ORDER BY is_default DESC, name ASC")->fetch_all(MYSQLI_ASSOC);
+$templates   = $db->query("SELECT * FROM payslip_templates ORDER BY is_default DESC, name ASC")->fetch_all(MYSQLI_ASSOC);
 $default_tpl = null;
 foreach ($templates as $t) { if ($t['is_default']) { $default_tpl=$t; break; } }
 if (!$default_tpl && $templates) $default_tpl = $templates[0];
 
 $single = null;
 if ($view_id) {
-    $single = $db->query("SELECT p.*, t.company_name,t.company_address,t.company_logo,t.footer_note
+    $single = $db->query("SELECT p.*, t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title
         FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id
         WHERE p.id=$view_id")->fetch_assoc();
 }
 
-$ep = null;
-if ($edit_id) {
-    $ep = $db->query("SELECT * FROM payslips WHERE id=$edit_id")->fetch_assoc();
-}
-$et = $edit_tpl ? $db->query("SELECT * FROM payslip_templates WHERE id=$edit_tpl")->fetch_assoc() : null;
+$ep  = null;
+if ($edit_id) $ep = $db->query("SELECT * FROM payslips WHERE id=$edit_id")->fetch_assoc();
+$et  = $edit_tpl ? $db->query("SELECT * FROM payslip_templates WHERE id=$edit_tpl")->fetch_assoc() : null;
 
 $employees = $db->query("SELECT id,name,email,phone,department FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 
 $ep_allow = $ep ? (json_decode($ep['allowances']??'[]',true)?:[]) : [['name'=>'House Allowance','amount'=>0],['name'=>'Transport Allowance','amount'=>0]];
-$ep_ded   = $ep ? (json_decode($ep['deductions']??'[]',true)?:[])  : [['name'=>'EPF (8%)','amount'=>0],['name'=>'ETF (3%)','amount'=>0]];
+$ep_ded   = $ep ? (json_decode($ep['deductions']??'[]',true)?:[])  : [['name'=>'EPF (8%)','amount'=>0],['name'=>'ETF Employer (3%)','amount'=>0],['name'=>'APIT / PAYE Tax','amount'=>0]];
 
 renderLayout('Payslip Generator','payslip');
 ?>
+
 <style>
 /* ── TABS ── */
 .ps-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px}
@@ -217,46 +243,67 @@ renderLayout('Payslip Generator','payslip');
 .net-box .net-val{font-size:28px;font-weight:900;color:#f97316;font-family:var(--font-display)}
 .net-box .gross-val{font-size:13px;color:rgba(255,255,255,.5);margin-top:2px}
 
-/* ── PAYSLIP PREVIEW (view mode) ── */
-.ps-doc{background:#fff;color:#1e293b;border-radius:8px;padding:0;max-width:720px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.18);font-family:'Arial',sans-serif;font-size:13px;overflow:hidden}
+/* ── PAYSLIP DOCUMENT (in-CRM view) ── */
+.ps-doc{background:#fff;color:#1e293b;border-radius:8px;max-width:760px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.18);font-family:'Arial',sans-serif;font-size:13px;overflow:hidden;border:1px solid #e2e8f0}
+
+/* Header */
 .ps-doc-hdr{background:#1e293b;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start}
-.ps-doc-hdr h2{margin:0 0 3px;font-size:18px;color:#fff;font-weight:800}
-.ps-doc-hdr .addr{font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.5}
-.ps-doc-hdr .ps-label{font-size:24px;font-weight:900;color:#f97316;letter-spacing:2px}
-.ps-doc-hdr .ps-meta{font-size:11.5px;color:rgba(255,255,255,.6);margin-top:4px;line-height:1.6;text-align:right}
-.ps-doc-body{padding:24px 28px}
-.ps-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding-bottom:18px;border-bottom:2px solid #e2e8f0;margin-bottom:20px}
-.ps-info-section h4{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 8px}
-.ps-info-section p{margin:0 0 3px;font-size:12.5px;color:#334155;line-height:1.5}
-.ps-info-section strong{color:#1e293b}
-.ps-salary-grid{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;margin-bottom:20px}
+.ps-doc-hdr .co-name{font-size:18px;font-weight:800;color:#fff;margin:0 0 2px}
+.ps-doc-hdr .co-sub{font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;margin-top:3px}
+.ps-doc-hdr .ps-label{font-size:22px;font-weight:900;color:#f97316;letter-spacing:2px;text-align:right}
+.ps-doc-hdr .ps-meta{font-size:11.5px;color:rgba(255,255,255,.65);margin-top:5px;line-height:1.7;text-align:right}
+
+/* Confidential bar */
+.ps-confidential{background:#f97316;color:#fff;font-size:10px;font-weight:800;letter-spacing:.15em;text-align:center;padding:3px 0;text-transform:uppercase}
+
+/* Ref bar */
+.ps-ref-bar{background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:6px 28px;display:flex;justify-content:space-between;font-size:11px;color:#64748b}
+
+/* Body sections */
+.ps-doc-body{padding:20px 28px}
+.ps-section-title{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin:0 0 8px;padding-bottom:5px;border-bottom:1.5px solid #e2e8f0}
+.ps-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:18px}
+.ps-info-block p{margin:0 0 3px;font-size:12.5px;color:#334155;line-height:1.6}
+.ps-info-block strong{color:#1e293b;font-weight:700}
+
+/* Days bar */
+.ps-days-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:10px 16px;margin-bottom:18px}
+.ps-days-item{text-align:center}
+.ps-days-val{font-size:15px;font-weight:800;color:#1e293b;font-family:Arial,sans-serif}
+.ps-days-lbl{font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* Salary table */
+.ps-salary-grid{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;margin-bottom:18px}
 .ps-divider{background:#e2e8f0}
-.ps-salary-col{padding:0 20px 0 0}
-.ps-salary-col:last-child{padding:0 0 0 20px}
-.ps-salary-col h4{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}
-.ps-sal-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px}
+.ps-salary-col{padding:0 18px 0 0}
+.ps-salary-col:last-child{padding:0 0 0 18px}
+.ps-sal-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;color:#334155}
+.ps-sal-row.stat-row{background:#fffbeb;margin:0 -4px;padding:5px 4px;border-radius:3px}
 .ps-sal-row:last-child{border-bottom:none}
-.ps-sal-total{display:flex;justify-content:space-between;padding:9px 0 0;font-weight:700;font-size:13px;border-top:2px solid #1e293b;margin-top:6px}
+.ps-sal-total{display:flex;justify-content:space-between;padding:8px 0 0;font-weight:700;font-size:13px;border-top:2px solid #1e293b;margin-top:5px}
+
+/* Net bar */
 .ps-net-bar{background:#1e293b;padding:16px 28px;display:flex;justify-content:space-between;align-items:center}
 .ps-net-bar .lbl{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
 .ps-net-bar .amt{font-size:26px;font-weight:900;color:#f97316}
-.ps-footer-note{padding:10px 28px;background:#f8fafc;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
-.ps-doc-notes{background:#f8fafc;border-left:3px solid #e2e8f0;padding:10px 14px;font-size:12px;color:#64748b;margin-bottom:18px;border-radius:0 4px 4px 0}
 
-@media print{
-    .ps-doc{box-shadow:none;border-radius:0;max-width:100%}
-    body *:not(.ps-doc):not(.ps-doc *){display:none!important}
-    .ps-doc{display:block!important}
-}
-@media(max-width:900px){.ps-split{grid-template-columns:1fr}}
+/* Signature section */
+.ps-sign-section{padding:16px 28px;display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f8fafc;border-top:1px solid #e2e8f0}
+.ps-sign-block{text-align:center}
+.ps-sign-line{border-top:1.5px solid #94a3b8;margin:32px 12px 6px;padding-top:6px;font-size:11px;color:#64748b;font-weight:600}
+.ps-sign-sub{font-size:10px;color:#94a3b8}
+
+/* Footer */
+.ps-footer-note{padding:10px 28px;background:#f8fafc;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
+.ps-doc-notes{background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px;border-radius:0 4px 4px 0}
+
+@media(max-width:900px){.ps-split{grid-template-columns:1fr}.ps-info-grid{grid-template-columns:1fr}.ps-salary-grid{grid-template-columns:1fr}.ps-divider{display:none}.ps-salary-col{padding:0 0 16px 0}.ps-salary-col:last-child{padding:16px 0 0 0;border-top:1px solid #e2e8f0}}
 </style>
 
 <?php if ($single): ?>
-<!-- ══════════════════════════════════════════
-  VIEW / PRINT PAYSLIP
-══════════════════════════════════════════ -->
+<!-- ══ VIEW / PRINT PAYSLIP ══ -->
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-  <a href="payslip.php" style="font-size:13px;color:var(--text3);text-decoration:none;display:flex;align-items:center;gap:4px">← Back</a>
+  <a href="payslip.php" style="font-size:13px;color:var(--text3);text-decoration:none">← Back</a>
   <div style="flex:1;font-size:15px;font-weight:700;font-family:var(--font-display);color:var(--text)">
     <?= h($single['employee_name']) ?> <span style="color:var(--text3);font-weight:400">— <?= h($single['pay_period']) ?></span>
   </div>
@@ -265,16 +312,13 @@ renderLayout('Payslip Generator','payslip');
     <form method="POST" style="display:inline">
       <input type="hidden" name="action" value="save_payslip">
       <input type="hidden" name="payslip_id" value="<?= $single['id'] ?>">
-      <?php // pass all existing data back to just update status ?>
       <button type="submit" name="ps_status" value="issued" class="btn btn-ghost btn-sm" style="color:var(--green);border-color:var(--green)">✅ Mark as Issued</button>
     </form>
     <?php endif; ?>
     <a href="payslip.php?export=print&pid=<?= $single['id'] ?>" target="_blank"
        class="btn btn-primary btn-sm" style="background:#1e293b;border-color:#1e293b">🖨 Print / PDF</a>
-    <a href="payslip.php?export=docx&pid=<?= $single['id'] ?>"
-       class="btn btn-ghost btn-sm">⬇ DOCX</a>
-    <a href="payslip.php?edit=<?= $single['id'] ?>"
-       class="btn btn-ghost btn-sm">✎ Edit</a>
+    <a href="payslip.php?export=docx&pid=<?= $single['id'] ?>" class="btn btn-ghost btn-sm">⬇ DOCX</a>
+    <a href="payslip.php?edit=<?= $single['id'] ?>" class="btn btn-ghost btn-sm">✎ Edit</a>
     <?php if (isAdmin()): ?>
     <form method="POST" style="display:inline" onsubmit="return confirm('Permanently delete this payslip?')">
       <input type="hidden" name="action" value="delete_payslip">
@@ -289,16 +333,38 @@ renderLayout('Payslip Generator','payslip');
 $allowances = json_decode($single['allowances']??'[]',true) ?: [];
 $deductions  = json_decode($single['deductions']??'[]', true) ?: [];
 $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
+$total_earn  = array_sum(array_column($allowances,'amount'));
+$total_ded   = array_sum(array_column($deductions,'amount'));
 ?>
-<!-- PAYSLIP DOCUMENT -->
+
 <div class="ps-doc" id="ps-doc">
+
+  <!-- Confidential banner -->
+  <div class="ps-confidential">Confidential — For Employee Use Only</div>
+
+  <!-- Header -->
   <div class="ps-doc-hdr">
     <div>
-      <?php if ($single['company_logo'] && file_exists($single['company_logo'])): ?>
-      <img src="<?= h($single['company_logo']) ?>" style="height:40px;margin-bottom:8px;display:block">
+      <?php if (!empty($single['company_logo']) && file_exists($single['company_logo'])): ?>
+      <img src="<?= h($single['company_logo']) ?>" style="height:44px;margin-bottom:8px;display:block;border-radius:4px">
       <?php endif; ?>
-      <h2><?= h($single['company_name'] ?? 'Company') ?></h2>
-      <?php if ($single['company_address']): ?><div class="addr"><?= nl2br(h($single['company_address'])) ?></div><?php endif; ?>
+      <div class="co-name"><?= h($single['company_name'] ?? 'Company') ?></div>
+      <?php if (!empty($single['company_reg_no'])): ?>
+      <div class="co-sub">Reg. No: <?= h($single['company_reg_no']) ?></div>
+      <?php endif; ?>
+      <?php if (!empty($single['company_address'])): ?>
+      <div class="co-sub"><?= nl2br(h($single['company_address'])) ?></div>
+      <?php endif; ?>
+      <?php if (!empty($single['company_phone']) || !empty($single['company_email'])): ?>
+      <div class="co-sub">
+        <?= !empty($single['company_phone'])?h($single['company_phone']):'' ?>
+        <?= (!empty($single['company_phone'])&&!empty($single['company_email']))?'  ·  ':'' ?>
+        <?= !empty($single['company_email'])?h($single['company_email']):'' ?>
+      </div>
+      <?php endif; ?>
+      <?php if (!empty($single['epf_employer_no'])): ?>
+      <div class="co-sub">EPF Employer No: <?= h($single['epf_employer_no']) ?></div>
+      <?php endif; ?>
     </div>
     <div>
       <div class="ps-label">PAYSLIP</div>
@@ -310,47 +376,85 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
     </div>
   </div>
 
+  <!-- Reference bar -->
+  <?php $ref_display = $single['payslip_ref'] ?? ('PS-'.$single['id']); ?>
+  <div class="ps-ref-bar">
+    <span>Payslip Ref: <strong><?= h($ref_display) ?></strong></span>
+    <span>Issued: <?= date('d M Y') ?></span>
+  </div>
+
   <div class="ps-doc-body">
+
+    <!-- Employee + Bank Info -->
+    <div class="ps-section-title">Employee Information</div>
     <div class="ps-info-grid">
-      <div class="ps-info-section">
-        <h4>Employee Details</h4>
+      <div class="ps-info-block">
         <p><strong><?= h($single['employee_name']) ?></strong></p>
-        <?php if ($single['designation']): ?><p><?= h($single['designation']) ?></p><?php endif; ?>
-        <?php if ($single['department']): ?><p><?= h($single['department']) ?></p><?php endif; ?>
-        <?php if ($single['employee_id_no']): ?><p>EMP ID: <?= h($single['employee_id_no']) ?></p><?php endif; ?>
+        <?php if ($single['designation']): ?><p><?= h($single['designation']) ?><?= $single['department']?' — '.h($single['department']):'' ?></p><?php endif; ?>
+        <?php if ($single['employee_id_no']): ?><p>Employee ID: <strong><?= h($single['employee_id_no']) ?></strong></p><?php endif; ?>
+        <?php if (!empty($single['nic_number'])): ?><p>NIC No: <strong><?= h($single['nic_number']) ?></strong></p><?php endif; ?>
+        <?php if (!empty($single['epf_member_no'])): ?><p>EPF Member No: <strong><?= h($single['epf_member_no']) ?></strong></p><?php endif; ?>
         <?php if ($single['employee_email']): ?><p><?= h($single['employee_email']) ?></p><?php endif; ?>
         <?php if ($single['employee_phone']): ?><p><?= h($single['employee_phone']) ?></p><?php endif; ?>
       </div>
-      <div class="ps-info-section">
-        <h4>Bank / Payment Details</h4>
+      <div class="ps-info-block">
+        <div class="ps-section-title">Bank / Payment Details</div>
         <?php if ($single['bank_name']): ?><p>Bank: <strong><?= h($single['bank_name']) ?></strong></p><?php endif; ?>
-        <?php if ($single['account_no']): ?><p>Account: <strong><?= h($single['account_no']) ?></strong></p><?php endif; ?>
-        <p style="margin-top:10px">Basic Salary: <strong><?= $sym ?> <?= number_format($single['basic_salary'],2) ?></strong></p>
+        <?php if ($single['account_no']): ?><p>Account No: <strong><?= h($single['account_no']) ?></strong></p><?php endif; ?>
+        <p style="margin-top:8px">Basic Salary: <strong><?= $sym ?> <?= number_format($single['basic_salary'],2) ?></strong></p>
         <p>Gross Salary: <strong><?= $sym ?> <?= number_format($single['gross_salary'],2) ?></strong></p>
+        <p>Total Deductions: <strong style="color:#ef4444"><?= $sym ?> <?= number_format($single['total_deductions'],2) ?></strong></p>
       </div>
     </div>
 
-    <?php if ($single['notes']): ?>
-    <div class="ps-doc-notes"><?= h($single['notes']) ?></div>
+    <!-- Days bar (if set) -->
+    <?php if ($single['working_days'] || $single['days_paid']): ?>
+    <div class="ps-days-bar">
+      <div class="ps-days-item">
+        <div class="ps-days-val"><?= $single['working_days'] ?: '—' ?></div>
+        <div class="ps-days-lbl">Working Days</div>
+      </div>
+      <div class="ps-days-item">
+        <div class="ps-days-val"><?= $single['days_paid'] ?: '—' ?></div>
+        <div class="ps-days-lbl">Days Paid</div>
+      </div>
+      <div class="ps-days-item">
+        <div class="ps-days-val"><?= ($single['working_days']&&$single['days_paid'])?(int)$single['working_days']-(int)$single['days_paid']:'—' ?></div>
+        <div class="ps-days-lbl">Leave / Absent</div>
+      </div>
+      <div class="ps-days-item">
+        <div class="ps-days-val"><?= ($single['working_days']&&$single['days_paid']&&$single['basic_salary'])?number_format($single['basic_salary']/$single['working_days'],2):'—' ?></div>
+        <div class="ps-days-lbl">Daily Rate (<?= $sym ?>)</div>
+      </div>
+    </div>
     <?php endif; ?>
 
+    <!-- Notes -->
+    <?php if ($single['notes']): ?>
+    <div class="ps-doc-notes">📋 <?= h($single['notes']) ?></div>
+    <?php endif; ?>
+
+    <!-- Earnings & Deductions -->
+    <div class="ps-section-title">Salary Breakdown</div>
     <div class="ps-salary-grid">
       <div class="ps-salary-col">
-        <h4>Earnings</h4>
-        <div class="ps-sal-row"><span>Basic Salary</span><span><?= $sym ?> <?= number_format($single['basic_salary'],2) ?></span></div>
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#10b981;margin-bottom:8px">Earnings</div>
+        <div class="ps-sal-row"><span>Basic Salary</span><span style="font-weight:600"><?= $sym ?> <?= number_format($single['basic_salary'],2) ?></span></div>
         <?php foreach ($allowances as $a): ?>
         <div class="ps-sal-row"><span><?= h($a['name']) ?></span><span><?= $sym ?> <?= number_format($a['amount'],2) ?></span></div>
         <?php endforeach; ?>
-        <div class="ps-sal-total"><span>Gross Salary</span><span><?= $sym ?> <?= number_format($single['gross_salary'],2) ?></span></div>
+        <div class="ps-sal-total"><span>Gross Salary</span><span style="color:#10b981"><?= $sym ?> <?= number_format($single['gross_salary'],2) ?></span></div>
       </div>
       <div class="ps-divider"></div>
       <div class="ps-salary-col">
-        <h4>Deductions</h4>
+        <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#ef4444;margin-bottom:8px">Deductions</div>
         <?php if ($deductions): ?>
-          <?php foreach ($deductions as $d): ?>
-          <div class="ps-sal-row" style="color:#ef4444">
-            <span><?= h($d['name']) ?></span>
-            <span>- <?= $sym ?> <?= number_format($d['amount'],2) ?></span>
+          <?php foreach ($deductions as $d):
+            $is_stat = preg_match('/\b(EPF|ETF|APIT|PAYE|tax)\b/i', $d['name']);
+          ?>
+          <div class="ps-sal-row <?= $is_stat?'stat-row':'' ?>">
+            <span><?= h($d['name']) ?><?= $is_stat?' <span style="font-size:9px;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px;margin-left:4px">Statutory</span>':'' ?></span>
+            <span style="color:#ef4444">- <?= $sym ?> <?= number_format($d['amount'],2) ?></span>
           </div>
           <?php endforeach; ?>
           <div class="ps-sal-total"><span>Total Deductions</span><span style="color:#ef4444">- <?= $sym ?> <?= number_format($single['total_deductions'],2) ?></span></div>
@@ -360,34 +464,55 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
         <?php endif; ?>
       </div>
     </div>
-  </div>
 
+  </div><!-- end ps-doc-body -->
+
+  <!-- Net salary bar -->
   <div class="ps-net-bar">
     <div>
       <div class="lbl">Net Salary Payable</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px"><?= h($single['pay_period']) ?></div>
+      <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:2px"><?= h($single['pay_period']) ?></div>
     </div>
     <div class="amt"><?= $sym ?> <?= number_format($single['net_salary'],2) ?></div>
   </div>
 
-  <?php if ($single['footer_note']): ?>
+  <!-- Signature section -->
+  <div class="ps-sign-section">
+    <div class="ps-sign-block">
+      <div class="ps-sign-line">Employee Signature &amp; Date</div>
+      <div class="ps-sign-sub">I acknowledge receipt of this payslip</div>
+    </div>
+    <div class="ps-sign-block">
+      <div class="ps-sign-line">
+        <?php if (!empty($single['authorized_by'])): ?>
+        <?= h($single['authorized_by']) ?>
+        <?php else: ?>Authorised Signatory<?php endif; ?>
+      </div>
+      <div class="ps-sign-sub">
+        <?= !empty($single['authorized_title']) ? h($single['authorized_title']) : 'HR / Finance Department' ?>
+        <?= !empty($single['company_name']) ? ' — '.h($single['company_name']) : '' ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <?php if (!empty($single['footer_note'])): ?>
   <div class="ps-footer-note"><?= h($single['footer_note']) ?></div>
   <?php else: ?>
-  <div class="ps-footer-note">This is a computer-generated payslip and requires no signature.</div>
+  <div class="ps-footer-note">This is a computer-generated payslip. For queries contact HR department. | Ref: <?= h($ref_display) ?></div>
   <?php endif; ?>
-</div>
+
+</div><!-- end ps-doc -->
 
 <?php else: ?>
-<!-- ══════════════════════════════════════════
-  TABS: LIST / CREATE / TEMPLATES
-══════════════════════════════════════════ -->
+<!-- ══ TABS: LIST / CREATE / TEMPLATES ══ -->
 <div class="ps-tabs">
-  <button class="ps-tab <?= $section==='list'?'active':'' ?>"      onclick="psTab('list')">📋 Payslips <span id="ps-count-badge" style="font-size:10px;background:var(--bg4);padding:1px 6px;border-radius:99px;margin-left:2px"><?= count($payslips) ?></span></button>
-  <button class="ps-tab <?= $section==='create'?'active':'' ?>"    onclick="psTab('create')">➕ <?= $ep?'Edit Payslip':'Create Payslip' ?></button>
+  <button class="ps-tab <?= $section==='list'?'active':'' ?>" onclick="psTab('list')">📋 Payslips <span id="ps-count-badge" style="font-size:10px;background:var(--bg4);padding:1px 6px;border-radius:99px;margin-left:2px"><?= count($payslips) ?></span></button>
+  <button class="ps-tab <?= $section==='create'?'active':'' ?>" onclick="psTab('create')">➕ <?= $ep?'Edit Payslip':'Create Payslip' ?></button>
   <button class="ps-tab <?= $section==='templates'?'active':'' ?>" onclick="psTab('templates')">⚙ Templates</button>
 </div>
 
-<!-- ─── PAYSLIP LIST ─── -->
+<!-- ── PAYSLIP LIST ── -->
 <div id="pssec-list" style="display:<?= $section==='list'?'block':'none' ?>">
   <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
     <button onclick="psTab('create')" class="btn btn-primary">＋ New Payslip</button>
@@ -397,7 +522,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
   <?php else: ?>
   <div class="card" style="padding:0">
     <?php foreach ($payslips as $ps):
-      $sc = $ps['status']==='issued'?'ps-issued':'ps-draft';
+      $sc   = $ps['status']==='issued'?'ps-issued':'ps-draft';
       $init = strtoupper(substr($ps['employee_name'],0,1));
     ?>
     <div class="ps-row" onclick="location.href='payslip.php?view=<?= $ps['id'] ?>'">
@@ -408,6 +533,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
           <?= h($ps['pay_period']) ?>
           <?= $ps['designation']?' · '.h($ps['designation']):'' ?>
           <?= $ps['company_name']?' · '.h($ps['company_name']):'' ?>
+          <?php if (!empty($ps['payslip_ref'])): ?> · <span style="font-family:monospace;font-size:10.5px"><?= h($ps['payslip_ref']) ?></span><?php endif; ?>
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0">
@@ -427,7 +553,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
   <?php endif; ?>
 </div>
 
-<!-- ─── CREATE / EDIT PAYSLIP ─── -->
+<!-- ── CREATE / EDIT PAYSLIP ── -->
 <div id="pssec-create" style="display:<?= $section==='create'?'block':'none' ?>">
   <form method="POST" id="ps-form">
     <input type="hidden" name="action" value="save_payslip">
@@ -471,6 +597,16 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
             </div>
             <div class="form-row">
               <div class="form-group">
+                <label class="form-label">NIC Number <span style="font-size:10px;color:var(--orange)">Required for verification</span></label>
+                <input type="text" name="nic_number" class="form-control" placeholder="e.g. 200012345678 or 001234567V" value="<?= h($ep['nic_number']??'') ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label">EPF Member Number</label>
+                <input type="text" name="epf_member_no" class="form-control" placeholder="e.g. EPF-00123456" value="<?= h($ep['epf_member_no']??'') ?>">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
                 <label class="form-label">Designation / Title</label>
                 <input type="text" name="designation" class="form-control" placeholder="e.g. Software Developer" value="<?= h($ep['designation']??'') ?>">
               </div>
@@ -505,7 +641,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
         <!-- Pay Period Panel -->
         <div class="ps-panel">
           <div class="ps-panel-head">
-            <div class="ps-panel-title">📅 Pay Period & Settings</div>
+            <div class="ps-panel-title">📅 Pay Period &amp; Settings</div>
           </div>
           <div class="ps-panel-body">
             <div class="form-row">
@@ -516,6 +652,16 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
               <div class="form-group">
                 <label class="form-label">Pay Date</label>
                 <input type="date" name="pay_date" class="form-control" value="<?= h($ep['pay_date']??date('Y-m-d')) ?>">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Working Days in Month</label>
+                <input type="number" name="working_days" class="form-control" placeholder="e.g. 26" min="0" max="31" value="<?= h($ep['working_days']??'') ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Days Paid</label>
+                <input type="number" name="days_paid" class="form-control" placeholder="e.g. 24" min="0" max="31" value="<?= h($ep['days_paid']??'') ?>">
               </div>
             </div>
             <div class="form-row">
@@ -539,6 +685,10 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
             </div>
             <div class="form-row">
               <div class="form-group">
+                <label class="form-label">Payslip Reference No.</label>
+                <input type="text" name="payslip_ref" class="form-control" placeholder="Auto-generated if blank" value="<?= h($ep['payslip_ref']??'') ?>">
+              </div>
+              <div class="form-group">
                 <label class="form-label">Status</label>
                 <select name="ps_status" class="form-control">
                   <option value="draft"  <?= ($ep['status']??'draft')==='draft'?'selected':'' ?>>📝 Draft</option>
@@ -547,8 +697,8 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Internal Notes</label>
-              <textarea name="notes" class="form-control" rows="2" placeholder="Optional notes (not shown on payslip header)"><?= h($ep['notes']??'') ?></textarea>
+              <label class="form-label">Internal Notes <span style="font-size:11px;color:var(--text3)">(not printed on payslip)</span></label>
+              <textarea name="notes" class="form-control" rows="2" placeholder="Optional internal notes"><?= h($ep['notes']??'') ?></textarea>
             </div>
           </div>
         </div>
@@ -593,7 +743,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
         <div class="ps-panel" style="margin-bottom:0">
           <div class="ps-panel-head">
             <div class="ps-panel-title">➖ Deductions</div>
-            <span style="font-size:11.5px;color:var(--text3)">Subtracted from gross</span>
+            <span style="font-size:11.5px;color:var(--orange)">EPF/ETF/APIT required by law</span>
           </div>
           <div class="ps-panel-body" style="padding:0">
             <div id="ded-builder" class="sal-builder">
@@ -607,6 +757,9 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
             </div>
             <button type="button" class="sal-add" onclick="psAddRow('ded')">＋ Add Deduction</button>
           </div>
+          <div style="padding:8px 12px;background:rgba(249,115,22,.06);border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
+            💡 Standard Sri Lanka: <strong>EPF Employee 8%</strong> · <strong>ETF Employer 3%</strong> · <strong>APIT/PAYE Tax</strong> (if applicable)
+          </div>
         </div>
 
         <!-- Live Summary -->
@@ -619,8 +772,8 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
           <div style="text-align:right">
             <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:4px">SAVE PAYSLIP</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-              <button type="submit" name="ps_status" value="draft" class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)">💾 Save Draft</button>
-              <button type="submit" name="ps_status" value="issued" class="btn btn-sm" style="background:#f97316;color:#fff;border:none">✅ Save & Issue</button>
+              <button type="submit" name="ps_status" value="draft"  class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)">💾 Save Draft</button>
+              <button type="submit" name="ps_status" value="issued" class="btn btn-sm" style="background:#f97316;color:#fff;border:none">✅ Save &amp; Issue</button>
             </div>
           </div>
         </div>
@@ -629,7 +782,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
   </form>
 </div>
 
-<!-- ─── TEMPLATES ─── -->
+<!-- ── TEMPLATES ── -->
 <div id="pssec-templates" style="display:<?= $section==='templates'?'block':'none' ?>">
   <div class="ps-split">
     <div>
@@ -645,7 +798,8 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
             <div style="font-weight:700;font-size:13px;color:var(--text)"><?= h($t['name']) ?>
               <?php if ($t['is_default']): ?><span style="font-size:10px;background:var(--orange-bg);color:var(--orange);padding:1px 6px;border-radius:99px;margin-left:5px">Default</span><?php endif; ?>
             </div>
-            <div style="font-size:12px;color:var(--text3)"><?= h($t['company_name']) ?><?= $t['company_address']?' · '.h(mb_substr($t['company_address'],0,30)):'' ?></div>
+            <div style="font-size:12px;color:var(--text3)"><?= h($t['company_name']) ?><?= !empty($t['company_reg_no'])?' · Reg: '.h($t['company_reg_no']):'' ?></div>
+            <?php if (!empty($t['authorized_by'])): ?><div style="font-size:11px;color:var(--text3)">Auth: <?= h($t['authorized_by']) ?><?= !empty($t['authorized_title'])?' · '.h($t['authorized_title']):'' ?></div><?php endif; ?>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
@@ -663,6 +817,7 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
       <?php endif; ?>
     </div>
 
+    <!-- Template Form -->
     <div class="ps-panel">
       <div class="ps-panel-head">
         <div class="ps-panel-title"><?= $et?'✎ Edit Template':'➕ New Template' ?></div>
@@ -671,21 +826,56 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
         <form method="POST" enctype="multipart/form-data">
           <input type="hidden" name="action" value="save_template">
           <?php if ($et): ?><input type="hidden" name="template_id" value="<?= $et['id'] ?>"><?php endif; ?>
+
+          <div style="font-size:11px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:6px;padding:8px 12px;margin-bottom:14px;color:var(--text2)">
+            💡 Fill in company details fully — these appear on every payslip and are verified by HR departments of future employers.
+          </div>
+
           <div class="form-group">
             <label class="form-label">Template Name <span style="color:var(--red)">*</span></label>
             <input type="text" name="tpl_name" class="form-control" required value="<?= h($et['name']??'') ?>" placeholder="e.g. Standard Template">
           </div>
-          <div class="form-group">
-            <label class="form-label">Company Name <span style="color:var(--red)">*</span></label>
-            <input type="text" name="company_name" class="form-control" required value="<?= h($et['company_name']??'') ?>" placeholder="Your company name">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Company Name <span style="color:var(--red)">*</span></label>
+              <input type="text" name="company_name" class="form-control" required value="<?= h($et['company_name']??'') ?>" placeholder="Your legal company name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Business Reg. / BR No. <span style="font-size:10px;color:var(--orange)">Important</span></label>
+              <input type="text" name="company_reg_no" class="form-control" value="<?= h($et['company_reg_no']??'') ?>" placeholder="e.g. PV 00123456">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Company Phone</label>
+              <input type="text" name="company_phone" class="form-control" value="<?= h($et['company_phone']??'') ?>" placeholder="+94 11 234 5678">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company Email</label>
+              <input type="email" name="company_email" class="form-control" value="<?= h($et['company_email']??'') ?>" placeholder="hr@company.com">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Company Address</label>
-            <textarea name="company_address" class="form-control" rows="3" placeholder="Full company address"><?= h($et['company_address']??'') ?></textarea>
+            <textarea name="company_address" class="form-control" rows="2" placeholder="Full registered address"><?= h($et['company_address']??'') ?></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">Company Logo <span style="font-size:11px;color:var(--text3)">(PNG or JPG, shown on payslip header)</span></label>
-            <?php if ($et&&$et['company_logo']&&file_exists($et['company_logo'])): ?>
+            <label class="form-label">EPF Employer Registration No.</label>
+            <input type="text" name="epf_employer_no" class="form-control" value="<?= h($et['epf_employer_no']??'') ?>" placeholder="e.g. C/0012345/00">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Authorised By (Name)</label>
+              <input type="text" name="authorized_by" class="form-control" value="<?= h($et['authorized_by']??'') ?>" placeholder="e.g. Vignesh G">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Authorised By (Title)</label>
+              <input type="text" name="authorized_title" class="form-control" value="<?= h($et['authorized_title']??'') ?>" placeholder="e.g. Director / HR Manager">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company Logo <span style="font-size:11px;color:var(--text3)">(PNG or JPG)</span></label>
+            <?php if ($et&&!empty($et['company_logo'])&&file_exists($et['company_logo'])): ?>
             <div style="margin-bottom:8px"><img src="<?= h($et['company_logo']) ?>" style="height:36px;border-radius:4px;border:1px solid var(--border)"> <span style="font-size:11px;color:var(--text3)">current logo</span></div>
             <?php endif; ?>
             <input type="file" name="company_logo" class="form-control" accept=".png,.jpg,.jpeg">
@@ -712,7 +902,6 @@ $sym         = htmlspecialchars($single['currency']??'LKR',ENT_QUOTES);
 <?php endif; ?>
 
 <script>
-// ── TAB SWITCHING (fixed: use pssec- prefix to avoid ID clash with buttons) ──
 function psTab(name) {
     ['list','create','templates'].forEach(function(n) {
         var sec = document.getElementById('pssec-'+n);
@@ -727,7 +916,6 @@ function psTab(name) {
     }
 }
 
-// ── AUTO-FILL EMPLOYEE ──
 function fillEmp(sel) {
     var opt = sel.options[sel.selectedIndex];
     if (!opt || !opt.value) return;
@@ -738,7 +926,6 @@ function fillEmp(sel) {
     document.getElementById('emp-id-hidden').value        = opt.value;
 }
 
-// ── ADD / DELETE SALARY ROWS ──
 function psAddRow(type) {
     var b   = document.getElementById(type === 'allow' ? 'allow-builder' : 'ded-builder');
     var pfx = type === 'allow' ? 'allowance' : 'deduction';
@@ -756,7 +943,6 @@ function psDelRow(btn) {
     psCalc();
 }
 
-// ── LIVE SALARY CALCULATOR ──
 function psCalc() {
     var basic = parseFloat(document.getElementById('ps-basic')?.value) || 0;
     var allow = 0;
@@ -766,10 +952,9 @@ function psCalc() {
     var gross = basic + allow;
     var net   = gross - ded;
     var fmt   = function(n) { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); };
-    var nv = document.getElementById('ps-net-val');   if (nv) nv.textContent   = fmt(net);
-    var gv = document.getElementById('ps-gross-val'); if (gv) gv.textContent   = fmt(gross);
-    var dv = document.getElementById('ps-ded-val');   if (dv) dv.textContent   = fmt(ded);
-    // Colour net salary
+    var nv = document.getElementById('ps-net-val');   if (nv) nv.textContent = fmt(net);
+    var gv = document.getElementById('ps-gross-val'); if (gv) gv.textContent = fmt(gross);
+    var dv = document.getElementById('ps-ded-val');   if (dv) dv.textContent = fmt(ded);
     if (nv) nv.style.color = net < 0 ? '#ef4444' : '#f97316';
 }
 

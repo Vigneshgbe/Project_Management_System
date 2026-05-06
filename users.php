@@ -267,6 +267,7 @@ renderLayout('Team', 'users');
         </div>
         <div class="form-group">
           <label class="form-label">New Password (leave blank to keep current)</label>
+          <input type="password" name="new_password" id="eu-pass" class="form-control" placeholder="Enter new password to change">
         </div>
       </div>
       <div class="modal-footer">

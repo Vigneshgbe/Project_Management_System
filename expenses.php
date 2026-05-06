@@ -32,12 +32,12 @@ $CAT_ICONS = [
     'Legal & Registration'=>'📜','Company Branding'=>'🎨','Miscellaneous'=>'🔮',
     'Internet & WiFi'=>'🌐','Employee Salary'=>'💰','Daily Expenses'=>'☕','Other'=>'📌'
 ];
-$PAY_TYPES = ['advance'=>'🟡 Advance','milestone'=>'🔵 Milestone','final'=>'🟢 Final','other'=>'⚪ Other'];
+$PAY_TYPES  = ['advance'=>'🟡 Advance','milestone'=>'🔵 Milestone','final'=>'🟢 Final','other'=>'⚪ Other'];
 $PAY_COLORS = ['advance'=>'#f59e0b','milestone'=>'#6366f1','final'=>'#10b981','other'=>'#94a3b8'];
 
 // ── HELPER: sync revenue_entries sum → expense_months.revenue ──────────────
 function syncMonthRevenue(mysqli $db, int $mid): void {
-    $r = @$db->query("SELECT COALESCE(SUM(amount),0) s FROM month_revenue_entries WHERE month_id=$mid");
+    $r   = @$db->query("SELECT COALESCE(SUM(amount),0) s FROM month_revenue_entries WHERE month_id=$mid");
     $sum = $r ? (float)$r->fetch_assoc()['s'] : 0;
     $db->query("UPDATE expense_months SET revenue=$sum WHERE id=$mid");
 }
@@ -47,7 +47,7 @@ ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // ── Create/edit month ──
+    // ── Create/edit month ──────────────────────────────────────────────────
     if ($action === 'save_month') {
         $mid   = (int)($_POST['month_id'] ?? 0);
         $my    = trim($_POST['month_year'] ?? '');
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare("INSERT INTO expense_months (month_year,month_label,revenue,notes,created_by) VALUES (?,?,?,?,?)");
             $stmt->bind_param("ssdsi",$my,$label,$rev,$notes,$uid);
             $stmt->execute();
-            $mid = $db->insert_id;
+            $mid  = $db->insert_id;
             $scat = $db->prepare("INSERT INTO expense_entries (month_id,category,description,own_spend,office_spend,currency,created_by) VALUES (?,?,?,0,0,'INR',?)");
             $descs = [
                 'Office & Rent'=>'Rented space cost','Software & Tools'=>'Claude, Canva, AI Bots',
@@ -88,19 +88,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?month='.$mid); exit;
     }
 
-    // ── Save individual expense entry ──
+    // ── Save individual expense entry ──────────────────────────────────────
     if ($action === 'save_entry') {
-        $eid     = (int)($_POST['entry_id'] ?? 0);
-        $mid     = (int)($_POST['month_id'] ?? 0);
-        $cat     = $_POST['category'] ?? 'Other';
-        $desc    = trim($_POST['description'] ?? '');
-        $own     = (float)($_POST['own_spend'] ?? 0);
-        $office  = (float)($_POST['office_spend'] ?? 0);
-        $cur     = $_POST['currency'] ?? 'INR';
-        $pdate   = $_POST['purchase_date'] ?: null;
-        $edate   = $_POST['expire_date'] ?: null;
-        $notes   = trim($_POST['notes'] ?? '');
-        $uid     = $user['id'];
+        $eid    = (int)($_POST['entry_id'] ?? 0);
+        $mid    = (int)($_POST['month_id'] ?? 0);
+        $cat    = $_POST['category'] ?? 'Other';
+        $desc   = trim($_POST['description'] ?? '');
+        $own    = (float)($_POST['own_spend'] ?? 0);
+        $office = (float)($_POST['office_spend'] ?? 0);
+        $cur    = $_POST['currency'] ?? 'INR';
+        $pdate  = $_POST['purchase_date'] ?: null;
+        $edate  = $_POST['expire_date'] ?: null;
+        $notes  = trim($_POST['notes'] ?? '');
+        $uid    = $user['id'];
         if ($eid) {
             $stmt = $db->prepare("UPDATE expense_entries SET category=?,description=?,own_spend=?,office_spend=?,currency=?,purchase_date=?,expire_date=?,notes=? WHERE id=?");
             $stmt->bind_param("ssddssssi",$cat,$desc,$own,$office,$cur,$pdate,$edate,$notes,$eid);
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?month='.$mid); exit;
     }
 
-    // ── Inline quick-save (AJAX) ──
+    // ── Inline quick-save (AJAX) ───────────────────────────────────────────
     if ($action === 'quick_save') {
         header('Content-Type: application/json');
         $eid    = (int)($_POST['entry_id'] ?? 0);
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?month='.$mid); exit;
     }
 
-    // ── Save revenue entry (NEW) ──
+    // ── Save revenue entry ─────────────────────────────────────────────────
     if ($action === 'save_rev_entry') {
         $reid  = (int)($_POST['rev_entry_id'] ?? 0);
         $mid   = (int)($_POST['month_id'] ?? 0);
@@ -149,7 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdate = $_POST['payment_date'] ?: null;
         $notes = trim($_POST['notes'] ?? '');
         $uid   = $user['id'];
-        if (!$proj) { flash('Project name required.','error'); ob_end_clean(); header('Location: expenses.php?month='.$mid); exit; }
+        // Determine redirect tab — if coming from revenue top-level tab redirect back there
+        $from_tab = trim($_POST['from_tab'] ?? '');
+        if (!$proj) { flash('Project name required.','error'); ob_end_clean(); header('Location: expenses.php?month='.$mid.($from_tab==='revenue'?'&tab=revenue':'')); exit; }
         if ($reid) {
             $stmt = $db->prepare("UPDATE month_revenue_entries SET project_name=?,client_name=?,payment_type=?,amount=?,currency=?,payment_date=?,notes=? WHERE id=?");
             $stmt->bind_param("sssdsssi",$proj,$cli,$ptype,$amt,$cur,$pdate,$notes,$reid);
@@ -161,20 +163,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         syncMonthRevenue($db, $mid);
         flash('Revenue entry saved.','success');
+        if ($from_tab === 'revenue') {
+            ob_end_clean(); header('Location: expenses.php?tab=revenue&month='.$mid); exit;
+        }
         ob_end_clean(); header('Location: expenses.php?month='.$mid.'&rtab=1'); exit;
     }
 
-    // ── Delete revenue entry (NEW) ──
+    // ── Delete revenue entry ───────────────────────────────────────────────
     if ($action === 'delete_rev_entry') {
-        $reid = (int)$_POST['rev_entry_id'];
-        $mid  = (int)$_POST['month_id'];
+        $reid     = (int)$_POST['rev_entry_id'];
+        $mid      = (int)$_POST['month_id'];
+        $from_tab = trim($_POST['from_tab'] ?? '');
         $db->query("DELETE FROM month_revenue_entries WHERE id=$reid");
         syncMonthRevenue($db, $mid);
         flash('Revenue entry deleted.','success');
+        if ($from_tab === 'revenue') {
+            ob_end_clean(); header('Location: expenses.php?tab=revenue&month='.$mid); exit;
+        }
         ob_end_clean(); header('Location: expenses.php?month='.$mid.'&rtab=1'); exit;
     }
 
-    // ── Delete month ──
+    // ── Delete month ───────────────────────────────────────────────────────
     if ($action === 'delete_month' && isAdmin()) {
         $mid = (int)$_POST['month_id'];
         $db->query("DELETE FROM expense_months WHERE id=$mid");
@@ -183,20 +192,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php'); exit;
     }
 
-    // ── Save subscription ──
+    // ── Save subscription ──────────────────────────────────────────────────
     if ($action === 'save_sub') {
-        $sid  = (int)($_POST['sub_id'] ?? 0);
-        $inv  = trim($_POST['invoice_number'] ?? '');
-        $pt   = trim($_POST['paid_to'] ?? '');
-        $di   = $_POST['date_of_issue'] ?: null;
-        $de   = $_POST['date_of_end'] ?: null;
-        $amt  = (float)($_POST['paid_amount'] ?? 0);
-        $cur  = $_POST['currency'] ?? 'USD';
-        $pm   = trim($_POST['payment_method'] ?? '');
-        $st   = $_POST['status'] ?? 'active';
-        $pb   = (int)($_POST['paid_by'] ?? 0) ?: null;
-        $notes= trim($_POST['notes'] ?? '');
-        $uid  = $user['id'];
+        $sid   = (int)($_POST['sub_id'] ?? 0);
+        $inv   = trim($_POST['invoice_number'] ?? '');
+        $pt    = trim($_POST['paid_to'] ?? '');
+        $di    = $_POST['date_of_issue'] ?: null;
+        $de    = $_POST['date_of_end'] ?: null;
+        $amt   = (float)($_POST['paid_amount'] ?? 0);
+        $cur   = $_POST['currency'] ?? 'USD';
+        $pm    = trim($_POST['payment_method'] ?? '');
+        $st    = $_POST['status'] ?? 'active';
+        $pb    = (int)($_POST['paid_by'] ?? 0) ?: null;
+        $notes = trim($_POST['notes'] ?? '');
+        $uid   = $user['id'];
         if (!$pt) { flash('Paid To required.','error'); ob_end_clean(); header('Location: expenses.php?tab=subscriptions'); exit; }
         if ($sid) {
             $stmt = $db->prepare("UPDATE subscriptions SET invoice_number=?,paid_to=?,date_of_issue=?,date_of_end=?,paid_amount=?,currency=?,payment_method=?,status=?,paid_by=?,notes=? WHERE id=?");
@@ -210,20 +219,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?tab=subscriptions'); exit;
     }
 
-    // ── Save software purchase ──
+    // ── Save software purchase ─────────────────────────────────────────────
     if ($action === 'save_sw') {
-        $swid = (int)($_POST['sw_id'] ?? 0);
-        $inv  = trim($_POST['invoice_number'] ?? '');
-        $pt   = trim($_POST['paid_to'] ?? '');
-        $dp   = $_POST['date_purchase'] ?: null;
-        $de   = $_POST['date_expire'] ?: null;
-        $ul   = trim($_POST['usage_limit'] ?? '');
-        $amt  = (float)($_POST['paid_amount'] ?? 0);
-        $cur  = $_POST['currency'] ?? 'INR';
-        $pm   = trim($_POST['payment_method'] ?? '');
-        $pb   = (int)($_POST['paid_by'] ?? 0) ?: null;
-        $notes= trim($_POST['notes'] ?? '');
-        $uid  = $user['id'];
+        $swid  = (int)($_POST['sw_id'] ?? 0);
+        $inv   = trim($_POST['invoice_number'] ?? '');
+        $pt    = trim($_POST['paid_to'] ?? '');
+        $dp    = $_POST['date_purchase'] ?: null;
+        $de    = $_POST['date_expire'] ?: null;
+        $ul    = trim($_POST['usage_limit'] ?? '');
+        $amt   = (float)($_POST['paid_amount'] ?? 0);
+        $cur   = $_POST['currency'] ?? 'INR';
+        $pm    = trim($_POST['payment_method'] ?? '');
+        $pb    = (int)($_POST['paid_by'] ?? 0) ?: null;
+        $notes = trim($_POST['notes'] ?? '');
+        $uid   = $user['id'];
         if (!$pt) { flash('Paid To required.','error'); ob_end_clean(); header('Location: expenses.php?tab=software'); exit; }
         if ($swid) {
             $stmt = $db->prepare("UPDATE software_purchases SET invoice_number=?,paid_to=?,date_purchase=?,date_expire=?,usage_limit=?,paid_amount=?,currency=?,payment_method=?,paid_by=?,notes=? WHERE id=?");
@@ -237,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?tab=software'); exit;
     }
 
-    // ── Delete subscription ──
+    // ── Delete subscription ────────────────────────────────────────────────
     if ($action === 'delete_sub') {
         $sid = (int)$_POST['sub_id'];
         $db->query("DELETE FROM subscriptions WHERE id=$sid");
@@ -245,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?tab=subscriptions'); exit;
     }
 
-    // ── Delete software ──
+    // ── Delete software ────────────────────────────────────────────────────
     if ($action === 'delete_sw') {
         $swid = (int)$_POST['sw_id'];
         $db->query("DELETE FROM software_purchases WHERE id=$swid");
@@ -253,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: expenses.php?tab=software'); exit;
     }
 
-    // ── Delete entry ──
+    // ── Delete entry ───────────────────────────────────────────────────────
     if ($action === 'delete_entry') {
         $eid = (int)$_POST['entry_id'];
         $mid = (int)$_POST['month_id'];
@@ -264,12 +273,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ob_end_clean();
 
-// ── TAB / VIEW ────────────────────────────────────────────────────────────
-$tab      = $_GET['tab'] ?? 'monthly';
-$view_mid = (int)($_GET['month'] ?? 0);
-$show_rtab = isset($_GET['rtab']); // open revenue sub-tab after save
+// ── TAB / VIEW ─────────────────────────────────────────────────────────────
+$tab       = $_GET['tab'] ?? 'monthly';
+$view_mid  = (int)($_GET['month'] ?? 0);
+$show_rtab = isset($_GET['rtab']); // open revenue sub-tab inside monthly after save
 
-// ── LOAD MONTHS ───────────────────────────────────────────────────────────
+// ── LOAD MONTHS ────────────────────────────────────────────────────────────
 $months = $db->query("
     SELECT m.*,
         COALESCE(SUM(e.own_spend),0)    AS total_own,
@@ -282,58 +291,82 @@ $months = $db->query("
 
 if (!$view_mid && !empty($months)) $view_mid = $months[0]['id'];
 
+// ── MONTHLY TAB DATA ───────────────────────────────────────────────────────
 $current_month = null;
 $entries       = [];
 $rev_entries   = [];
 if ($view_mid) {
     $current_month = $db->query("SELECT * FROM expense_months WHERE id=$view_mid")->fetch_assoc();
     if ($current_month) {
-        $entries = $db->query("SELECT * FROM expense_entries WHERE month_id=$view_mid ORDER BY FIELD(category,'Office & Rent','Software & Tools','Marketing','Legal & Registration','Company Branding','Miscellaneous','Internet & WiFi','Employee Salary','Daily Expenses','Other'), id")->fetch_all(MYSQLI_ASSOC);
+        $entries     = $db->query("SELECT * FROM expense_entries WHERE month_id=$view_mid ORDER BY FIELD(category,'Office & Rent','Software & Tools','Marketing','Legal & Registration','Company Branding','Miscellaneous','Internet & WiFi','Employee Salary','Daily Expenses','Other'), id")->fetch_all(MYSQLI_ASSOC);
         $rev_entries = $db->query("SELECT * FROM month_revenue_entries WHERE month_id=$view_mid ORDER BY payment_date ASC, id ASC")->fetch_all(MYSQLI_ASSOC);
     }
 }
 
-// Compute expense totals
+// Monthly expense totals
 $own_total = 0; $office_total = 0;
 foreach ($entries as $e) { $own_total += $e['own_spend']; $office_total += $e['office_spend']; }
 $total_spend = $own_total + $office_total;
 
-// Compute revenue from entries (project payments)
-$revenue_from_entries = 0;
-foreach ($rev_entries as $r) { $revenue_from_entries += $r['amount']; }
-// If revenue entries exist, use their sum; else fallback to manual revenue field
-$revenue = $revenue_from_entries > 0 ? $revenue_from_entries : (float)($current_month['revenue'] ?? 0);
-$balance = $revenue - $total_spend;
+// Revenue for monthly tab: use sum of entries if available, else manual field
+$revenue_from_entries = array_sum(array_column($rev_entries,'amount'));
+$revenue   = $revenue_from_entries > 0 ? $revenue_from_entries : (float)($current_month['revenue'] ?? 0);
+$balance   = $revenue - $total_spend;
 
-// Revenue breakdown by payment type
+// Revenue breakdown by type (for monthly sub-tab)
 $rev_by_type = ['advance'=>0,'milestone'=>0,'final'=>0,'other'=>0];
 foreach ($rev_entries as $r) { $rev_by_type[$r['payment_type']] += $r['amount']; }
 
-// ── SUBSCRIPTIONS ─────────────────────────────────────────────────────────
-$subs = $db->query("SELECT s.*, u.name AS paid_by_name FROM subscriptions s LEFT JOIN users u ON u.id=s.paid_by ORDER BY s.date_of_issue DESC")->fetch_all(MYSQLI_ASSOC);
+// ── REVENUE TOP-LEVEL TAB DATA ─────────────────────────────────────────────
+$rev_month_id       = (int)($_GET['month'] ?? 0);
+// When on revenue tab use ?month= from URL; otherwise default to first month
+if ($tab === 'revenue') {
+    if (!$rev_month_id && !empty($months)) $rev_month_id = $months[0]['id'];
+} else {
+    $rev_month_id = $view_mid; // keeps it in sync for modal month_id
+}
+$rev_current_month    = null;
+$rev_entries_tab      = [];
+$rev_by_type_tab      = ['advance'=>0,'milestone'=>0,'final'=>0,'other'=>0];
+if ($rev_month_id) {
+    $rev_current_month = $db->query("SELECT * FROM expense_months WHERE id=$rev_month_id")->fetch_assoc();
+    if ($rev_current_month) {
+        $rev_entries_tab = $db->query("SELECT * FROM month_revenue_entries WHERE month_id=$rev_month_id ORDER BY payment_date ASC, id ASC")->fetch_all(MYSQLI_ASSOC);
+        foreach ($rev_entries_tab as $r) $rev_by_type_tab[$r['payment_type']] += $r['amount'];
+    }
+}
+$rev_total_tab         = array_sum($rev_by_type_tab);
+$rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_name'));
+
+// ── SUBSCRIPTIONS ──────────────────────────────────────────────────────────
+$subs          = $db->query("SELECT s.*, u.name AS paid_by_name FROM subscriptions s LEFT JOIN users u ON u.id=s.paid_by ORDER BY s.date_of_issue DESC")->fetch_all(MYSQLI_ASSOC);
 $sub_total_paid = 0; foreach($subs as $s) $sub_total_paid += $s['paid_amount'];
 
-// ── SOFTWARE PURCHASES ────────────────────────────────────────────────────
-$software = $db->query("SELECT sp.*, u.name AS paid_by_name FROM software_purchases sp LEFT JOIN users u ON u.id=sp.paid_by ORDER BY sp.date_purchase DESC")->fetch_all(MYSQLI_ASSOC);
+// ── SOFTWARE PURCHASES ─────────────────────────────────────────────────────
+$software  = $db->query("SELECT sp.*, u.name AS paid_by_name FROM software_purchases sp LEFT JOIN users u ON u.id=sp.paid_by ORDER BY sp.date_purchase DESC")->fetch_all(MYSQLI_ASSOC);
 
-// All users for paid_by dropdowns
+// All active users for paid_by dropdowns
 $all_users = $db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 
 // Overall summary across all months
-$overall = $db->query("SELECT COALESCE(SUM(e.own_spend),0) AS total_own, COALESCE(SUM(e.office_spend),0) AS total_office, COALESCE(SUM(m.revenue),0) AS total_revenue FROM expense_months m LEFT JOIN expense_entries e ON e.month_id=m.id")->fetch_assoc();
+$overall         = $db->query("SELECT COALESCE(SUM(e.own_spend),0) AS total_own, COALESCE(SUM(e.office_spend),0) AS total_office, COALESCE(SUM(m.revenue),0) AS total_revenue FROM expense_months m LEFT JOIN expense_entries e ON e.month_id=m.id")->fetch_assoc();
 $overall_balance = $overall['total_revenue'] - $overall['total_own'] - $overall['total_office'];
 
 renderLayout('Expenses', 'expenses');
 ?>
 
 <style>
-/* ── EXISTING STYLES (UNCHANGED) ── */
-.exp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
-.exp-tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;text-decoration:none}
+/* ══ TAB BAR ══ */
+.exp-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;flex-wrap:wrap}
+.exp-tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;text-decoration:none;white-space:nowrap}
 .exp-tab.active,.exp-tab:hover{color:var(--orange);border-bottom-color:var(--orange)}
+
+/* ══ MONTH SIDEBAR ══ */
 .month-list{display:flex;flex-direction:column;gap:6px}
 .month-pill{padding:9px 12px;border-radius:var(--radius-sm);background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;display:flex;justify-content:space-between;align-items:center}
 .month-pill:hover,.month-pill.active{background:var(--orange-bg);border-color:var(--orange);color:var(--orange)}
+
+/* ══ EXPENSE TABLE ══ */
 .exp-table{width:100%;border-collapse:collapse}
 .exp-table th{background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:9px 12px;border:1px solid var(--border);white-space:nowrap;text-align:center}
 .exp-table th:nth-child(1){text-align:left;width:30px}
@@ -346,16 +379,19 @@ renderLayout('Expenses', 'expenses');
 .total-row td{background:var(--bg3);font-weight:700;color:var(--text);border-top:2px solid var(--border2)}
 .balance-pos{color:var(--green);font-weight:700}
 .balance-neg{color:var(--red);font-weight:700}
+
+/* ══ SUMMARY STRIP ══ */
 .summary-band{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
 .s-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
 .s-box-val{font-family:var(--font-display);font-size:20px;font-weight:700}
 .s-box-lbl{font-size:11px;color:var(--text3);margin-top:3px}
-@media(max-width:900px){.exp-layout{flex-direction:column}.month-sidebar{width:100%!important;min-width:unset!important}}
 
-/* ── REVENUE TRACKER STYLES ── */
+/* ══ MONTHLY SUB-TABS ══ */
 .rev-subtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px}
 .rev-subtab{padding:7px 16px;font-size:12.5px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none}
 .rev-subtab.active{color:var(--orange);border-bottom-color:var(--orange)}
+
+/* ══ REVENUE TRACKER ══ */
 .rev-tracker-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px}
 .rev-type-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
 .rev-summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px}
@@ -363,13 +399,12 @@ renderLayout('Expenses', 'expenses');
 .rev-sum-val{font-size:16px;font-weight:800;font-family:var(--font-display)}
 .rev-sum-lbl{font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
 
-/* ── REVENUE TABLE: fixed-layout with controlled column widths ── */
+/* ══ REVENUE TABLE ══ */
 .rev-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .rev-tbl th{background:var(--bg3);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rev-tbl td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rev-tbl tr:last-child td{border-bottom:none}
 .rev-tbl tr:hover td{background:var(--bg3)}
-/* Column widths: #, Project, Client, Type, Amount, Date, Notes, Actions */
 .rev-tbl th:nth-child(1),.rev-tbl td:nth-child(1){width:36px;text-align:center;color:var(--text3)}
 .rev-tbl th:nth-child(2),.rev-tbl td:nth-child(2){width:18%}
 .rev-tbl th:nth-child(3),.rev-tbl td:nth-child(3){width:16%}
@@ -379,7 +414,7 @@ renderLayout('Expenses', 'expenses');
 .rev-tbl th:nth-child(7),.rev-tbl td:nth-child(7){width:auto}
 .rev-tbl th:nth-child(8),.rev-tbl td:nth-child(8){width:72px;text-align:center}
 
-/* ── FIX: Overview Month-by-Month table alignment ── */
+/* ══ OVERVIEW TABLE ══ */
 .overview-breakdown-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
 .overview-breakdown-tbl th{background:var(--bg3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:9px 12px;border-bottom:2px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .overview-breakdown-tbl th:nth-child(1){width:60px;text-align:center}
@@ -392,22 +427,27 @@ renderLayout('Expenses', 'expenses');
 .overview-breakdown-tbl td:nth-child(3),.overview-breakdown-tbl td:nth-child(4),.overview-breakdown-tbl td:nth-child(5){text-align:right}
 .overview-breakdown-tbl td:nth-child(6){text-align:right;color:var(--green);font-weight:600}
 .overview-breakdown-tbl td:nth-child(7){text-align:right;font-weight:700}
+
+@media(max-width:900px){.exp-layout{flex-direction:column}.month-sidebar{width:100%!important;min-width:unset!important}}
 </style>
 
-<!-- TABS (UNCHANGED) -->
+<!-- ══ TOP-LEVEL TAB BAR ══ -->
 <div class="exp-tabs">
   <a href="expenses.php?tab=monthly<?= $view_mid?"&month=$view_mid":'' ?>" class="exp-tab <?= $tab==='monthly'?'active':'' ?>">📅 Monthly Tracker</a>
   <a href="expenses.php?tab=subscriptions" class="exp-tab <?= $tab==='subscriptions'?'active':'' ?>">🔄 Subscriptions</a>
   <a href="expenses.php?tab=software" class="exp-tab <?= $tab==='software'?'active':'' ?>">💻 Software Purchases</a>
-  <a href="expenses.php?tab=revenue" class="exp-tab <?= $tab==='revenue'?'active':'' ?>">💰 Revenue Tracker</a>
+  <a href="expenses.php?tab=revenue<?= $rev_month_id?"&month=$rev_month_id":'' ?>" class="exp-tab <?= $tab==='revenue'?'active':'' ?>">💰 Revenue Tracker</a>
   <a href="expenses.php?tab=overview" class="exp-tab <?= $tab==='overview'?'active':'' ?>">📊 Overall Summary</a>
 </div>
 
-<?php if ($tab === 'monthly'): ?>
+<?php /* ════════════════════════════════════════════════════
+         TAB 1 — MONTHLY TRACKER
+         ════════════════════════════════════════════════════ */
+if ($tab === 'monthly'): ?>
 
 <div style="display:flex;gap:18px;align-items:flex-start" class="exp-layout">
 
-  <!-- Sidebar: month list (UNCHANGED) -->
+  <!-- Month sidebar -->
   <div style="width:220px;min-width:220px;flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <span style="font-size:12px;font-weight:600;color:var(--text2)">MONTHS</span>
@@ -415,16 +455,19 @@ renderLayout('Expenses', 'expenses');
     </div>
     <div class="month-list">
       <?php foreach ($months as $m):
-        $m_own = $m['total_own']; $m_off = $m['total_office'];
-        $m_total = $m_own + $m_off;
+        $m_total = $m['total_own'] + $m['total_office'];
       ?>
-      <div class="month-pill <?= $view_mid==$m['id']?'active':'' ?>" onclick="location.href='expenses.php?tab=monthly&month=<?= $m['id'] ?>'">
+      <div class="month-pill <?= $view_mid==$m['id']?'active':'' ?>"
+           onclick="location.href='expenses.php?tab=monthly&month=<?= $m['id'] ?>'">
         <span><?= h($m['month_label']) ?></span>
         <span style="font-size:10px;font-weight:700"><?= number_format($m_total,0) ?></span>
       </div>
       <?php endforeach; ?>
       <?php if (empty($months)): ?>
-      <div style="font-size:12px;color:var(--text3);padding:10px;text-align:center">No months yet.<br><a href="#" onclick="openModal('modal-month')" style="color:var(--orange)">Create one</a></div>
+      <div style="font-size:12px;color:var(--text3);padding:10px;text-align:center">
+        No months yet.<br>
+        <a href="#" onclick="openModal('modal-month')" style="color:var(--orange)">Create one</a>
+      </div>
       <?php endif; ?>
     </div>
   </div>
@@ -433,7 +476,7 @@ renderLayout('Expenses', 'expenses');
   <div style="flex:1;min-width:0">
     <?php if ($current_month): ?>
 
-    <!-- Summary strip (UNCHANGED) -->
+    <!-- Summary strip -->
     <div class="summary-band">
       <div class="s-box">
         <div class="s-box-val"><?= number_format($own_total,2) ?></div>
@@ -457,14 +500,14 @@ renderLayout('Expenses', 'expenses');
       </div>
     </div>
 
-    <!-- Month header (UNCHANGED) -->
+    <!-- Month header -->
     <div class="card-header" style="margin-bottom:14px">
       <div>
         <div style="font-family:var(--font-display);font-size:18px;font-weight:700"><?= h($current_month['month_label']) ?></div>
-        <div style="font-size:12px;color:var(--text3)"><?= count($entries) ?> entries · <?= date('M Y') === date('M Y',strtotime($current_month['month_year'].'-01')) ? 'Current month' : '' ?></div>
+        <div style="font-size:12px;color:var(--text3)"><?= count($entries) ?> entries<?= date('M Y')===date('M Y',strtotime($current_month['month_year'].'-01'))?' · Current month':'' ?></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <!-- Revenue quick edit kept for backward compat when no rev entries -->
+        <!-- Revenue quick-edit — only shown when no revenue entries exist (backward compat) -->
         <?php if (empty($rev_entries)): ?>
         <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px">
           <span style="font-size:11px;color:var(--text3)">Revenue:</span>
@@ -480,229 +523,137 @@ renderLayout('Expenses', 'expenses');
           💰 Revenue: <?= number_format($revenue,2) ?> INR (<?= count($rev_entries) ?> payment<?= count($rev_entries)>1?'s':'' ?>)
         </div>
         <?php endif; ?>
-        <button class="btn btn-ghost btn-sm" onclick="openModal('modal-entry');document.getElementById('em-mid').value=<?= $current_month['id'] ?>;document.getElementById('em-eid').value=''">＋ Row</button>
+        <button class="btn btn-ghost btn-sm"
+          onclick="openModal('modal-entry');document.getElementById('em-mid').value=<?= $current_month['id'] ?>;document.getElementById('em-eid').value=''">
+          ＋ Row
+        </button>
         <?php if (isAdmin()): ?>
         <div class="dropdown">
           <button class="btn btn-ghost btn-sm" onclick="toggleDropdown('mdd<?= $current_month['id'] ?>')">⋯</button>
           <div class="dropdown-menu" id="mdd<?= $current_month['id'] ?>">
             <a class="dropdown-item" href="#" onclick="editMonth(<?= htmlspecialchars(json_encode($current_month)) ?>)">✎ Edit Month</a>
             <div class="dropdown-divider"></div>
-            <a class="dropdown-item danger" href="#" onclick="if(confirm('Delete entire month and all entries?'))document.getElementById('del-month-form').submit()">🗑 Delete Month</a>
+            <a class="dropdown-item danger" href="#"
+               onclick="if(confirm('Delete entire month and all entries?'))document.getElementById('del-month-form').submit()">
+               🗑 Delete Month
+            </a>
           </div>
-          <form id="del-month-form" method="POST" style="display:none"><input type="hidden" name="action" value="delete_month"><input type="hidden" name="month_id" value="<?= $current_month['id'] ?>"></form>
+          <form id="del-month-form" method="POST" style="display:none">
+            <input type="hidden" name="action" value="delete_month">
+            <input type="hidden" name="month_id" value="<?= $current_month['id'] ?>">
+          </form>
         </div>
         <?php endif; ?>
       </div>
     </div>
 
-    <!-- SUB-TABS: Expenses | Revenue Tracker -->
-    <div class="rev-subtabs" id="monthly-subtabs">
-      <button class="rev-subtab <?= !$show_rtab?'active':'' ?>" onclick="switchMonthTab('expenses')">📋 Expense Entries</button>
-      <button class="rev-subtab <?= $show_rtab?'active':'' ?>" onclick="switchMonthTab('revenue')">💰 Revenue Tracker <span id="rev-count-badge" style="background:rgba(16,185,129,.12);color:#10b981;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:4px"><?= count($rev_entries) ?></span></button>
+    <!-- Expense Entries heading — Revenue Tracker moved to its own top-level tab -->
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      📋 Expense Entries
     </div>
 
-    <!-- ══ EXPENSES SUB-TAB (UNCHANGED content) ══ -->
-    <div id="mtab-expenses" style="display:<?= $show_rtab?'none':'block' ?>">
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-    <table class="exp-table">
-      <thead>
-        <tr>
-          <th style="text-align:left">S.No</th>
-          <th style="text-align:left;min-width:140px">Category</th>
-          <th style="text-align:left;min-width:160px">Description</th>
-          <th style="min-width:110px">Own Spend</th>
-          <th style="min-width:110px">Office Spend</th>
-          <th style="min-width:80px">Currency</th>
-          <th style="min-width:100px">Purchase Date</th>
-          <th style="min-width:100px">Expire Date</th>
-          <th style="min-width:50px">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php $sno=1; foreach ($entries as $e): ?>
-        <tr id="row-<?= $e['id'] ?>">
-          <td style="text-align:center;color:var(--text3);font-size:12px"><?= $sno++ ?></td>
-          <td class="td-cat"><?= $CAT_ICONS[$e['category']] ?? '📌' ?> <?= h($e['category']) ?></td>
-          <td style="color:var(--text2);font-size:12.5px"><?= h($e['description'] ?? '') ?></td>
-          <td>
-            <input type="number" class="exp-input" step="0.01" min="0"
-              value="<?= number_format((float)$e['own_spend'],2,'.','') ?>"
-              onchange="quickSave(<?= $e['id'] ?>,this.value,null)"
-              data-eid="<?= $e['id'] ?>" data-field="own">
-          </td>
-          <td>
-            <input type="number" class="exp-input" step="0.01" min="0"
-              value="<?= number_format((float)$e['office_spend'],2,'.','') ?>"
-              onchange="quickSave(<?= $e['id'] ?>,null,this.value)"
-              data-eid="<?= $e['id'] ?>" data-field="office">
-          </td>
-          <td style="text-align:center;font-size:12px;color:var(--text3)"><?= h($e['currency']) ?></td>
-          <td style="font-size:12px;text-align:center;color:var(--text2)"><?= $e['purchase_date'] ? fDate($e['purchase_date'],'d-m-Y') : '—' ?></td>
-          <td style="font-size:12px;text-align:center;color:var(--text2)"><?= $e['expire_date'] ? fDate($e['expire_date'],'d-m-Y') : '—' ?></td>
-          <td style="text-align:center">
-            <div style="display:flex;gap:4px;justify-content:center">
-              <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick='openEditEntry(<?= htmlspecialchars(json_encode($e)) ?>)'>✎</button>
-              <form method="POST" onsubmit="return confirm('Delete entry?')" style="display:inline">
-                <input type="hidden" name="action" value="delete_entry">
-                <input type="hidden" name="entry_id" value="<?= $e['id'] ?>">
-                <input type="hidden" name="month_id" value="<?= $current_month['id'] ?>">
-                <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Delete">✕</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-      <tfoot>
-        <tr class="total-row">
-          <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em;color:var(--text3)">OWN TOTAL</td>
-          <td style="text-align:right;color:var(--orange);font-size:14px" id="own-total"><?= number_format($own_total,2) ?> INR</td>
-          <td colspan="5"></td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em;color:var(--text3)">OFFICE TOTAL</td>
-          <td></td>
-          <td style="text-align:right;color:var(--blue);font-size:14px" id="office-total"><?= number_format($office_total,2) ?> INR</td>
-          <td colspan="4"></td>
-        </tr>
-        <tr class="total-row" style="background:var(--bg4)">
-          <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em">REVENUE</td>
-          <td colspan="2"></td>
-          <td colspan="2" style="text-align:center;color:var(--green);font-size:14px" id="revenue-disp"><?= number_format($revenue,2) ?> INR</td>
-          <td colspan="2"></td>
-        </tr>
-        <tr class="total-row" style="background:var(--bg4)">
-          <td colspan="3" style="text-align:right;font-size:13px;font-weight:800;letter-spacing:.05em">BALANCE</td>
-          <td colspan="5" style="text-align:center;font-size:15px;font-weight:800" class="<?= $balance>=0?'balance-pos':'balance-neg' ?>">
-            <?= $balance>=0?'+':'-' ?> <?= number_format(abs($balance),2) ?> INR
-          </td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>
-    </div>
+    <!-- ── Expense Entries sub-tab ── -->
+    <div id="mtab-expenses">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="exp-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">S.No</th>
+            <th style="text-align:left;min-width:140px">Category</th>
+            <th style="text-align:left;min-width:160px">Description</th>
+            <th style="min-width:110px">Own Spend</th>
+            <th style="min-width:110px">Office Spend</th>
+            <th style="min-width:80px">Currency</th>
+            <th style="min-width:100px">Purchase Date</th>
+            <th style="min-width:100px">Expire Date</th>
+            <th style="min-width:50px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php $sno=1; foreach ($entries as $e): ?>
+          <tr id="row-<?= $e['id'] ?>">
+            <td style="text-align:center;color:var(--text3);font-size:12px"><?= $sno++ ?></td>
+            <td class="td-cat"><?= $CAT_ICONS[$e['category']] ?? '📌' ?> <?= h($e['category']) ?></td>
+            <td style="color:var(--text2);font-size:12.5px"><?= h($e['description'] ?? '') ?></td>
+            <td>
+              <input type="number" class="exp-input" step="0.01" min="0"
+                value="<?= number_format((float)$e['own_spend'],2,'.','') ?>"
+                onchange="quickSave(<?= $e['id'] ?>,this.value,null)"
+                data-eid="<?= $e['id'] ?>" data-field="own">
+            </td>
+            <td>
+              <input type="number" class="exp-input" step="0.01" min="0"
+                value="<?= number_format((float)$e['office_spend'],2,'.','') ?>"
+                onchange="quickSave(<?= $e['id'] ?>,null,this.value)"
+                data-eid="<?= $e['id'] ?>" data-field="office">
+            </td>
+            <td style="text-align:center;font-size:12px;color:var(--text3)"><?= h($e['currency']) ?></td>
+            <td style="font-size:12px;text-align:center;color:var(--text2)"><?= $e['purchase_date'] ? fDate($e['purchase_date'],'d-m-Y') : '—' ?></td>
+            <td style="font-size:12px;text-align:center;color:var(--text2)"><?= $e['expire_date'] ? fDate($e['expire_date'],'d-m-Y') : '—' ?></td>
+            <td style="text-align:center">
+              <div style="display:flex;gap:4px;justify-content:center">
+                <button class="btn btn-ghost btn-sm btn-icon" title="Edit"
+                  onclick='openEditEntry(<?= htmlspecialchars(json_encode($e)) ?>)'>✎</button>
+                <form method="POST" onsubmit="return confirm('Delete entry?')" style="display:inline">
+                  <input type="hidden" name="action" value="delete_entry">
+                  <input type="hidden" name="entry_id" value="<?= $e['id'] ?>">
+                  <input type="hidden" name="month_id" value="<?= $current_month['id'] ?>">
+                  <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Delete">✕</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em;color:var(--text3)">OWN TOTAL</td>
+            <td style="text-align:right;color:var(--orange);font-size:14px" id="own-total"><?= number_format($own_total,2) ?> INR</td>
+            <td colspan="5"></td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em;color:var(--text3)">OFFICE TOTAL</td>
+            <td></td>
+            <td style="text-align:right;color:var(--blue);font-size:14px" id="office-total"><?= number_format($office_total,2) ?> INR</td>
+            <td colspan="4"></td>
+          </tr>
+          <tr class="total-row" style="background:var(--bg4)">
+            <td colspan="3" style="text-align:right;font-size:12px;letter-spacing:.05em">REVENUE</td>
+            <td colspan="2"></td>
+            <td colspan="2" style="text-align:center;color:var(--green);font-size:14px" id="revenue-disp"><?= number_format($revenue,2) ?> INR</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr class="total-row" style="background:var(--bg4)">
+            <td colspan="3" style="text-align:right;font-size:13px;font-weight:800;letter-spacing:.05em">BALANCE</td>
+            <td colspan="5" style="text-align:center;font-size:15px;font-weight:800" class="<?= $balance>=0?'balance-pos':'balance-neg' ?>">
+              <?= $balance>=0?'+':'-' ?> <?= number_format(abs($balance),2) ?> INR
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
     </div><!-- end mtab-expenses -->
 
-    <!-- ══ REVENUE TRACKER SUB-TAB ══ -->
-    <div id="mtab-revenue" style="display:<?= $show_rtab?'block':'none' ?>">
-      <div class="rev-tracker-wrap">
-
-        <!-- Revenue summary boxes -->
-        <?php
-          $rev_total = array_sum($rev_by_type);
-          $project_names = array_unique(array_column($rev_entries,'project_name'));
-        ?>
-        <div class="rev-summary-row">
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:var(--green)"><?= number_format($rev_total,2) ?></div>
-            <div class="rev-sum-lbl">Total Revenue</div>
-          </div>
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:#f59e0b"><?= number_format($rev_by_type['advance'],2) ?></div>
-            <div class="rev-sum-lbl">🟡 Advance</div>
-          </div>
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:#6366f1"><?= number_format($rev_by_type['milestone'],2) ?></div>
-            <div class="rev-sum-lbl">🔵 Milestone</div>
-          </div>
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:#10b981"><?= number_format($rev_by_type['final'],2) ?></div>
-            <div class="rev-sum-lbl">🟢 Final Pay</div>
-          </div>
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:var(--text3)"><?= number_format($rev_by_type['other'],2) ?></div>
-            <div class="rev-sum-lbl">⚪ Other</div>
-          </div>
-          <div class="rev-sum-box">
-            <div class="rev-sum-val" style="color:var(--orange)"><?= count($project_names) ?></div>
-            <div class="rev-sum-lbl">Projects</div>
-          </div>
-        </div>
-
-        <!-- Revenue entries table header + add button -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Payment Entries <span style="font-size:11px;color:var(--text3);font-weight:400">(<?= count($rev_entries) ?> records)</span></div>
-          <button class="btn btn-primary btn-sm" onclick="openRevModal()">＋ Add Payment</button>
-        </div>
-
-        <!-- Revenue entries table -->
-        <?php if (empty($rev_entries)): ?>
-        <div style="text-align:center;padding:28px;color:var(--text3)">
-          <div style="font-size:28px;margin-bottom:8px">💰</div>
-          <div style="font-size:13px">No revenue entries yet.</div>
-          <div style="font-size:12px;margin-top:4px">Track partial project payments — advance, milestone &amp; final.</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openRevModal()">＋ Add First Payment</button>
-        </div>
-        <?php else: ?>
-        <div style="overflow-x:auto">
-        <table class="rev-tbl">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Project</th>
-              <th>Client</th>
-              <th>Type</th>
-              <th style="text-align:right">Amount</th>
-              <th>Date</th>
-              <th>Notes</th>
-              <th style="text-align:center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($rev_entries as $i=>$r):
-              $tc = $PAY_COLORS[$r['payment_type']] ?? '#94a3b8';
-            ?>
-            <tr>
-              <td><?= $i+1 ?></td>
-              <td style="font-weight:600;color:var(--text)" title="<?= h($r['project_name']) ?>"><?= h($r['project_name']) ?></td>
-              <td style="font-size:12.5px" title="<?= h($r['client_name']) ?>"><?= h($r['client_name'] ?: '—') ?></td>
-              <td>
-                <span class="rev-type-pill" style="background:<?= $tc ?>18;color:<?= $tc ?>;border:1px solid <?= $tc ?>35">
-                  <?= $PAY_TYPES[$r['payment_type']] ?? $r['payment_type'] ?>
-                </span>
-              </td>
-              <td style="text-align:right;font-weight:700;color:var(--green);white-space:nowrap"><?= number_format($r['amount'],2) ?> <?= h($r['currency']) ?></td>
-              <td style="font-size:12px;color:var(--text2);white-space:nowrap"><?= $r['payment_date'] ? fDate($r['payment_date'],'d-m-Y') : '—' ?></td>
-              <td style="font-size:12px;color:var(--text3)" title="<?= h($r['notes']) ?>"><?= h($r['notes'] ?: '—') ?></td>
-              <td>
-                <div style="display:flex;gap:4px;justify-content:center">
-                  <button class="btn btn-ghost btn-sm btn-icon" onclick='openEditRevModal(<?= htmlspecialchars(json_encode($r)) ?>)' title="Edit">✎</button>
-                  <form method="POST" onsubmit="return confirm('Delete this payment entry?')" style="display:inline">
-                    <input type="hidden" name="action" value="delete_rev_entry">
-                    <input type="hidden" name="rev_entry_id" value="<?= $r['id'] ?>">
-                    <input type="hidden" name="month_id" value="<?= $current_month['id'] ?>">
-                    <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Delete">✕</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-          <tfoot>
-            <tr style="background:var(--bg3)">
-              <td colspan="4" style="text-align:right;font-size:12px;font-weight:700;color:var(--text3);letter-spacing:.04em;padding:10px">TOTAL REVENUE</td>
-              <td style="text-align:right;font-weight:800;font-size:15px;color:var(--green);padding:10px;white-space:nowrap"><?= number_format($rev_total,2) ?> INR</td>
-              <td colspan="3"></td>
-            </tr>
-          </tfoot>
-        </table>
-        </div>
-        <?php endif; ?>
-      </div>
-    </div><!-- end mtab-revenue -->
-
     <?php else: ?>
-    <div class="card"><div class="empty-state"><div class="icon">📊</div><p>Select a month or <a href="#" onclick="openModal('modal-month')" style="color:var(--orange)">create a new month</a>.</p></div></div>
+    <div class="card">
+      <div class="empty-state">
+        <div class="icon">📊</div>
+        <p>Select a month or <a href="#" onclick="openModal('modal-month')" style="color:var(--orange)">create a new month</a>.</p>
+      </div>
+    </div>
     <?php endif; ?>
   </div>
 </div>
 
-<?php elseif ($tab === 'subscriptions'): ?>
+<?php /* ════════════════════════════════════════════════════
+         TAB 2 — SUBSCRIPTIONS
+         ════════════════════════════════════════════════════ */
+elseif ($tab === 'subscriptions'): ?>
 
-<!-- SUBSCRIPTIONS TAB (UNCHANGED) -->
 <div class="card-header" style="margin-bottom:16px">
   <div>
-    <div style="font-family:var(--font-display);font-size:18px;font-weight:700">Subscriptions & Invoices</div>
+    <div style="font-family:var(--font-display);font-size:18px;font-weight:700">Subscriptions &amp; Invoices</div>
     <div style="font-size:12px;color:var(--text3)">Recurring services · Total paid: <strong style="color:var(--orange)">$ <?= number_format($sub_total_paid,2) ?></strong></div>
   </div>
   <button class="btn btn-primary" onclick="openModal('modal-sub')">＋ <span>Add Subscription</span></button>
@@ -713,14 +664,16 @@ renderLayout('Expenses', 'expenses');
 <div class="card">
   <div class="table-wrap">
   <table>
-    <thead><tr>
-      <th>S.No</th><th>Invoice Number</th><th>Paid To</th><th>Date of Issue</th><th>Date of End</th>
-      <th>Paid Amount</th><th>Payment Method</th><th>Total Paid (Cumulative)</th><th>Status</th><th>Paid By</th><th>Actions</th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th>S.No</th><th>Invoice Number</th><th>Paid To</th><th>Date of Issue</th><th>Date of End</th>
+        <th>Paid Amount</th><th>Payment Method</th><th>Total Paid (Cumulative)</th><th>Status</th><th>Paid By</th><th>Actions</th>
+      </tr>
+    </thead>
     <tbody>
       <?php $running=0; foreach ($subs as $i=>$s):
         $running += $s['paid_amount'];
-        $sc = ['active'=>'#10b981','expired'=>'#ef4444','cancelled'=>'#94a3b8'][$s['status']];
+        $sc       = ['active'=>'#10b981','expired'=>'#ef4444','cancelled'=>'#94a3b8'][$s['status']] ?? '#94a3b8';
         $exp_soon = $s['date_of_end'] && $s['date_of_end'] <= date('Y-m-d',strtotime('+7 days')) && $s['status']==='active';
       ?>
       <tr>
@@ -752,12 +705,14 @@ renderLayout('Expenses', 'expenses');
 </div>
 <?php endif; ?>
 
-<?php elseif ($tab === 'software'): ?>
+<?php /* ════════════════════════════════════════════════════
+         TAB 3 — SOFTWARE PURCHASES
+         ════════════════════════════════════════════════════ */
+elseif ($tab === 'software'): ?>
 
-<!-- SOFTWARE PURCHASES TAB (UNCHANGED) -->
 <div class="card-header" style="margin-bottom:16px">
   <div>
-    <div style="font-family:var(--font-display);font-size:18px;font-weight:700">Software & Tool Purchases</div>
+    <div style="font-family:var(--font-display);font-size:18px;font-weight:700">Software &amp; Tool Purchases</div>
     <div style="font-size:12px;color:var(--text3)">One-time and limited-use tool purchases</div>
   </div>
   <button class="btn btn-primary" onclick="openModal('modal-sw')">＋ <span>Add Purchase</span></button>
@@ -768,10 +723,12 @@ renderLayout('Expenses', 'expenses');
 <div class="card">
   <div class="table-wrap">
   <table>
-    <thead><tr>
-      <th>S.No</th><th>Invoice Number</th><th>Paid To</th><th>Date Purchase</th><th>Date of Expire</th>
-      <th>Usage Limit</th><th>Paid Amount</th><th>Payment Method</th><th>Paid By</th><th>Notes</th><th>Actions</th>
-    </tr></thead>
+    <thead>
+      <tr>
+        <th>S.No</th><th>Invoice Number</th><th>Paid To</th><th>Date Purchase</th><th>Date of Expire</th>
+        <th>Usage Limit</th><th>Paid Amount</th><th>Payment Method</th><th>Paid By</th><th>Notes</th><th>Actions</th>
+      </tr>
+    </thead>
     <tbody>
       <?php foreach ($software as $i=>$sw):
         $expired = $sw['date_expire'] && $sw['date_expire'] < date('Y-m-d');
@@ -805,46 +762,36 @@ renderLayout('Expenses', 'expenses');
 </div>
 <?php endif; ?>
 
-<?php elseif ($tab === 'revenue'): ?>
-
-<!-- ══ REVENUE TRACKER — TOP-LEVEL TAB ══ -->
-<?php
-// Load all months for the sidebar
-$rev_month_id = (int)($_GET['month'] ?? 0);
-if (!$rev_month_id && !empty($months)) $rev_month_id = $months[0]['id'];
-$rev_current_month = null;
-$rev_entries_tab = [];
-$rev_by_type_tab = ['advance'=>0,'milestone'=>0,'final'=>0,'other'=>0];
-if ($rev_month_id) {
-    $rev_current_month = $db->query("SELECT * FROM expense_months WHERE id=$rev_month_id")->fetch_assoc();
-    if ($rev_current_month) {
-        $rev_entries_tab = $db->query("SELECT * FROM month_revenue_entries WHERE month_id=$rev_month_id ORDER BY payment_date ASC, id ASC")->fetch_all(MYSQLI_ASSOC);
-        foreach ($rev_entries_tab as $r) $rev_by_type_tab[$r['payment_type']] += $r['amount'];
-    }
-}
-$rev_total_tab = array_sum($rev_by_type_tab);
-$rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_name'));
-?>
+<?php /* ════════════════════════════════════════════════════
+         TAB 4 — REVENUE TRACKER (top-level)
+         ════════════════════════════════════════════════════ */
+elseif ($tab === 'revenue'): ?>
 
 <div style="display:flex;gap:18px;align-items:flex-start" class="exp-layout">
 
-  <!-- Sidebar: same month list -->
+  <!-- Month sidebar (shows revenue per month) -->
   <div style="width:220px;min-width:220px;flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <span style="font-size:12px;font-weight:600;color:var(--text2)">MONTHS</span>
     </div>
     <div class="month-list">
       <?php foreach ($months as $m):
-        $m_rev = (float)$db->query("SELECT COALESCE(SUM(amount),0) s FROM month_revenue_entries WHERE month_id={$m['id']}")->fetch_assoc()['s'];
+        $m_rev_q = $db->query("SELECT COALESCE(SUM(amount),0) s FROM month_revenue_entries WHERE month_id={$m['id']}");
+        $m_rev   = $m_rev_q ? (float)$m_rev_q->fetch_assoc()['s'] : 0;
       ?>
       <div class="month-pill <?= $rev_month_id==$m['id']?'active':'' ?>"
            onclick="location.href='expenses.php?tab=revenue&month=<?= $m['id'] ?>'">
         <span><?= h($m['month_label']) ?></span>
-        <span style="font-size:10px;font-weight:700;color:var(--green)"><?= $m_rev>0?number_format($m_rev,0):'' ?></span>
+        <span style="font-size:10px;font-weight:700;color:<?= $m_rev>0?'var(--green)':'var(--text3)' ?>">
+          <?= $m_rev>0 ? number_format($m_rev,0) : '' ?>
+        </span>
       </div>
       <?php endforeach; ?>
       <?php if (empty($months)): ?>
-      <div style="font-size:12px;color:var(--text3);padding:10px;text-align:center">No months yet.<br><a href="expenses.php?tab=monthly" style="color:var(--orange)">Create one first</a></div>
+      <div style="font-size:12px;color:var(--text3);padding:10px;text-align:center">
+        No months yet.<br>
+        <a href="expenses.php?tab=monthly" style="color:var(--orange)">Create one first</a>
+      </div>
       <?php endif; ?>
     </div>
   </div>
@@ -855,30 +802,12 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
 
     <!-- Summary boxes -->
     <div class="rev-summary-row" style="margin-bottom:18px">
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:var(--green)"><?= number_format($rev_total_tab,2) ?></div>
-        <div class="rev-sum-lbl">Total Revenue</div>
-      </div>
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:#f59e0b"><?= number_format($rev_by_type_tab['advance'],2) ?></div>
-        <div class="rev-sum-lbl">🟡 Advance</div>
-      </div>
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:#6366f1"><?= number_format($rev_by_type_tab['milestone'],2) ?></div>
-        <div class="rev-sum-lbl">🔵 Milestone</div>
-      </div>
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:#10b981"><?= number_format($rev_by_type_tab['final'],2) ?></div>
-        <div class="rev-sum-lbl">🟢 Final Pay</div>
-      </div>
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:var(--text3)"><?= number_format($rev_by_type_tab['other'],2) ?></div>
-        <div class="rev-sum-lbl">⚪ Other</div>
-      </div>
-      <div class="rev-sum-box">
-        <div class="rev-sum-val" style="color:var(--orange)"><?= count($rev_project_names_tab) ?></div>
-        <div class="rev-sum-lbl">Projects</div>
-      </div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:var(--green)"><?= number_format($rev_total_tab,2) ?></div><div class="rev-sum-lbl">Total Revenue</div></div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:#f59e0b"><?= number_format($rev_by_type_tab['advance'],2) ?></div><div class="rev-sum-lbl">🟡 Advance</div></div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:#6366f1"><?= number_format($rev_by_type_tab['milestone'],2) ?></div><div class="rev-sum-lbl">🔵 Milestone</div></div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:#10b981"><?= number_format($rev_by_type_tab['final'],2) ?></div><div class="rev-sum-lbl">🟢 Final Pay</div></div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:var(--text3)"><?= number_format($rev_by_type_tab['other'],2) ?></div><div class="rev-sum-lbl">⚪ Other</div></div>
+      <div class="rev-sum-box"><div class="rev-sum-val" style="color:var(--orange)"><?= count($rev_project_names_tab) ?></div><div class="rev-sum-lbl">Projects</div></div>
     </div>
 
     <!-- Month header -->
@@ -887,7 +816,7 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
         <div style="font-family:var(--font-display);font-size:18px;font-weight:700"><?= h($rev_current_month['month_label']) ?> — Revenue</div>
         <div style="font-size:12px;color:var(--text3)"><?= count($rev_entries_tab) ?> payment record<?= count($rev_entries_tab)!=1?'s':'' ?></div>
       </div>
-      <button class="btn btn-primary" onclick="openRevModal()">＋ Add Payment</button>
+      <button class="btn btn-primary" onclick="openRevModal('revenue')">＋ Add Payment</button>
     </div>
 
     <!-- Revenue entries table -->
@@ -897,22 +826,13 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
         <div style="font-size:32px;margin-bottom:8px">💰</div>
         <div style="font-size:13px;font-weight:600">No revenue entries for <?= h($rev_current_month['month_label']) ?></div>
         <div style="font-size:12px;margin-top:4px">Track advance, milestone &amp; final project payments here.</div>
-        <button class="btn btn-primary btn-sm" style="margin-top:14px" onclick="openRevModal()">＋ Add First Payment</button>
+        <button class="btn btn-primary btn-sm" style="margin-top:14px" onclick="openRevModal('revenue')">＋ Add First Payment</button>
       </div>
       <?php else: ?>
       <div style="overflow-x:auto">
       <table class="rev-tbl">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Project</th>
-            <th>Client</th>
-            <th>Type</th>
-            <th style="text-align:right">Amount</th>
-            <th>Date</th>
-            <th>Notes</th>
-            <th style="text-align:center">Actions</th>
-          </tr>
+          <tr><th>#</th><th>Project</th><th>Client</th><th>Type</th><th style="text-align:right">Amount</th><th>Date</th><th>Notes</th><th style="text-align:center">Actions</th></tr>
         </thead>
         <tbody>
           <?php foreach ($rev_entries_tab as $i=>$r):
@@ -922,21 +842,18 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
             <td><?= $i+1 ?></td>
             <td style="font-weight:600;color:var(--text)" title="<?= h($r['project_name']) ?>"><?= h($r['project_name']) ?></td>
             <td style="font-size:12.5px" title="<?= h($r['client_name']) ?>"><?= h($r['client_name'] ?: '—') ?></td>
-            <td>
-              <span class="rev-type-pill" style="background:<?= $tc ?>18;color:<?= $tc ?>;border:1px solid <?= $tc ?>35">
-                <?= $PAY_TYPES[$r['payment_type']] ?? $r['payment_type'] ?>
-              </span>
-            </td>
+            <td><span class="rev-type-pill" style="background:<?= $tc ?>18;color:<?= $tc ?>;border:1px solid <?= $tc ?>35"><?= $PAY_TYPES[$r['payment_type']] ?? $r['payment_type'] ?></span></td>
             <td style="text-align:right;font-weight:700;color:var(--green);white-space:nowrap"><?= number_format($r['amount'],2) ?> <?= h($r['currency']) ?></td>
             <td style="font-size:12px;color:var(--text2);white-space:nowrap"><?= $r['payment_date'] ? fDate($r['payment_date'],'d-m-Y') : '—' ?></td>
             <td style="font-size:12px;color:var(--text3)" title="<?= h($r['notes']) ?>"><?= h($r['notes'] ?: '—') ?></td>
             <td>
               <div style="display:flex;gap:4px;justify-content:center">
-                <button class="btn btn-ghost btn-sm btn-icon" onclick='openEditRevModal(<?= htmlspecialchars(json_encode($r)) ?>)' title="Edit">✎</button>
+                <button class="btn btn-ghost btn-sm btn-icon" onclick='openEditRevModal(<?= htmlspecialchars(json_encode($r)) ?>,"revenue")' title="Edit">✎</button>
                 <form method="POST" onsubmit="return confirm('Delete this payment entry?')" style="display:inline">
                   <input type="hidden" name="action" value="delete_rev_entry">
                   <input type="hidden" name="rev_entry_id" value="<?= $r['id'] ?>">
                   <input type="hidden" name="month_id" value="<?= $rev_current_month['id'] ?>">
+                  <input type="hidden" name="from_tab" value="revenue">
                   <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Delete">✕</button>
                 </form>
               </div>
@@ -956,21 +873,17 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
       <?php endif; ?>
     </div>
 
-    <!-- Hidden form for modal POST: points back to revenue tab -->
-    <form id="rev-tab-form" method="POST" style="display:none">
-      <input type="hidden" name="action" value="save_rev_entry">
-      <input type="hidden" name="month_id" value="<?= $rev_month_id ?>">
-    </form>
-
     <?php else: ?>
     <div class="card"><div class="empty-state"><div class="icon">💰</div><p>Select a month from the sidebar to view revenue.</p></div></div>
     <?php endif; ?>
   </div>
 </div>
 
-<?php else: // OVERVIEW TAB ?>
+<?php /* ════════════════════════════════════════════════════
+         TAB 5 — OVERALL SUMMARY
+         ════════════════════════════════════════════════════ */
+else: ?>
 
-<!-- OVERALL SUMMARY TAB — stats unchanged, table FIXED -->
 <div style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:16px">Overall Expense Summary</div>
 
 <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
@@ -982,21 +895,14 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   <div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,.12)">💻</div><div><div class="stat-val"><?= count($software) ?></div><div class="stat-lbl">Tool Purchases</div></div></div>
 </div>
 
-<!-- Month-by-Month Breakdown — FIXED column alignment -->
 <?php if (!empty($months)): ?>
-<div class="card">
+<div class="card" style="margin-top:20px">
   <div class="card-title" style="margin-bottom:14px">Month-by-Month Breakdown</div>
   <div class="table-wrap" style="overflow-x:auto">
   <table class="overview-breakdown-tbl">
     <thead>
       <tr>
-        <th>S.No</th>
-        <th>Month</th>
-        <th>Own Spend</th>
-        <th>Office Spend</th>
-        <th>Total Spend</th>
-        <th>Revenue</th>
-        <th>Balance</th>
+        <th>S.No</th><th>Month</th><th>Own Spend</th><th>Office Spend</th><th>Total Spend</th><th>Revenue</th><th>Balance</th>
       </tr>
     </thead>
     <tbody>
@@ -1038,11 +944,14 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
 </div>
 <?php endif; ?>
 
-<?php endif; // end tabs ?>
+<?php endif; // end tab switch ?>
 
-<!-- ═══════════════════════════ MODALS ═══════════════════════════ -->
 
-<!-- Add/Edit Month (UNCHANGED) -->
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ── Add/Edit Month ── -->
 <div class="modal-overlay" id="modal-month">
   <div class="modal">
     <div class="modal-header">
@@ -1080,7 +989,7 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   </div>
 </div>
 
-<!-- Add/Edit Entry (UNCHANGED) -->
+<!-- ── Add/Edit Expense Entry ── -->
 <div class="modal-overlay" id="modal-entry">
   <div class="modal">
     <div class="modal-header">
@@ -1145,7 +1054,11 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   </div>
 </div>
 
-<!-- Add/Edit Revenue Entry (UNCHANGED) -->
+<!-- ── Add/Edit Revenue Entry ──
+     from_tab hidden field tells the POST handler where to redirect back:
+     'monthly' → expenses.php?month=X&rtab=1  (stay in monthly sub-tab)
+     'revenue' → expenses.php?tab=revenue&month=X  (stay in revenue top-level tab)
+-->
 <div class="modal-overlay" id="modal-rev-entry">
   <div class="modal">
     <div class="modal-header">
@@ -1154,8 +1067,9 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
     </div>
     <form method="POST">
       <input type="hidden" name="action" value="save_rev_entry">
-      <input type="hidden" name="month_id" id="rev-modal-mid" value="<?= $view_mid ?: $rev_month_id ?? 0 ?>">
+      <input type="hidden" name="month_id" id="rev-modal-mid" value="<?= $tab==='revenue' ? $rev_month_id : $view_mid ?>">
       <input type="hidden" name="rev_entry_id" id="rev-eid" value="">
+      <input type="hidden" name="from_tab" id="rev-from-tab" value="<?= $tab==='revenue'?'revenue':'monthly' ?>">
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
@@ -1207,7 +1121,7 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   </div>
 </div>
 
-<!-- Add/Edit Subscription (UNCHANGED) -->
+<!-- ── Add/Edit Subscription ── -->
 <div class="modal-overlay" id="modal-sub">
   <div class="modal">
     <div class="modal-header">
@@ -1234,7 +1148,13 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
           <div class="form-group"><label class="form-label">Payment Method</label><input type="text" name="payment_method" id="sub-pm" class="form-control" placeholder="e.g. Visa •••• 4584"></div>
           <div class="form-group"><label class="form-label">Status</label><select name="status" id="sub-st" class="form-control"><option value="active">Active</option><option value="expired">Expired</option><option value="cancelled">Cancelled</option></select></div>
         </div>
-        <div class="form-group"><label class="form-label">Paid By</label><select name="paid_by" id="sub-pb" class="form-control"><option value="">— Select —</option><?php foreach ($all_users as $u): ?><option value="<?= $u['id'] ?>"><?= h($u['name']) ?></option><?php endforeach; ?></select></div>
+        <div class="form-group">
+          <label class="form-label">Paid By</label>
+          <select name="paid_by" id="sub-pb" class="form-control">
+            <option value="">— Select —</option>
+            <?php foreach ($all_users as $u): ?><option value="<?= $u['id'] ?>"><?= h($u['name']) ?></option><?php endforeach; ?>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Notes</label><textarea name="notes" id="sub-notes" class="form-control" style="min-height:60px"></textarea></div>
       </div>
       <div class="modal-footer">
@@ -1245,7 +1165,7 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   </div>
 </div>
 
-<!-- Add/Edit Software Purchase (UNCHANGED) -->
+<!-- ── Add/Edit Software Purchase ── -->
 <div class="modal-overlay" id="modal-sw">
   <div class="modal">
     <div class="modal-header">
@@ -1265,14 +1185,24 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
           <div class="form-group"><label class="form-label">Date Expire</label><input type="date" name="date_expire" id="sw-de" class="form-control"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="form-label">Usage Limit</label><input type="text" name="usage_limit" id="sw-ul" class="form-control" placeholder="e.g. 1 Day, 1 Week, Lifetime" list="ul-list"><datalist id="ul-list"><option>1 Day</option><option>1 Week</option><option>1 Month</option><option>1 Year</option><option>Lifetime</option></datalist></div>
+          <div class="form-group">
+            <label class="form-label">Usage Limit</label>
+            <input type="text" name="usage_limit" id="sw-ul" class="form-control" placeholder="e.g. 1 Day, 1 Week, Lifetime" list="ul-list">
+            <datalist id="ul-list"><option>1 Day</option><option>1 Week</option><option>1 Month</option><option>1 Year</option><option>Lifetime</option></datalist>
+          </div>
           <div class="form-group"><label class="form-label">Currency</label><select name="currency" id="sw-cur" class="form-control"><option>INR</option><option>USD</option><option>EUR</option><option>LKR</option></select></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Paid Amount</label><input type="number" name="paid_amount" id="sw-amt" step="0.01" class="form-control" value="0"></div>
           <div class="form-group"><label class="form-label">Payment Method</label><input type="text" name="payment_method" id="sw-pm" class="form-control" placeholder="e.g. UPI QRCode"></div>
         </div>
-        <div class="form-group"><label class="form-label">Paid By</label><select name="paid_by" id="sw-pb" class="form-control"><option value="">— Select —</option><?php foreach ($all_users as $u): ?><option value="<?= $u['id'] ?>"><?= h($u['name']) ?></option><?php endforeach; ?></select></div>
+        <div class="form-group">
+          <label class="form-label">Paid By</label>
+          <select name="paid_by" id="sw-pb" class="form-control">
+            <option value="">— Select —</option>
+            <?php foreach ($all_users as $u): ?><option value="<?= $u['id'] ?>"><?= h($u['name']) ?></option><?php endforeach; ?>
+          </select>
+        </div>
         <div class="form-group"><label class="form-label">Notes</label><input type="text" name="notes" id="sw-notes" class="form-control" placeholder="e.g. Social presence edits"></div>
       </div>
       <div class="modal-footer">
@@ -1283,124 +1213,129 @@ $rev_project_names_tab = array_unique(array_column($rev_entries_tab,'project_nam
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════════ -->
 <script>
-// ── QUICK INLINE SAVE (UNCHANGED) ──────────────────────────────────────────
-const ownCache={}, officeCache={};
-document.querySelectorAll('.exp-input[data-field="own"]').forEach(inp=>{ownCache[inp.dataset.eid]=parseFloat(inp.value)||0});
-document.querySelectorAll('.exp-input[data-field="office"]').forEach(inp=>{officeCache[inp.dataset.eid]=parseFloat(inp.value)||0});
+// ── Inline quick-save for expense inputs ──────────────────────────────────
+var ownCache={}, officeCache={};
+document.querySelectorAll('.exp-input[data-field="own"]').forEach(function(inp){ ownCache[inp.dataset.eid]=parseFloat(inp.value)||0; });
+document.querySelectorAll('.exp-input[data-field="office"]').forEach(function(inp){ officeCache[inp.dataset.eid]=parseFloat(inp.value)||0; });
+
 function quickSave(eid,own,office){
-  if(own!==null) ownCache[eid]=parseFloat(own)||0;
-  if(office!==null) officeCache[eid]=parseFloat(office)||0;
-  fetch('expenses.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:`action=quick_save&entry_id=${eid}&own_spend=${ownCache[eid]||0}&office_spend=${officeCache[eid]||0}`
-  }).then(r=>r.json()).then(d=>{if(d.ok)toast('Saved','success')}).catch(()=>{});
+  if(own!==null)    ownCache[eid]    = parseFloat(own)||0;
+  if(office!==null) officeCache[eid] = parseFloat(office)||0;
+  fetch('expenses.php',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'action=quick_save&entry_id='+eid+'&own_spend='+(ownCache[eid]||0)+'&office_spend='+(officeCache[eid]||0)
+  }).then(function(r){return r.json();}).then(function(d){if(d.ok)toast('Saved','success');}).catch(function(){});
 }
 
-// ── EDIT MONTH MODAL (UNCHANGED) ───────────────────────────────────────────
+// ── Edit month modal ───────────────────────────────────────────────────────
 function editMonth(m){
   document.getElementById('month-modal-title').textContent='Edit Month';
-  document.getElementById('mm-id').value=m.id;
-  document.getElementById('mm-my').value=m.month_year;
-  document.getElementById('mm-label').value=m.month_label;
-  document.getElementById('mm-rev').value=m.revenue;
-  document.getElementById('mm-notes').value=m.notes||'';
+  document.getElementById('mm-id').value    = m.id;
+  document.getElementById('mm-my').value    = m.month_year;
+  document.getElementById('mm-label').value = m.month_label;
+  document.getElementById('mm-rev').value   = m.revenue;
+  document.getElementById('mm-notes').value = m.notes||'';
   openModal('modal-month');
 }
 
-// ── EDIT ENTRY MODAL (UNCHANGED) ───────────────────────────────────────────
+// ── Edit expense entry modal ───────────────────────────────────────────────
 function openEditEntry(e){
   document.getElementById('entry-modal-title').textContent='Edit Entry';
-  document.getElementById('em-mid').value=e.month_id;
-  document.getElementById('em-eid').value=e.id;
-  document.getElementById('em-cat').value=e.category;
-  document.getElementById('em-cur').value=e.currency||'INR';
-  document.getElementById('em-desc').value=e.description||'';
-  document.getElementById('em-own').value=e.own_spend||0;
-  document.getElementById('em-office').value=e.office_spend||0;
-  document.getElementById('em-pdate').value=e.purchase_date||'';
-  document.getElementById('em-edate').value=e.expire_date||'';
-  document.getElementById('em-notes').value=e.notes||'';
+  document.getElementById('em-mid').value    = e.month_id;
+  document.getElementById('em-eid').value    = e.id;
+  document.getElementById('em-cat').value    = e.category;
+  document.getElementById('em-cur').value    = e.currency||'INR';
+  document.getElementById('em-desc').value   = e.description||'';
+  document.getElementById('em-own').value    = e.own_spend||0;
+  document.getElementById('em-office').value = e.office_spend||0;
+  document.getElementById('em-pdate').value  = e.purchase_date||'';
+  document.getElementById('em-edate').value  = e.expire_date||'';
+  document.getElementById('em-notes').value  = e.notes||'';
   document.getElementById('em-submit').textContent='Save Changes';
   openModal('modal-entry');
 }
 
-// ── EDIT SUBSCRIPTION (UNCHANGED) ─────────────────────────────────────────
+// ── Revenue modal (shared by both monthly sub-tab and revenue top-level tab)
+//    fromTab: 'monthly' | 'revenue' — controls which page the form redirects to
+function openRevModal(fromTab){
+  fromTab = fromTab || 'monthly';
+  document.getElementById('rev-modal-title').textContent='Add Revenue Payment';
+  document.getElementById('rev-eid').value      = '';
+  document.getElementById('rev-from-tab').value = fromTab;
+  // Set correct month_id based on which tab we are on
+  var mid = fromTab==='revenue' ? <?= (int)$rev_month_id ?> : <?= (int)$view_mid ?>;
+  document.getElementById('rev-modal-mid').value = mid;
+  document.getElementById('rev-proj').value   = '';
+  document.getElementById('rev-client').value = '';
+  document.getElementById('rev-type').value   = 'advance';
+  document.getElementById('rev-cur').value    = 'INR';
+  document.getElementById('rev-amt').value    = '0';
+  document.getElementById('rev-date').value   = new Date().toISOString().slice(0,10);
+  document.getElementById('rev-notes').value  = '';
+  openModal('modal-rev-entry');
+}
+
+function openEditRevModal(r, fromTab){
+  fromTab = fromTab || 'monthly';
+  document.getElementById('rev-modal-title').textContent='Edit Revenue Payment';
+  document.getElementById('rev-eid').value      = r.id;
+  document.getElementById('rev-from-tab').value = fromTab;
+  document.getElementById('rev-modal-mid').value= r.month_id;
+  document.getElementById('rev-proj').value     = r.project_name||'';
+  document.getElementById('rev-client').value   = r.client_name||'';
+  document.getElementById('rev-type').value     = r.payment_type||'advance';
+  document.getElementById('rev-cur').value      = r.currency||'INR';
+  document.getElementById('rev-amt').value      = r.amount||0;
+  document.getElementById('rev-date').value     = r.payment_date||'';
+  document.getElementById('rev-notes').value    = r.notes||'';
+  openModal('modal-rev-entry');
+}
+
+// ── Edit subscription modal ────────────────────────────────────────────────
 function openEditSub(s){
   document.getElementById('sub-modal-title').textContent='Edit Subscription';
-  document.getElementById('sub-id').value=s.id;
-  document.getElementById('sub-inv').value=s.invoice_number||'';
-  document.getElementById('sub-pt').value=s.paid_to||'';
-  document.getElementById('sub-di').value=s.date_of_issue||'';
-  document.getElementById('sub-de').value=s.date_of_end||'';
-  document.getElementById('sub-amt').value=s.paid_amount||0;
-  document.getElementById('sub-cur').value=s.currency||'USD';
-  document.getElementById('sub-pm').value=s.payment_method||'';
-  document.getElementById('sub-st').value=s.status||'active';
-  document.getElementById('sub-pb').value=s.paid_by||'';
-  document.getElementById('sub-notes').value=s.notes||'';
+  document.getElementById('sub-id').value    = s.id;
+  document.getElementById('sub-inv').value   = s.invoice_number||'';
+  document.getElementById('sub-pt').value    = s.paid_to||'';
+  document.getElementById('sub-di').value    = s.date_of_issue||'';
+  document.getElementById('sub-de').value    = s.date_of_end||'';
+  document.getElementById('sub-amt').value   = s.paid_amount||0;
+  document.getElementById('sub-cur').value   = s.currency||'USD';
+  document.getElementById('sub-pm').value    = s.payment_method||'';
+  document.getElementById('sub-st').value    = s.status||'active';
+  document.getElementById('sub-pb').value    = s.paid_by||'';
+  document.getElementById('sub-notes').value = s.notes||'';
   openModal('modal-sub');
 }
 
-// ── EDIT SOFTWARE (UNCHANGED) ──────────────────────────────────────────────
+// ── Edit software purchase modal ───────────────────────────────────────────
 function openEditSw(s){
   document.getElementById('sw-modal-title').textContent='Edit Purchase';
-  document.getElementById('sw-id').value=s.id;
-  document.getElementById('sw-inv').value=s.invoice_number||'';
-  document.getElementById('sw-pt').value=s.paid_to||'';
-  document.getElementById('sw-dp').value=s.date_purchase||'';
-  document.getElementById('sw-de').value=s.date_expire||'';
-  document.getElementById('sw-ul').value=s.usage_limit||'';
-  document.getElementById('sw-cur').value=s.currency||'INR';
-  document.getElementById('sw-amt').value=s.paid_amount||0;
-  document.getElementById('sw-pm').value=s.payment_method||'';
-  document.getElementById('sw-pb').value=s.paid_by||'';
-  document.getElementById('sw-notes').value=s.notes||'';
+  document.getElementById('sw-id').value    = s.id;
+  document.getElementById('sw-inv').value   = s.invoice_number||'';
+  document.getElementById('sw-pt').value    = s.paid_to||'';
+  document.getElementById('sw-dp').value    = s.date_purchase||'';
+  document.getElementById('sw-de').value    = s.date_expire||'';
+  document.getElementById('sw-ul').value    = s.usage_limit||'';
+  document.getElementById('sw-cur').value   = s.currency||'INR';
+  document.getElementById('sw-amt').value   = s.paid_amount||0;
+  document.getElementById('sw-pm').value    = s.payment_method||'';
+  document.getElementById('sw-pb').value    = s.paid_by||'';
+  document.getElementById('sw-notes').value = s.notes||'';
   openModal('modal-sw');
 }
 
-// ── REVENUE MODAL (UNCHANGED) ──────────────────────────────────────────────
-function openRevModal(){
-  document.getElementById('rev-modal-title').textContent='Add Revenue Payment';
-  document.getElementById('rev-eid').value='';
-  if(document.getElementById('rev-modal-mid') && !document.getElementById('rev-modal-mid').value*1) document.getElementById('rev-modal-mid').value=<?= $rev_month_id ?? $view_mid ?? 0 ?>;
-  document.getElementById('rev-proj').value='';
-  document.getElementById('rev-client').value='';
-  document.getElementById('rev-type').value='advance';
-  document.getElementById('rev-cur').value='INR';
-  document.getElementById('rev-amt').value='0';
-  document.getElementById('rev-date').value=new Date().toISOString().slice(0,10);
-  document.getElementById('rev-notes').value='';
-  openModal('modal-rev-entry');
-}
-function openEditRevModal(r){
-  document.getElementById('rev-modal-title').textContent='Edit Revenue Payment';
-  document.getElementById('rev-eid').value=r.id;
-  document.getElementById('rev-proj').value=r.project_name||'';
-  document.getElementById('rev-client').value=r.client_name||'';
-  document.getElementById('rev-type').value=r.payment_type||'advance';
-  document.getElementById('rev-cur').value=r.currency||'INR';
-  document.getElementById('rev-amt').value=r.amount||0;
-  document.getElementById('rev-date').value=r.payment_date||'';
-  document.getElementById('rev-notes').value=r.notes||'';
-  openModal('modal-rev-entry');
-}
-
-// ── MONTHLY SUB-TAB SWITCH (UNCHANGED) ────────────────────────────────────
-function switchMonthTab(tab){
-  var tabs=['expenses','revenue'];
-  tabs.forEach(function(t){
-    var el=document.getElementById('mtab-'+t);
-    var btn=document.querySelector('.rev-subtab[onclick*="\''+t+'\'"]');
-    if(el) el.style.display=t===tab?'block':'none';
-    if(btn) btn.classList.toggle('active',t===tab);
-  });
-}
-
-// ── AUTO-FILL MONTH LABEL (UNCHANGED) ─────────────────────────────────────
+// ── Auto-fill month label from date picker ─────────────────────────────────
 document.getElementById('mm-my')?.addEventListener('change',function(){
-  const d=new Date(this.value+'-01');
-  const lbl=d.toLocaleString('en',{month:'long',year:'numeric'});
-  document.getElementById('mm-label').value=lbl;
+  var d   = new Date(this.value+'-01');
+  var lbl = d.toLocaleString('en',{month:'long',year:'numeric'});
+  document.getElementById('mm-label').value = lbl;
 });
 </script>
 

@@ -1,16 +1,23 @@
 <?php
 /**
- * payslip_export.php — Professional payslip export: Print/PDF + DOCX
- * Legally compliant with Sri Lanka Shop & Office Act / EPF / ETF requirements
+ * payslip_export.php
+ * Industry-standard payslip: Print/PDF (A4) + DOCX
+ * - CONFIDENTIAL bar is SCREEN ONLY (hidden on @media print)
+ * - Digital signature image embedded from template
+ * - All 12 legally required fields displayed
+ * - Statutory deductions (EPF/ETF/APIT) labelled
  */
 
 function exportPayslip(mysqli $db, int $pid, string $fmt): void {
 
+    @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS signature_image VARCHAR(500) DEFAULT NULL AFTER authorized_title");
+
     $ps = $db->query("
         SELECT p.*,
-               t.company_name, t.company_reg_no, t.company_phone, t.company_email,
-               t.company_address, t.company_logo, t.footer_note,
-               t.epf_employer_no, t.authorized_by, t.authorized_title
+               t.company_name,    t.company_reg_no,   t.company_phone,
+               t.company_email,   t.company_address,  t.company_logo,
+               t.footer_note,     t.epf_employer_no,
+               t.authorized_by,   t.authorized_title,  t.signature_image
         FROM payslips p
         LEFT JOIN payslip_templates t ON t.id = p.template_id
         WHERE p.id = $pid
@@ -18,498 +25,467 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
 
     if (!$ps) { http_response_code(404); die('Payslip not found.'); }
 
-    $allowances  = json_decode($ps['allowances'] ?? '[]', true) ?: [];
-    $deductions  = json_decode($ps['deductions']  ?? '[]', true) ?: [];
-    $sym         = htmlspecialchars($ps['currency'] ?? 'LKR', ENT_QUOTES);
-    $cname       = htmlspecialchars($ps['company_name']    ?? 'Company',    ENT_QUOTES);
-    $creg        = htmlspecialchars($ps['company_reg_no']  ?? '',           ENT_QUOTES);
-    $cphone      = htmlspecialchars($ps['company_phone']   ?? '',           ENT_QUOTES);
-    $cemail      = htmlspecialchars($ps['company_email']   ?? '',           ENT_QUOTES);
-    $caddr       = htmlspecialchars($ps['company_address'] ?? '',           ENT_QUOTES);
-    $epf_eno     = htmlspecialchars($ps['epf_employer_no'] ?? '',           ENT_QUOTES);
-    $auth_by     = htmlspecialchars($ps['authorized_by']   ?? '',           ENT_QUOTES);
-    $auth_ttl    = htmlspecialchars($ps['authorized_title']?? 'HR / Finance Department', ENT_QUOTES);
-    $ename       = htmlspecialchars($ps['employee_name'],                   ENT_QUOTES);
-    $period      = htmlspecialchars($ps['pay_period'],                      ENT_QUOTES);
-    $ps_ref      = htmlspecialchars($ps['payslip_ref'] ?? ('PS-'.$pid),    ENT_QUOTES);
-    $nic_no      = htmlspecialchars($ps['nic_number']  ?? '',               ENT_QUOTES);
-    $epf_mno     = htmlspecialchars($ps['epf_member_no'] ?? '',             ENT_QUOTES);
-    $pay_date_str= $ps['pay_date'] ? date('d M Y', strtotime($ps['pay_date'])) : '—';
-    $issue_date  = date('d M Y');
+    $allowances = json_decode($ps['allowances'] ?? '[]', true) ?: [];
+    $deductions = json_decode($ps['deductions']  ?? '[]', true) ?: [];
 
-    // Days calculations
-    $wdays       = (int)($ps['working_days'] ?? 0);
-    $ddays       = (int)($ps['days_paid']    ?? 0);
-    $absent_days = ($wdays && $ddays) ? $wdays - $ddays : 0;
-    $daily_rate  = ($wdays && $ps['basic_salary']) ? number_format($ps['basic_salary'] / $wdays, 2) : '—';
+    $h = fn($s) => htmlspecialchars($s ?? '', ENT_QUOTES);
 
-    // ──────────────────────────────────────────────────────────────────────
-    // PRINT / PDF
-    // ──────────────────────────────────────────────────────────────────────
+    $sym        = $h($ps['currency']         ?? 'LKR');
+    $cname      = $h($ps['company_name']     ?? '');
+    $creg       = $h($ps['company_reg_no']   ?? '');
+    $cphone     = $h($ps['company_phone']    ?? '');
+    $cemail     = $h($ps['company_email']    ?? '');
+    $caddr      = $h($ps['company_address']  ?? '');
+    $epf_eno    = $h($ps['epf_employer_no']  ?? '');
+    $auth_by    = $h($ps['authorized_by']    ?? '');
+    $auth_ttl   = $h($ps['authorized_title'] ?? 'HR / Finance Department');
+    $ename      = $h($ps['employee_name']);
+    $period     = $h($ps['pay_period']);
+    $ps_ref     = $h($ps['payslip_ref']      ?? ('PS-'.$pid));
+    $nic_no     = $h($ps['nic_number']       ?? '');
+    $epf_mno    = $h($ps['epf_member_no']    ?? '');
+    $desig      = $h($ps['designation']      ?? '');
+    $dept       = $h($ps['department']       ?? '');
+    $emp_id_no  = $h($ps['employee_id_no']   ?? '');
+    $emp_email  = $h($ps['employee_email']   ?? '');
+    $emp_phone  = $h($ps['employee_phone']   ?? '');
+    $bank_name  = $h($ps['bank_name']        ?? '');
+    $account_no = $h($ps['account_no']       ?? '');
+    $notes_txt  = $h($ps['notes']            ?? '');
+
+    $pay_date_str = $ps['pay_date'] ? date('d M Y', strtotime($ps['pay_date'])) : '—';
+    $issue_date   = date('d M Y');
+    $status_label = ucfirst($ps['status'] ?? 'draft');
+
+    $wdays      = (int)($ps['working_days'] ?? 0);
+    $ddays      = (int)($ps['days_paid']    ?? 0);
+    $absent     = ($wdays && $ddays) ? max(0, $wdays - $ddays) : 0;
+    $daily_rate = ($wdays > 0 && $ps['basic_salary'] > 0)
+                  ? number_format($ps['basic_salary'] / $wdays, 2) : '';
+
+    $basic_f = number_format($ps['basic_salary'],    2);
+    $gross_f = number_format($ps['gross_salary'],    2);
+    $ded_f   = number_format($ps['total_deductions'],2);
+    $net_f   = number_format($ps['net_salary'],      2);
+
+    // Logo base64
+    $logo_html = '';
+    if (!empty($ps['company_logo']) && file_exists($ps['company_logo'])) {
+        $d = base64_encode(file_get_contents($ps['company_logo']));
+        $m = mime_content_type($ps['company_logo']) ?: 'image/png';
+        $logo_html = "<img src='data:{$m};base64,{$d}' class='co-logo' alt='Logo'>";
+    }
+
+    // Signature base64
+    $sig_html = '';
+    if (!empty($ps['signature_image']) && file_exists($ps['signature_image'])) {
+        $sd = base64_encode(file_get_contents($ps['signature_image']));
+        $sm = mime_content_type($ps['signature_image']) ?: 'image/png';
+        $sig_html = "<img src='data:{$sm};base64,{$sd}' class='sig-img' alt='Signature'>";
+    }
+
+    // Earnings HTML
+    $earn_html = "<tr><td>Basic Salary</td><td class='amt'>{$sym} {$basic_f}</td></tr>";
+    foreach ($allowances as $a) {
+        $n = $h($a['name']);
+        $v = number_format($a['amount'], 2);
+        $earn_html .= "<tr><td>{$n}</td><td class='amt'>{$sym} {$v}</td></tr>";
+    }
+
+    // Deductions HTML
+    $ded_html = '';
+    foreach ($deductions as $d) {
+        $n       = $h($d['name']);
+        $v       = number_format($d['amount'], 2);
+        $is_stat = (bool)preg_match('/\b(EPF|ETF|APIT|PAYE|tax)\b/i', $d['name']);
+        $badge   = $is_stat ? "<span class='stat-badge'>Statutory</span>" : '';
+        $ded_html .= "<tr class='ded-row'><td>{$n} {$badge}</td><td class='amt'>- {$sym} {$v}</td></tr>";
+    }
+    if (!$ded_html) {
+        $ded_html = "<tr><td class='muted' colspan='2'>No deductions for this period</td></tr>";
+    }
+
+    // Company sub-lines
+    $co_parts = [];
+    if ($creg)              $co_parts[] = "Reg. No: {$creg}";
+    if ($caddr)             $co_parts[] = nl2br($caddr);
+    if ($cphone && $cemail) $co_parts[] = "{$cphone} &nbsp;·&nbsp; {$cemail}";
+    elseif ($cphone)        $co_parts[] = $cphone;
+    elseif ($cemail)        $co_parts[] = $cemail;
+    if ($epf_eno)           $co_parts[] = "EPF Employer Reg: {$epf_eno}";
+    $co_sub = implode('<br>', $co_parts);
+
+    // Days bar
+    $days_html = '';
+    if ($wdays || $ddays) {
+        $dr = $daily_rate ?: '—';
+        $days_html = "<div class='days-bar'>
+          <div class='day-cell'><span class='dv'>{$wdays}</span><span class='dl'>Working Days</span></div>
+          <div class='day-cell'><span class='dv'>{$ddays}</span><span class='dl'>Days Paid</span></div>
+          <div class='day-cell'><span class='dv'>{$absent}</span><span class='dl'>Leave / Absent</span></div>
+          <div class='day-cell'><span class='dv'>{$dr}</span><span class='dl'>Daily Rate ({$sym})</span></div>
+        </div>";
+    }
+
+    $notes_html  = $notes_txt ? "<div class='notes-block'>&#128203; {$notes_txt}</div>" : '';
+    $footer_note = $h($ps['footer_note'] ?? 'This is a computer-generated payslip and requires no signature.');
+    $auth_display = $auth_by ?: 'Authorised Signatory';
+    $auth_sub     = implode(' &nbsp;·&nbsp; ', array_filter([$auth_ttl, $cname]));
+
+    // ══ PRINT / PDF ═══════════════════════════════════════════════════════
     if ($fmt === 'print') {
-
-        // Logo as base64
-        $logo_html = '';
-        if (!empty($ps['company_logo']) && file_exists($ps['company_logo'])) {
-            $data = base64_encode(file_get_contents($ps['company_logo']));
-            $mime = mime_content_type($ps['company_logo']) ?: 'image/png';
-            $logo_html = "<img src='data:{$mime};base64,{$data}' style='height:48px;margin-bottom:8px;display:block;border-radius:4px'>";
-        }
-
-        // Company sub-info block
-        $co_sub = '';
-        if ($creg)    $co_sub .= "<div class='co-sub'>Reg. No: {$creg}</div>";
-        if ($caddr)   $co_sub .= "<div class='co-sub'>".nl2br($caddr)."</div>";
-        if ($cphone || $cemail) {
-            $parts = array_filter([$cphone, $cemail]);
-            $co_sub .= "<div class='co-sub'>".implode('&nbsp;&nbsp;·&nbsp;&nbsp;', $parts)."</div>";
-        }
-        if ($epf_eno) $co_sub .= "<div class='co-sub'>EPF Employer No: {$epf_eno}</div>";
-
-        // Status colour
-        $status_col = $ps['status'] === 'issued' ? '#10b981' : '#f59e0b';
-
-        // Notes block
-        $notes_block = $ps['notes']
-            ? "<div class='notes-block'>📋 ".htmlspecialchars($ps['notes'],ENT_QUOTES)."</div>"
-            : '';
-
-        // Days bar HTML
-        $days_html = '';
-        if ($wdays || $ddays) {
-            $days_html = "
-            <div class='days-bar'>
-              <div class='days-item'><div class='dval'>{$wdays}</div><div class='dlbl'>Working Days</div></div>
-              <div class='days-item'><div class='dval'>{$ddays}</div><div class='dlbl'>Days Paid</div></div>
-              <div class='days-item'><div class='dval'>{$absent_days}</div><div class='dlbl'>Leave / Absent</div></div>
-              <div class='days-item'><div class='dval'>{$sym} {$daily_rate}</div><div class='dlbl'>Daily Rate</div></div>
-            </div>";
-        }
-
-        // Earnings rows
-        $earn_rows = "
-          <tr>
-            <td class='td-label'>Basic Salary</td>
-            <td class='td-val'>{$sym} ".number_format($ps['basic_salary'],2)."</td>
-          </tr>";
-        foreach ($allowances as $a) {
-            $n = htmlspecialchars($a['name'], ENT_QUOTES);
-            $earn_rows .= "<tr><td class='td-label'>{$n}</td><td class='td-val'>{$sym} ".number_format($a['amount'],2)."</td></tr>";
-        }
-
-        // Deductions rows
-        $ded_rows = '';
-        foreach ($deductions as $d) {
-            $n        = htmlspecialchars($d['name'], ENT_QUOTES);
-            $is_stat  = (bool)preg_match('/\b(EPF|ETF|APIT|PAYE|tax)\b/i', $d['name']);
-            $stat_tag = $is_stat ? " <span class='stat-tag'>Statutory</span>" : '';
-            $ded_rows .= "<tr><td class='td-label' style='color:#ef4444'>{$n}{$stat_tag}</td><td class='td-val' style='color:#ef4444'>- {$sym} ".number_format($d['amount'],2)."</td></tr>";
-        }
-        if (!$ded_rows) {
-            $ded_rows = "<tr><td colspan='2' class='td-label' style='color:#94a3b8'>No deductions for this period</td></tr>";
-        }
-
-        $gross_str = "{$sym} ".number_format($ps['gross_salary'],    2);
-        $ded_str   = "{$sym} ".number_format($ps['total_deductions'],2);
-        $net_str   = "{$sym} ".number_format($ps['net_salary'],      2);
-
-        $footer_note = htmlspecialchars(
-            $ps['footer_note'] ?? 'This is a computer-generated payslip and requires no signature.',
-            ENT_QUOTES
-        );
-
-        $auth_line = $auth_by ?: 'Authorised Signatory';
-        $auth_sub  = implode(' — ', array_filter([$auth_ttl, $cname]));
-
         header('Content-Type: text/html; charset=utf-8');
-        echo <<<HTML
+        ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Payslip — {$ename} — {$period}</title>
+<title>Payslip — <?= $ename ?> — <?= $period ?></title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e293b;background:#e2e8f0}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:13px}
+body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#dde3ea}
 
-/* ── toolbar ── */
-.toolbar{background:#1e293b;color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.toolbar h3{font-size:14px;font-weight:600}
-.toolbar-btns{display:flex;gap:10px}
-.btn-print{background:#f97316;color:#fff;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
-.btn-print:hover{opacity:.88}
+/* ── Toolbar: screen only ── */
+.toolbar{background:#1e293b;color:#fff;padding:11px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.toolbar h3{font-size:13px;font-weight:600}
+.btn-print{background:#f97316;color:#fff;border:none;padding:9px 24px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
+.btn-print:hover{background:#ea580c}
 .btn-close{background:rgba(255,255,255,.15);color:#fff;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-size:13px}
+.tbr{display:flex;gap:10px}
 
-/* ── page ── */
-.page{background:#fff;max-width:780px;margin:24px auto;border-radius:8px;box-shadow:0 4px 28px rgba(0,0,0,.18);overflow:hidden}
+/* ── Confidential: SCREEN ONLY — hidden when printing ── */
+.conf-bar{background:#f97316;color:#fff;font-size:9px;font-weight:800;letter-spacing:.2em;text-align:center;padding:5px;text-transform:uppercase}
 
-/* ── confidential stripe ── */
-.confidential-bar{background:#f97316;color:#fff;font-size:9.5px;font-weight:800;letter-spacing:.18em;text-align:center;padding:4px;text-transform:uppercase}
+/* ── Page ── */
+.page{background:#fff;max-width:800px;margin:20px auto;border-radius:6px;box-shadow:0 4px 32px rgba(0,0,0,.2);overflow:hidden}
 
-/* ── header ── */
-.hdr{background:#1e293b;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start}
-.hdr-left .co-name{font-size:19px;font-weight:800;color:#fff;margin-bottom:3px}
-.co-sub{font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-top:2px}
-.ps-lbl{font-size:23px;font-weight:900;color:#f97316;letter-spacing:2px;text-align:right}
-.ps-meta{font-size:11.5px;color:rgba(255,255,255,.65);margin-top:6px;line-height:1.8;text-align:right}
+/* ── Header ── */
+.hdr{background:#1e293b;padding:22px 30px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.hdr-l{flex:1}
+.co-logo{height:48px;margin-bottom:8px;display:block;border-radius:4px}
+.co-name{font-size:18px;font-weight:800;color:#fff;margin-bottom:4px;line-height:1.2}
+.co-sub{font-size:10.5px;color:rgba(255,255,255,.52);line-height:1.75;margin-top:2px}
+.hdr-r{text-align:right;flex-shrink:0}
+.ps-lbl{font-size:26px;font-weight:900;color:#f97316;letter-spacing:3px}
+.ps-meta{font-size:11px;color:rgba(255,255,255,.65);line-height:1.9;margin-top:6px}
+.ps-meta strong{color:#fff}
+.s-issued{color:#34d399!important;font-weight:700}
+.s-draft{color:#fbbf24!important;font-weight:700}
 
-/* ── ref bar ── */
-.ref-bar{background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:7px 28px;display:flex;justify-content:space-between;font-size:11px;color:#64748b}
+/* ── Ref bar ── */
+.ref-bar{background:#f1f5f9;border-bottom:1.5px solid #e2e8f0;padding:7px 30px;display:flex;justify-content:space-between;font-size:11px;color:#64748b}
+.ref-bar strong{color:#1e293b}
 
-/* ── body ── */
-.body{padding:22px 28px}
+/* ── Body ── */
+.body{padding:22px 30px}
+.sec-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;padding-bottom:6px;border-bottom:1.5px solid #e2e8f0;margin-bottom:12px}
 
-/* ── section title ── */
-.sec-title{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:9px;padding-bottom:5px;border-bottom:1.5px solid #e2e8f0}
+/* ── Info grid ── */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:18px}
+.ib p{font-size:12px;color:#334155;line-height:1.75;margin:0}
+.ib .en{font-size:14px;font-weight:800;color:#0f172a;margin-bottom:4px}
+.frow{display:flex;gap:6px;align-items:baseline;margin-bottom:1px}
+.flbl{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;min-width:76px;flex-shrink:0}
+.fval{font-size:12px;color:#0f172a;font-weight:600}
+.fval.normal{font-weight:400;color:#475569}
 
-/* ── info grid ── */
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:18px}
-.info-block p{font-size:12.5px;color:#334155;line-height:1.7;margin:0}
-.info-block strong{color:#1e293b;font-weight:700}
+/* ── Days bar ── */
+.days-bar{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #e2e8f0;border-radius:6px;overflow:hidden;margin-bottom:18px;background:#f8fafc}
+.day-cell{display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-right:1px solid #e2e8f0}
+.day-cell:last-child{border-right:none}
+.dv{font-size:17px;font-weight:800;color:#1e293b}
+.dl{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;text-align:center}
 
-/* ── days bar ── */
-.days-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:18px;overflow:hidden}
-.days-item{text-align:center;padding:10px 8px;border-right:1px solid #e2e8f0}
-.days-item:last-child{border-right:none}
-.dval{font-size:15px;font-weight:800;color:#1e293b}
-.dlbl{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+/* ── Notes ── */
+.notes-block{background:#fffbeb;border-left:3px solid #f59e0b;padding:9px 14px;font-size:11.5px;color:#92400e;margin-bottom:18px;border-radius:0 4px 4px 0}
 
-/* ── notes ── */
-.notes-block{background:#fffbeb;border-left:3px solid #f59e0b;padding:9px 14px;font-size:12px;color:#92400e;margin-bottom:16px;border-radius:0 4px 4px 0}
+/* ── Salary section ── */
+.sal-section{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;margin-bottom:4px}
+.sal-div{background:#e2e8f0}
+.sal-col-l{padding-right:20px}
+.sal-col-r{padding-left:20px}
+.scol-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding-bottom:7px;border-bottom:2px solid #e2e8f0;margin-bottom:0}
+.et{color:#059669}.dt{color:#dc2626}
+.sal-tbl{width:100%;border-collapse:collapse}
+.sal-tbl td{font-size:12px;color:#334155;padding:5px 0;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.sal-tbl .amt{text-align:right;white-space:nowrap;font-weight:500}
+.sal-tbl .ded-row td{color:#dc2626}
+.sal-tbl .muted{color:#94a3b8;font-style:italic}
+.stat-badge{display:inline-block;font-size:8.5px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;border:1px solid #fde68a}
+.sal-tbl tfoot td{font-size:12.5px;font-weight:700;padding:8px 0 2px;border-bottom:none;border-top:2px solid #1e293b}
+.sal-tbl tfoot .amt{text-align:right}
+.sal-tbl tfoot .ec{color:#059669}.sal-tbl tfoot .dc{color:#dc2626}
 
-/* ── salary grid ── */
-.sal-grid{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;margin-bottom:0}
-.sal-divider{background:#e2e8f0}
-.sal-col{padding:0 18px 0 0}
-.sal-col:last-child{padding:0 0 0 18px}
-.sal-col-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}
-.sal-col-title.earn{color:#10b981}
-.sal-col-title.ded{color:#ef4444}
-.sal-col table{width:100%;border-collapse:collapse}
-.td-label{font-size:12.5px;color:#334155;padding:5px 0;border-bottom:1px solid #f8fafc;vertical-align:middle}
-.td-val{font-size:12.5px;text-align:right;padding:5px 0;border-bottom:1px solid #f8fafc;white-space:nowrap;font-weight:500}
-.sal-total-row{display:flex;justify-content:space-between;padding:8px 0 0;font-weight:700;font-size:13px;border-top:2px solid #1e293b;margin-top:5px}
-.stat-tag{font-size:8.5px;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px;margin-left:4px;font-weight:700;vertical-align:middle}
+/* ── Summary strip ── */
+.sum-strip{background:#f8fafc;border-top:1px solid #e2e8f0;padding:9px 30px;display:flex;justify-content:space-evenly}
+.si{text-align:center;font-size:11px;color:#64748b}
+.sv{font-size:13px;font-weight:700;color:#1e293b;display:block}
+.sv.g{color:#059669}.sv.r{color:#dc2626}.sv.o{color:#f97316}
 
-/* ── net bar ── */
-.net-bar{background:#1e293b;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}
-.net-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.55)}
-.net-period{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
-.net-amt{font-size:30px;font-weight:900;color:#f97316}
+/* ── Net bar ── */
+.net-bar{background:#1e293b;padding:18px 30px;display:flex;justify-content:space-between;align-items:center}
+.nl .nlb{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5)}
+.nl .np{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
+.na{font-size:32px;font-weight:900;color:#f97316;letter-spacing:.01em}
 
-/* ── signature ── */
-.sign-section{padding:18px 28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;background:#f8fafc;border-top:1px solid #e2e8f0}
-.sign-block{text-align:center}
-.sign-line{border-top:1.5px solid #94a3b8;margin:36px 16px 7px;padding-top:7px;font-size:12px;font-weight:700;color:#475569}
-.sign-sub{font-size:10.5px;color:#94a3b8;margin-top:2px}
+/* ── Sign section ── */
+.sign-sec{padding:18px 30px 20px;display:grid;grid-template-columns:1fr 1fr;gap:24px;background:#f8fafc;border-top:1px solid #e2e8f0}
+.sb{display:flex;flex-direction:column;align-items:center}
+.sig-img{height:54px;max-width:190px;object-fit:contain;display:block;margin-bottom:0}
+.sph{height:54px;display:flex;align-items:flex-end;justify-content:center;width:100%}
+.sln{width:80%;border-top:1.5px solid #cbd5e1;margin:0 auto 6px;padding-top:7px;text-align:center;font-size:12px;font-weight:700;color:#475569}
+.ssub{font-size:10px;color:#94a3b8;text-align:center}
 
-/* ── footer ── */
-.footer-note{padding:10px 28px;background:#f1f5f9;font-size:10.5px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
+/* ── Footer ── */
+.pf{padding:10px 30px;background:#f1f5f9;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;line-height:1.6}
 
-/* ── print overrides ── */
-@media print{
-    @page{margin:8mm;size:A4}
-    .toolbar{display:none!important}
-    body{background:#fff}
-    .page{box-shadow:none;border-radius:0;margin:0;max-width:100%}
-    .confidential-bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .hdr{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .net-bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .sign-section{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .days-bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .notes-block{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .stat-tag{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* ════════════════════════════
+   PRINT RULES — A4 professional
+   ════════════════════════════ */
+@media print {
+  @page{size:A4;margin:10mm 12mm}
+  .toolbar          {display:none!important}
+  .conf-bar         {display:none!important} /* SCREEN ONLY — not printed */
+  body              {background:#fff}
+  .page             {box-shadow:none;border-radius:0;margin:0;max-width:100%}
+  .hdr,.net-bar,.days-bar,.ref-bar,.sum-strip,.sign-sec,.pf,.notes-block,.stat-badge
+                    {-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sal-section,.sign-sec,.net-bar{page-break-inside:avoid}
 }
 </style>
 </head>
 <body>
 
-<div class="toolbar no-print">
-  <h3>📄 Payslip — {$ename} — {$period}</h3>
-  <div class="toolbar-btns">
-    <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
-    <button class="btn-close" onclick="window.close()">✕ Close</button>
+<div class="toolbar">
+  <h3>Payslip &mdash; <?= $ename ?> &mdash; <?= $period ?></h3>
+  <div class="tbr">
+    <button class="btn-print" onclick="window.print()">&#128424;&nbsp; Print / Save as PDF</button>
+    <button class="btn-close" onclick="window.close()">&#10005; Close</button>
   </div>
 </div>
 
+<!-- CONFIDENTIAL: visible on screen, hidden when printing -->
+<div class="conf-bar">Confidential &mdash; For Employee Use Only</div>
+
 <div class="page">
 
-  <div class="confidential-bar">Confidential — For Employee Use Only</div>
-
+  <!-- ── Header ── -->
   <div class="hdr">
-    <div class="hdr-left">
-      {$logo_html}
-      <div class="co-name">{$cname}</div>
-      {$co_sub}
+    <div class="hdr-l">
+      <?= $logo_html ?>
+      <div class="co-name"><?= $cname ?></div>
+      <div class="co-sub"><?= $co_sub ?></div>
     </div>
-    <div>
+    <div class="hdr-r">
       <div class="ps-lbl">PAYSLIP</div>
       <div class="ps-meta">
-        Pay Period: <strong style="color:#fff">{$period}</strong><br>
-        Pay Date: <strong style="color:#fff">{$pay_date_str}</strong><br>
-        Issue Date: <strong style="color:#fff">{$issue_date}</strong><br>
-        Status: <strong style="color:{$status_col}">{$ps['status']}</strong>
+        Pay Period:&nbsp; <strong><?= $period ?></strong><br>
+        Pay Date:&nbsp;&nbsp;&nbsp; <strong><?= $pay_date_str ?></strong><br>
+        Issue Date:&nbsp;&nbsp; <strong><?= $issue_date ?></strong><br>
+        Status:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong class="s-<?= $ps['status'] ?>"><?= $status_label ?></strong>
       </div>
     </div>
   </div>
 
+  <!-- ── Ref bar ── -->
   <div class="ref-bar">
-    <span>Payslip Ref: <strong>{$ps_ref}</strong></span>
-    <span>Issued On: {$issue_date}</span>
+    <span>Payslip Ref: <strong><?= $ps_ref ?></strong></span>
+    <span>Document issued: <?= $issue_date ?></span>
   </div>
 
+  <!-- ── Body ── -->
   <div class="body">
 
     <div class="sec-title">Employee Information</div>
     <div class="info-grid">
-      <div class="info-block">
-        <p><strong>{$ename}</strong></p>
-HTML;
-        $desig = htmlspecialchars($ps['designation']??'', ENT_QUOTES);
-        $dept  = htmlspecialchars($ps['department']??'',  ENT_QUOTES);
-        $ei    = htmlspecialchars($ps['employee_id_no']??'', ENT_QUOTES);
-        $em    = htmlspecialchars($ps['employee_email']??'', ENT_QUOTES);
-        $ph    = htmlspecialchars($ps['employee_phone']??'', ENT_QUOTES);
-        $bk    = htmlspecialchars($ps['bank_name']??'',    ENT_QUOTES);
-        $ac    = htmlspecialchars($ps['account_no']??'',   ENT_QUOTES);
-
-        if ($desig||$dept) echo "<p>".implode(' — ', array_filter([$desig,$dept]))."</p>";
-        if ($ei)       echo "<p>Employee ID: <strong>{$ei}</strong></p>";
-        if ($nic_no)   echo "<p>NIC No: <strong>{$nic_no}</strong></p>";
-        if ($epf_mno)  echo "<p>EPF Member No: <strong>{$epf_mno}</strong></p>";
-        if ($em)       echo "<p>{$em}</p>";
-        if ($ph)       echo "<p>{$ph}</p>";
-        echo "</div><div class='info-block'>";
-        echo "<div class='sec-title'>Bank / Payment Details</div>";
-        if ($bk) echo "<p>Bank: <strong>{$bk}</strong></p>";
-        if ($ac) echo "<p>Account No: <strong>{$ac}</strong></p>";
-        echo "<p style='margin-top:8px'>Basic Salary: <strong>{$sym} ".number_format($ps['basic_salary'],2)."</strong></p>";
-        echo "<p>Gross Salary: <strong>{$sym} ".number_format($ps['gross_salary'],2)."</strong></p>";
-        echo "<p>Total Deductions: <strong style='color:#ef4444'>- {$sym} ".number_format($ps['total_deductions'],2)."</strong></p>";
-        echo "</div></div>";
-
-        echo $days_html;
-        echo $notes_block;
-
-        echo <<<HTML
-    <div class="sec-title">Salary Breakdown</div>
-    <div class="sal-grid">
-      <div class="sal-col">
-        <div class="sal-col-title earn">Earnings</div>
-        <table>
-          {$earn_rows}
-        </table>
-        <div class="sal-total-row"><span>Gross Salary</span><span style="color:#10b981">{$gross_str}</span></div>
+      <div class="ib">
+        <p class="en"><?= $ename ?></p>
+        <?php if ($desig || $dept): ?>
+        <p class="frow"><span class="flbl">Role</span><span class="fval"><?= implode(' &mdash; ', array_filter([$desig, $dept])) ?></span></p>
+        <?php endif; ?>
+        <?php if ($emp_id_no): ?><p class="frow"><span class="flbl">Employee ID</span><span class="fval"><?= $emp_id_no ?></span></p><?php endif; ?>
+        <?php if ($nic_no): ?>   <p class="frow"><span class="flbl">NIC No</span><span class="fval"><?= $nic_no ?></span></p><?php endif; ?>
+        <?php if ($epf_mno): ?>  <p class="frow"><span class="flbl">EPF Member</span><span class="fval"><?= $epf_mno ?></span></p><?php endif; ?>
+        <?php if ($emp_email): ?><p class="frow"><span class="flbl">Email</span><span class="fval normal"><?= $emp_email ?></span></p><?php endif; ?>
+        <?php if ($emp_phone): ?><p class="frow"><span class="flbl">Phone</span><span class="fval normal"><?= $emp_phone ?></span></p><?php endif; ?>
       </div>
-      <div class="sal-divider"></div>
-      <div class="sal-col">
-        <div class="sal-col-title ded">Deductions</div>
-        <table>
-          {$ded_rows}
-        </table>
-        <div class="sal-total-row"><span>Total Deductions</span><span style="color:#ef4444">- {$ded_str}</span></div>
+      <div class="ib">
+        <div class="sec-title">Bank &amp; Payment Details</div>
+        <?php if ($bank_name): ?> <p class="frow"><span class="flbl">Bank</span><span class="fval"><?= $bank_name ?></span></p><?php endif; ?>
+        <?php if ($account_no): ?><p class="frow"><span class="flbl">Account No</span><span class="fval"><?= $account_no ?></span></p><?php endif; ?>
+        <p class="frow" style="margin-top:10px"><span class="flbl">Basic</span><span class="fval"><?= $sym ?> <?= $basic_f ?></span></p>
+        <p class="frow"><span class="flbl">Gross</span><span class="fval"><?= $sym ?> <?= $gross_f ?></span></p>
+        <p class="frow"><span class="flbl">Deductions</span><span class="fval" style="color:#dc2626">- <?= $sym ?> <?= $ded_f ?></span></p>
       </div>
     </div>
 
+    <?= $days_html ?>
+    <?= $notes_html ?>
+
+    <div class="sec-title" style="margin-top:4px">Salary Breakdown</div>
+    <div class="sal-section">
+      <div class="sal-col-l">
+        <div class="scol-title et">Earnings</div>
+        <table class="sal-tbl">
+          <tbody><?= $earn_html ?></tbody>
+          <tfoot><tr><td class="ec">Gross Salary</td><td class="amt ec"><?= $sym ?> <?= $gross_f ?></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="sal-div"></div>
+      <div class="sal-col-r">
+        <div class="scol-title dt">Deductions</div>
+        <table class="sal-tbl">
+          <tbody><?= $ded_html ?></tbody>
+          <tfoot><tr><td class="dc">Total Deductions</td><td class="amt dc">- <?= $sym ?> <?= $ded_f ?></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- end body -->
+
+  <!-- ── Summary strip ── -->
+  <div class="sum-strip">
+    <div class="si"><span class="sv g"><?= $sym ?> <?= $gross_f ?></span>Gross Salary</div>
+    <div class="si"><span class="sv r">- <?= $sym ?> <?= $ded_f ?></span>Total Deductions</div>
+    <div class="si"><span class="sv o"><?= $sym ?> <?= $net_f ?></span>Net Payable</div>
   </div>
 
+  <!-- ── Net salary bar ── -->
   <div class="net-bar">
-    <div>
-      <div class="net-lbl">Net Salary Payable</div>
-      <div class="net-period">{$period}</div>
+    <div class="nl">
+      <div class="nlb">Net Salary Payable</div>
+      <div class="np"><?= $period ?> &nbsp;·&nbsp; <?= $pay_date_str ?></div>
     </div>
-    <div class="net-amt">{$net_str}</div>
+    <div class="na"><?= $sym ?>&nbsp;<?= $net_f ?></div>
   </div>
 
-  <div class="sign-section">
-    <div class="sign-block">
-      <div class="sign-line">Employee Signature &amp; Date</div>
-      <div class="sign-sub">I acknowledge receipt of this payslip</div>
+  <!-- ── Signature section ── -->
+  <div class="sign-sec">
+    <div class="sb">
+      <div class="sph">&nbsp;</div>
+      <div class="sln">Employee Signature &amp; Date</div>
+      <div class="ssub">I acknowledge receipt of this payslip</div>
     </div>
-    <div class="sign-block">
-      <div class="sign-line">{$auth_line}</div>
-      <div class="sign-sub">{$auth_sub}</div>
+    <div class="sb">
+      <?php if ($sig_html): ?>
+      <div><?= $sig_html ?></div>
+      <?php else: ?>
+      <div class="sph">&nbsp;</div>
+      <?php endif; ?>
+      <div class="sln"><?= $auth_display ?></div>
+      <div class="ssub"><?= $auth_sub ?></div>
     </div>
   </div>
 
-  <div class="footer-note">{$footer_note} &nbsp;|&nbsp; Ref: {$ps_ref}</div>
+  <!-- ── Footer ── -->
+  <div class="pf">
+    <?= $footer_note ?> &nbsp;|&nbsp; Ref: <strong><?= $ps_ref ?></strong> &nbsp;|&nbsp; <?= $cname ?>
+  </div>
 
-</div>
+</div><!-- end .page -->
 </body>
 </html>
-HTML;
+<?php
         return;
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // DOCX EXPORT
-    // ──────────────────────────────────────────────────────────────────────
+    // ══ DOCX EXPORT ═══════════════════════════════════════════════════════
     if ($fmt === 'docx') {
         if (!class_exists('ZipArchive')) {
-            http_response_code(500);
-            die('ZipArchive not available. Please use Print/PDF instead.');
+            http_response_code(500); die('ZipArchive not available. Please use Print/PDF instead.');
         }
 
-        // XML-safe strings
         $xe = fn($s) => htmlspecialchars($s ?? '', ENT_XML1);
 
         $en    = $xe($ps['employee_name']);
         $pr    = $xe($ps['pay_period']);
-        $cn    = $xe($ps['company_name'] ?? '');
-        $crg   = $xe($ps['company_reg_no'] ?? '');
-        $cph   = $xe($ps['company_phone'] ?? '');
-        $cem   = $xe($ps['company_email'] ?? '');
-        $ca    = $xe($ps['company_address'] ?? '');
-        $epfeo = $xe($ps['epf_employer_no'] ?? '');
-        $dg    = $xe($ps['designation'] ?? '');
-        $dp    = $xe($ps['department'] ?? '');
-        $ei    = $xe($ps['employee_id_no'] ?? '');
-        $nicx  = $xe($ps['nic_number'] ?? '');
-        $emfno = $xe($ps['epf_member_no'] ?? '');
-        $em    = $xe($ps['employee_email'] ?? '');
-        $ph    = $xe($ps['employee_phone'] ?? '');
-        $bk    = $xe($ps['bank_name'] ?? '');
-        $ac    = $xe($ps['account_no'] ?? '');
-        $ft    = $xe($ps['footer_note'] ?? 'This is a computer-generated payslip and requires no signature.');
-        $nt    = $xe($ps['notes'] ?? '');
+        $cn    = $xe($ps['company_name']     ?? '');
+        $crg2  = $xe($ps['company_reg_no']   ?? '');
+        $cph2  = $xe($ps['company_phone']    ?? '');
+        $cem2  = $xe($ps['company_email']    ?? '');
+        $epfeo = $xe($ps['epf_employer_no']  ?? '');
+        $dg    = $xe($ps['designation']      ?? '');
+        $dp    = $xe($ps['department']       ?? '');
+        $ei    = $xe($ps['employee_id_no']   ?? '');
+        $nicx  = $xe($ps['nic_number']       ?? '');
+        $emfno = $xe($ps['epf_member_no']    ?? '');
+        $emx   = $xe($ps['employee_email']   ?? '');
+        $phx   = $xe($ps['employee_phone']   ?? '');
+        $bk    = $xe($ps['bank_name']        ?? '');
+        $ac    = $xe($ps['account_no']       ?? '');
+        $ft    = $xe($ps['footer_note']      ?? 'This is a computer-generated payslip and requires no signature.');
+        $nt    = $xe($ps['notes']            ?? '');
         $st    = ucfirst($ps['status']);
-        $refx  = $xe($ps['payslip_ref'] ?? ('PS-'.$pid));
-        $authx = $xe($ps['authorized_by'] ?? 'Authorised Signatory');
+        $refx  = $xe($ps['payslip_ref']      ?? ('PS-'.$pid));
+        $authx = $xe($ps['authorized_by']    ?? 'Authorised Signatory');
         $attlx = $xe($ps['authorized_title'] ?? 'HR / Finance Department');
         $cur   = $ps['currency'] ?? 'LKR';
 
-        $gross_s = "{$cur} ".number_format($ps['gross_salary'],    2);
-        $ded_s   = "{$cur} ".number_format($ps['total_deductions'],2);
-        $net_s   = "{$cur} ".number_format($ps['net_salary'],      2);
-        $basic_s = "{$cur} ".number_format($ps['basic_salary'],    2);
-
-        // Shared border XML
         $tbdr = '<w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders>';
 
-        // Earnings XML
-        $earn_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val='1E293B'/></w:rPr><w:t>Basic Salary</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:b/><w:color w:val='1E293B'/></w:rPr><w:t>{$basic_s}</w:t></w:r></w:p></w:tc></w:tr>";
+        $earn_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Basic Salary</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>{$cur} {$basic_f}</w:t></w:r></w:p></w:tc></w:tr>";
         foreach ($allowances as $a) {
-            $n = $xe($a['name']);
-            $v = "{$cur} ".number_format($a['amount'],2);
-            $earn_xml .= "<w:tr><w:tc><w:p><w:r><w:t>{$n}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>{$v}</w:t></w:r></w:p></w:tc></w:tr>";
+            $n = $xe($a['name']); $v = number_format($a['amount'], 2);
+            $earn_xml .= "<w:tr><w:tc><w:p><w:r><w:t>{$n}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:t>{$cur} {$v}</w:t></w:r></w:p></w:tc></w:tr>";
         }
 
-        // Deductions XML
         $ded_xml = '';
         foreach ($deductions as $d) {
-            $n       = $xe($d['name']);
-            $v       = "{$cur} ".number_format($d['amount'],2);
-            $is_stat = (bool)preg_match('/\b(EPF|ETF|APIT|PAYE|tax)\b/i', $d['name']);
-            $tag     = $is_stat ? " [Statutory]" : '';
-            $ded_xml .= "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='EF4444'/></w:rPr><w:t>{$n}{$tag}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:color w:val='EF4444'/></w:rPr><w:t>- {$v}</w:t></w:r></w:p></w:tc></w:tr>";
+            $n = $xe($d['name']); $v = number_format($d['amount'], 2);
+            $tag = preg_match('/\b(EPF|ETF|APIT|PAYE|tax)\b/i', $d['name']) ? ' [Statutory]' : '';
+            $ded_xml .= "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='DC2626'/></w:rPr><w:t>{$n}{$tag}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:jc w:val='right'/></w:pPr><w:r><w:rPr><w:color w:val='DC2626'/></w:rPr><w:t>- {$cur} {$v}</w:t></w:r></w:p></w:tc></w:tr>";
         }
-        if (!$ded_xml) $ded_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='94A3B8'/></w:rPr><w:t>No deductions for this period</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t></w:t></w:r></w:p></w:tc></w:tr>";
+        if (!$ded_xml) $ded_xml = "<w:tr><w:tc><w:p><w:r><w:rPr><w:color w:val='94A3B8'/></w:rPr><w:t>No deductions for this period</w:t></w:r></w:p></w:tc><w:tc><w:p></w:p></w:tc></w:tr>";
 
-        // Days XML
         $days_xml = '';
         if ($wdays || $ddays) {
-            $days_xml = "
-<w:p><w:pPr><w:spacing w:before='160' w:after='60'/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val='22'/><w:color w:val='64748B'/></w:rPr><w:t>ATTENDANCE</w:t></w:r></w:p>
+            $dr = $daily_rate ?: '—';
+            $days_xml = "<w:p><w:pPr><w:spacing w:before='160' w:after='60'/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val='20'/><w:color w:val='64748B'/></w:rPr><w:t>ATTENDANCE</w:t></w:r></w:p>
 <w:tbl><w:tblPr><w:tblW w:type='pct' w:w='5000'/>{$tbdr}</w:tblPr>
-<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Working Days</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$wdays}</w:t></w:r></w:p></w:tc>
-<w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Days Paid</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ddays}</w:t></w:r></w:p></w:tc></w:tr>
-<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Leave / Absent</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$absent_days}</w:t></w:r></w:p></w:tc>
-<w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Daily Rate</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$cur} {$daily_rate}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Working Days</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$wdays}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Days Paid</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ddays}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Leave / Absent</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$absent}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Daily Rate</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$cur} {$dr}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>";
         }
 
-        $notes_xml = $nt ? "<w:p><w:pPr><w:spacing w:before='120' w:after='60'/></w:pPr><w:r><w:rPr><w:i/><w:color w:val='92400E'/></w:rPr><w:t>Note: {$nt}</w:t></w:r></w:p>" : '';
+        $notes_xml = $nt ? "<w:p><w:pPr><w:spacing w:before='100' w:after='80'/></w:pPr><w:r><w:rPr><w:i/><w:color w:val='92400E'/></w:rPr><w:t>Note: {$nt}</w:t></w:r></w:p>" : '';
 
         $doc_xml = <<<XML
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-
-<!-- HEADER: CONFIDENTIAL + PAYSLIP label -->
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="F97316"/></w:rPr><w:t>CONFIDENTIAL — FOR EMPLOYEE USE ONLY</w:t></w:r></w:p>
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="44"/><w:color w:val="F97316"/></w:rPr><w:t>PAYSLIP</w:t></w:r></w:p>
-
-<!-- COMPANY INFO -->
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="60" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="30"/><w:color w:val="1E293B"/></w:rPr><w:t>{$cn}</w:t></w:r></w:p>
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>Reg: {$crg}  |  {$cph}  |  {$cem}</w:t></w:r></w:p>
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>EPF Employer No: {$epfeo}</w:t></w:r></w:p>
-
-<!-- PAY PERIOD META -->
-<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="200"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>Pay Period: </w:t></w:r>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="1E293B"/></w:rPr><w:t>{$pr}</w:t></w:r>
-  <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>  |  Pay Date: </w:t></w:r>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="1E293B"/></w:rPr><w:t>{$pay_date_str}</w:t></w:r>
-  <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>  |  Status: </w:t></w:r>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="10B981"/></w:rPr><w:t>{$st}</w:t></w:r>
-  <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="94A3B8"/></w:rPr><w:t>  |  Ref: {$refx}</w:t></w:r></w:p>
-
-<!-- EMPLOYEE DETAILS -->
-<w:p><w:pPr><w:spacing w:before="120" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>EMPLOYEE DETAILS</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee Name</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val="1E293B"/></w:rPr><w:t>{$en}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ei}</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Designation</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$dg}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Department</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$dp}</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>NIC Number</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val="1E293B"/></w:rPr><w:t>{$nicx}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>EPF Member No</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$emfno}</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Email</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$em}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Phone</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ph}</w:t></w:r></w:p></w:tc></w:tr>
-  <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Bank</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$bk}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Account No</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ac}</w:t></w:r></w:p></w:tc></w:tr>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="44"/><w:color w:val="F97316"/></w:rPr><w:t>PAYSLIP</w:t></w:r></w:p>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="40" w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="30"/><w:color w:val="1E293B"/></w:rPr><w:t>{$cn}</w:t></w:r></w:p>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>Reg: {$crg2}  |  {$cph2}  |  {$cem2}  |  EPF Employer: {$epfeo}</w:t></w:r></w:p>
+<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="160"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>Pay Period: </w:t></w:r><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="1E293B"/></w:rPr><w:t>{$pr}</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>  |  Pay Date: </w:t></w:r><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="1E293B"/></w:rPr><w:t>{$pay_date_str}</w:t></w:r><w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>  |  Status: </w:t></w:r><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="10B981"/></w:rPr><w:t>{$st}</w:t></w:r><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>  |  Ref: {$refx}</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:before="80" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="94A3B8"/></w:rPr><w:t>EMPLOYEE DETAILS</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee Name</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val="0F172A"/></w:rPr><w:t>{$en}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Employee ID</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ei}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Designation</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$dg}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Department</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$dp}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>NIC Number</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/><w:color w:val="0F172A"/></w:rPr><w:t>{$nicx}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>EPF Member No</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$emfno}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Email</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$emx}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Phone</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$phx}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Bank</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$bk}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Account No</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$ac}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
-
 {$days_xml}
 {$notes_xml}
-
-<!-- EARNINGS -->
-<w:p><w:pPr><w:spacing w:before="200" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="10B981"/></w:rPr><w:t>EARNINGS</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
-  {$earn_xml}
-  <w:tr>
-    <w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Gross Salary</w:t></w:r></w:p></w:tc>
-    <w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="10B981"/></w:rPr><w:t>{$gross_s}</w:t></w:r></w:p></w:tc>
-  </w:tr>
+<w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="059669"/></w:rPr><w:t>EARNINGS</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
+{$earn_xml}
+<w:tr><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Gross Salary</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34D399"/></w:rPr><w:t>{$cur} {$gross_f}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
-
-<!-- DEDUCTIONS -->
-<w:p><w:pPr><w:spacing w:before="200" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="EF4444"/></w:rPr><w:t>DEDUCTIONS (Statutory deductions marked [Statutory])</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
-  {$ded_xml}
-  <w:tr>
-    <w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Total Deductions</w:t></w:r></w:p></w:tc>
-    <w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="EF4444"/></w:rPr><w:t>- {$ded_s}</w:t></w:r></w:p></w:tc>
-  </w:tr>
+<w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="DC2626"/></w:rPr><w:t>DEDUCTIONS (items marked [Statutory] are legally mandated: EPF/ETF/APIT)</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
+{$ded_xml}
+<w:tr><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t>Total Deductions</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:shd w:fill="1E293B" w:val="clear"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="EF4444"/></w:rPr><w:t>- {$cur} {$ded_f}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
-
-<!-- NET SALARY -->
-<w:p><w:pPr><w:spacing w:before="260" w:after="60"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="F97316"/></w:rPr><w:t>NET SALARY PAYABLE: {$net_s}</w:t></w:r></w:p>
-<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>Pay Period: {$pr}  |  Ref: {$refx}</w:t></w:r></w:p>
-
-<!-- SIGNATURES -->
-<w:p><w:pPr><w:spacing w:before="300" w:after="0"/></w:pPr>
-  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>ACKNOWLEDGEMENT</w:t></w:r></w:p>
-<w:tbl>
-  <w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
-  <w:tr>
-    <w:tc><w:p><w:pPr><w:spacing w:before="600" w:after="60"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>Employee Signature &amp; Date</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>I acknowledge receipt of this payslip</w:t></w:r></w:p></w:tc>
-    <w:tc><w:p><w:pPr><w:spacing w:before="600" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>{$authx}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$attlx}</w:t></w:r></w:p></w:tc>
-  </w:tr>
+<w:p><w:pPr><w:spacing w:before="240" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="38"/><w:color w:val="F97316"/></w:rPr><w:t>NET SALARY PAYABLE: {$cur} {$net_f}</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>{$pr}  |  {$pay_date_str}  |  Ref: {$refx}</w:t></w:r></w:p>
+<w:p><w:pPr><w:spacing w:before="280" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>ACKNOWLEDGEMENT</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
+<w:tr><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>Employee Signature &amp; Date</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>I acknowledge receipt of this payslip</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>{$authx}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$attlx}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
-
-<!-- FOOTER -->
-<w:p><w:pPr><w:spacing w:before="300" w:after="0"/><w:jc w:val="center"/></w:pPr>
-  <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$ft}  |  Ref: {$refx}</w:t></w:r></w:p>
-
+<w:p><w:pPr><w:spacing w:before="240" w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$ft}  |  Ref: {$refx}</w:t></w:r></w:p>
 <w:sectPr><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr>
 </w:body>
 </w:document>
@@ -521,15 +497,10 @@ XML;
 
         $zip = new ZipArchive();
         $tmp = tempnam(sys_get_temp_dir(), 'ps_') . '.docx';
-        if ($zip->open($tmp, ZipArchive::CREATE) !== true) {
-            http_response_code(500); die('Cannot create DOCX file.');
-        }
-        $zip->addFromString('[Content_Types].xml',
-            '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
-        $zip->addFromString('_rels/.rels',
-            '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
-        $zip->addFromString('word/_rels/document.xml.rels',
-            '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>');
+        if ($zip->open($tmp, ZipArchive::CREATE) !== true) { http_response_code(500); die('Cannot create DOCX.'); }
+        $zip->addFromString('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+        $zip->addFromString('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+        $zip->addFromString('word/_rels/document.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>');
         $zip->addFromString('word/document.xml', $doc_xml);
         $zip->close();
 

@@ -50,23 +50,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $logo = 'uploads/documents/'.$fn;
                 }
             }
+            // Handle signature upload
+            $sig = null;
+            if (!empty($_FILES['signature_image']['tmp_name']) && $_FILES['signature_image']['error'] === 0) {
+                $sext = strtolower(pathinfo($_FILES['signature_image']['name'], PATHINFO_EXTENSION));
+                if (in_array($sext, ['png','jpg','jpeg'])) {
+                    if (!is_dir(UPLOAD_DOC_DIR)) mkdir(UPLOAD_DOC_DIR, 0755, true);
+                    $sfn = 'sig_'.uniqid().'.'.$sext;
+                    if (move_uploaded_file($_FILES['signature_image']['tmp_name'], UPLOAD_DOC_DIR.$sfn))
+                        $sig = 'uploads/documents/'.$sfn;
+                }
+            }
             if ($def) $db->query("UPDATE payslip_templates SET is_default=0");
             if ($tid) {
-                if ($logo) {
-                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,company_logo=?,footer_note=?,is_default=? WHERE id=?");
-                    $stmt->bind_param("sssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$logo,$foot,$def,$tid);
-                } else {
-                    $stmt = $db->prepare("UPDATE payslip_templates SET name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,footer_note=?,is_default=? WHERE id=?");
-                    $stmt->bind_param("ssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$tid);
-                }
+                // Build update dynamically based on what files were uploaded
+                $set = "name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,footer_note=?,is_default=?";
+                $types = "ssssssssssii"; $params = [$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def];
+                if ($logo) { $set .= ",company_logo=?";    $types .= "s"; $params[] = $logo; }
+                if ($sig)  { $set .= ",signature_image=?"; $types .= "s"; $params[] = $sig; }
+                $types .= "i"; $params[] = $tid;
+                $stmt = $db->prepare("UPDATE payslip_templates SET {$set} WHERE id=?");
+                $stmt->bind_param($types, ...$params);
             } else {
-                if ($logo) {
-                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,company_logo,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                    $stmt->bind_param("sssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$logo,$foot,$def,$uid);
-                } else {
-                    $stmt = $db->prepare("INSERT INTO payslip_templates (name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,footer_note,is_default,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-                    $stmt->bind_param("ssssssssssii",$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$uid);
-                }
+                $cols = "name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,footer_note,is_default,created_by";
+                $phs  = "?,?,?,?,?,?,?,?,?,?,?,?";
+                $types = "ssssssssssii"; $params = [$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$uid];
+                if ($logo) { $cols .= ",company_logo";    $phs .= ",?"; $types .= "s"; $params[] = $logo; }
+                if ($sig)  { $cols .= ",signature_image"; $phs .= ",?"; $types .= "s"; $params[] = $sig; }
+                $stmt = $db->prepare("INSERT INTO payslip_templates ({$cols}) VALUES ({$phs})");
+                $stmt->bind_param($types, ...$params);
             }
             $stmt->execute();
             flash('Template saved.','success');
@@ -879,6 +891,17 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
             <div style="margin-bottom:8px"><img src="<?= h($et['company_logo']) ?>" style="height:36px;border-radius:4px;border:1px solid var(--border)"> <span style="font-size:11px;color:var(--text3)">current logo</span></div>
             <?php endif; ?>
             <input type="file" name="company_logo" class="form-control" accept=".png,.jpg,.jpeg">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Digital Signature Image <span style="font-size:10px;color:var(--orange)">Appears on printed payslip</span></label>
+            <small style="display:block;font-size:11px;color:var(--text3);margin-bottom:6px">Upload a PNG/JPG of the authorised signatory's signature. Recommended: white/transparent background, landscape crop.</small>
+            <?php if ($et&&!empty($et['signature_image'])&&file_exists($et['signature_image'])): ?>
+            <div style="margin-bottom:8px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:inline-block">
+              <img src="<?= h($et['signature_image']) ?>" style="height:44px;display:block;object-fit:contain">
+              <span style="font-size:10px;color:var(--text3)">current signature</span>
+            </div>
+            <?php endif; ?>
+            <input type="file" name="signature_image" class="form-control" accept=".png,.jpg,.jpeg">
           </div>
           <div class="form-group">
             <label class="form-label">Footer Note</label>

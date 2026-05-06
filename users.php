@@ -18,10 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $role  = $_POST['role'] ?? 'member';
         $dept  = trim($_POST['department'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
+        $dept_role = in_array($_POST['department_role'] ?? '', ['general','tele_caller','digital_marketing','software_developer','graphics_designer']) ? $_POST['department_role'] : 'general';
         if (!$name||!$email||!$pass) { flash('Name, email, and password required.','error'); ob_end_clean(); header('Location: users.php'); exit; }
         $hash = password_hash($pass, PASSWORD_DEFAULT);
-        $stmt = $db->prepare("INSERT INTO users (name,email,password,role,department,phone) VALUES (?,?,?,?,?,?)");
-        $stmt->bind_param("ssssss",$name,$email,$hash,$role,$dept,$phone);
+        $stmt = $db->prepare("INSERT INTO users (name,email,password,role,department,phone,department_role) VALUES (?,?,?,?,?,?,?)");
+        $stmt->bind_param("sssssss",$name,$email,$hash,$role,$dept,$phone,$dept_role);
         if ($stmt->execute()) { logActivity('created user',$name,$db->insert_id); flash('User created.','success'); }
         else flash('Email already exists.','error');
         ob_end_clean(); header('Location: users.php'); exit;
@@ -35,10 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dept  = trim($_POST['department'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $stat  = $_POST['status'] ?? 'active';
+        $dept_role = in_array($_POST['department_role'] ?? '', ['general','tele_caller','digital_marketing','software_developer','graphics_designer']) ? $_POST['department_role'] : 'general';
         // Only admin can change roles
         if (!isAdmin()) $role = $db->query("SELECT role FROM users WHERE id=$id")->fetch_row()[0];
-        $stmt = $db->prepare("UPDATE users SET name=?,email=?,role=?,department=?,phone=?,status=? WHERE id=?");
-        $stmt->bind_param("ssssssi",$name,$email,$role,$dept,$phone,$stat,$id);
+        $stmt = $db->prepare("UPDATE users SET name=?,email=?,role=?,department=?,phone=?,status=?,department_role=? WHERE id=?");
+        $stmt->bind_param("sssssssi",$name,$email,$role,$dept,$phone,$stat,$dept_role,$id);
         $stmt->execute();
         // Change password if provided
         if (!empty($_POST['new_password'])) {
@@ -177,6 +179,19 @@ renderLayout('Team', 'users');
             <input type="text" name="phone" class="form-control" placeholder="+94 …">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Intern Specialization</label>
+            <select name="department_role" class="form-control">
+              <option value="general">General Member</option>
+              <option value="tele_caller">📞 Tele Caller Intern</option>
+              <option value="digital_marketing">📣 Digital Marketing Intern</option>
+              <option value="software_developer">💻 Software Developer Intern</option>
+              <option value="graphics_designer">🎨 Graphics Designer Intern</option>
+            </select>
+            <small style="color:var(--text3);font-size:11px">Only applies when role is "Member".</small>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-user')">Cancel</button>
@@ -237,9 +252,21 @@ renderLayout('Team', 'users');
             <input type="text" name="phone" id="eu-phone" class="form-control" value="<?= h($edit_user['phone']??'') ?>">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Intern Specialization</label>
+            <select name="department_role" id="eu-dept-role" class="form-control">
+              <option value="general">General Member</option>
+              <option value="tele_caller">📞 Tele Caller Intern</option>
+              <option value="digital_marketing">📣 Digital Marketing Intern</option>
+              <option value="software_developer">💻 Software Developer Intern</option>
+              <option value="graphics_designer">🎨 Graphics Designer Intern</option>
+            </select>
+            <small style="color:var(--text3);font-size:11px">Only applies when role is "Member". Admin/Manager always see everything.</small>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">New Password (leave blank to keep current)</label>
-          <input type="password" name="new_password" id="eu-pass" class="form-control" placeholder="Enter new password to change">
         </div>
       </div>
       <div class="modal-footer">
@@ -260,6 +287,7 @@ function openEditUser(u){
   document.getElementById('eu-dept').value=u.department||'';
   document.getElementById('eu-phone').value=u.phone||'';
   document.getElementById('eu-pass').value='';
+  if(document.getElementById('eu-dept-role')) document.getElementById('eu-dept-role').value=u.department_role||'general';
   openModal('modal-edit-user');
 }
 <?php if ($edit_id): ?>document.addEventListener('DOMContentLoaded',()=>openModal('modal-edit-user'));<?php endif; ?>

@@ -140,7 +140,7 @@ CREATE TABLE `chatbot_settings` (
 --
 
 INSERT INTO `chatbot_settings` (`id`, `setting_key`, `setting_val`, `updated_at`) VALUES
-(1, 'gemini_api_key', 'AIzaSyD6TJRAl7BSxLFKEHtAFKnR6N-7Sf6pL0M', '2026-04-24 09:15:42'),
+(1, 'gemini_api_key', '-', '2026-04-24 09:15:42'),
 (2, 'daily_limit', '200', '2026-04-24 09:15:42');
 
 -- --------------------------------------------------------
@@ -2053,7 +2053,7 @@ CREATE TABLE `lead_gen_settings` (
 
 INSERT INTO `lead_gen_settings` (`id`, `setting_key`, `setting_val`, `updated_by`, `updated_at`) VALUES
 (1, 'monthly_quota', '4000', 3, '2026-04-25 14:58:04'),
-(2, 'google_api_key', 'AIzaSyAFrA2kYwwgQU_PegAMFuE8Kvnp5vf9wAs', 3, '2026-04-24 14:03:14'),
+(2, 'google_api_key', '-', 3, '2026-04-24 14:03:14'),
 (16, 'monthly_budget_usd', '180', 3, '2026-04-27 13:01:27'),
 (17, 'cost_per_textsearch', '0.032', NULL, '2026-04-24 13:59:01'),
 (18, 'cost_per_details', '0.003', NULL, '2026-04-24 13:59:01'),

@@ -542,4 +542,43 @@ if ($action==='export_csv') {
     echo json_encode(['ok'=>true,'csv'=>$csv]);exit;
 }
 
+// ── ASSIGN LEAD ───────────────────────────────────────────────────────────────
+if ($action === 'assign_lead') {
+    if (!isManager()) { echo json_encode(['ok'=>false,'error'=>'Permission denied']); exit; }
+    $rid        = (int)($_POST['result_id'] ?? 0);
+    $assign_uid = (int)($_POST['assign_to'] ?? 0) ?: 'NULL';
+    if (!$rid) { echo json_encode(['ok'=>false,'error'=>'Invalid lead ID']); exit; }
+    $db->query("UPDATE lead_gen_results SET assigned_to=$assign_uid WHERE id=$rid");
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
+// ── BULK ASSIGN ───────────────────────────────────────────────────────────────
+if ($action === 'bulk_assign') {
+    if (!isManager()) { echo json_encode(['ok'=>false,'error'=>'Permission denied']); exit; }
+    $ids        = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
+    $assign_uid = (int)($_POST['assign_to'] ?? 0) ?: 'NULL';
+    if (!$ids) { echo json_encode(['ok'=>false,'error'=>'No IDs']); exit; }
+    $db->query("UPDATE lead_gen_results SET assigned_to=$assign_uid WHERE id IN(".implode(',',$ids).")");
+    echo json_encode(['ok'=>true,'updated'=>$db->affected_rows]);
+    exit;
+}
+
+// ── UPDATE CALL STATUS ────────────────────────────────────────────────────────
+if ($action === 'update_call_status') {
+    $rid    = (int)($_POST['result_id'] ?? 0);
+    $status = $_POST['status'] ?? '';
+    $notes  = trim($_POST['notes'] ?? '');
+    $allowed = ['pending','called','callback','not_interested','converted'];
+    if (!$rid || !in_array($status, $allowed)) {
+        echo json_encode(['ok'=>false,'error'=>'Invalid']); exit;
+    }
+    // Members can only update their assigned leads
+    $check = isManager() ? "" : "AND (assigned_to=$uid OR assigned_to IS NULL)";
+    $ne = $db->real_escape_string($notes);
+    $db->query("UPDATE lead_gen_results SET call_status='$status', call_notes='$ne', last_called_at=NOW() WHERE id=$rid $check");
+    echo json_encode(['ok'=>true]);
+    exit;
+}
+
 echo json_encode(['ok'=>false,'error'=>'Unknown action: '.$action]);

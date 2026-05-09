@@ -579,18 +579,61 @@ if ($action === 'bulk_assign') {
 
 // ── UPDATE CALL STATUS ────────────────────────────────────────────────────────
 if ($action === 'update_call_status') {
-    $rid    = (int)($_POST['result_id'] ?? 0);
-    $status = $_POST['status'] ?? '';
-    $notes  = trim($_POST['notes'] ?? '');
+    $rid     = (int)($_POST['result_id'] ?? 0);
+    $status  = $_POST['status'] ?? '';
+    $notes   = trim($_POST['notes'] ?? '');
     $allowed = ['pending','called','callback','not_interested','converted'];
     if (!$rid || !in_array($status, $allowed)) {
         echo json_encode(['ok'=>false,'error'=>'Invalid']); exit;
     }
+
     // Members can only update their assigned leads
     $check = isManager() ? "" : "AND (assigned_to=$uid OR assigned_to IS NULL)";
     $ne = $db->real_escape_string($notes);
     $db->query("UPDATE lead_gen_results SET call_status='$status', call_notes='$ne', last_called_at=NOW() WHERE id=$rid $check");
-    echo json_encode(['ok'=>true]);
+
+    // ── AUTO-SYNC: map stored lead call_status → pipeline stage + activity log ──
+    // Map: called→contacted, callback→contacted, not_interested→lost, converted→won
+    $stage_map = [
+        'called'         => 'contacted',
+        'callback'       => 'contacted',
+        'not_interested' => 'lost',
+        'converted'      => 'won',
+    ];
+    $activity_map = [
+        'called'         => ['call',     'Called this lead from Stored Leads.'],
+        'callback'       => ['follow_up','Called — requested callback. Follow up scheduled.'],
+        'not_interested' => ['note',     'Lead marked Not Interested via Stored Leads.'],
+        'converted'      => ['note',     'Lead converted! Marked as Won via Stored Leads.'],
+    ];
+
+    // Only sync if this stored lead has been imported to pipeline (has a lead_id)
+    $row = @$db->query("SELECT lead_id, name FROM lead_gen_results WHERE id=$rid")->fetch_assoc();
+    if ($row && !empty($row['lead_id'])) {
+        $lid = (int)$row['lead_id'];
+
+        // Update pipeline stage if this status maps to a stage
+        if (isset($stage_map[$status])) {
+            $new_stage = $stage_map[$status];
+            $ne_stage  = $db->real_escape_string($new_stage);
+            $db->query("UPDATE leads SET stage='$ne_stage', last_contact=CURDATE(), updated_at=NOW() WHERE id=$lid");
+        }
+
+        // Always log a call activity so the pipeline history is complete
+        if (isset($activity_map[$status])) {
+            [$act_type, $act_desc] = $activity_map[$status];
+            if ($notes) $act_desc .= ' Notes: '.$notes;
+            $act_type_e = $db->real_escape_string($act_type);
+            $act_desc_e = $db->real_escape_string($act_desc);
+            $db->query("INSERT INTO lead_activities (lead_id,user_id,activity_type,description,activity_date)
+                        VALUES ($lid,$uid,'$act_type_e','$act_desc_e',NOW())");
+        }
+
+        echo json_encode(['ok'=>true,'pipeline_synced'=>true,'lead_id'=>$lid]);
+        exit;
+    }
+
+    echo json_encode(['ok'=>true,'pipeline_synced'=>false]);
     exit;
 }
 

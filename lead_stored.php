@@ -640,10 +640,14 @@ function cycleCallStatus(id, current, el) {
                 el.className = 'call-badge cb-' + next;
                 el.textContent = CALL_LABELS[next];
                 el.setAttribute('onclick', 'cycleCallStatus(' + id + ',\'' + next + '\',this)');
-                // Update lsAllData
                 var item = lsAllData.find(l => l.id == id);
                 if (item) { item.call_status = next; item.last_called_at = new Date().toISOString(); }
-                toast('Status updated to: ' + CALL_LABELS[next], 'success');
+                // Show pipeline sync message if this lead is imported
+                if (d.pipeline_synced && d.lead_id) {
+                    toast(CALL_LABELS[next] + ' — <a href="leads.php?view=' + d.lead_id + '" style="color:#fff;text-decoration:underline">Pipeline updated →</a>', 'success');
+                } else {
+                    toast('Status updated to: ' + CALL_LABELS[next], 'success');
+                }
             } else toast(d.error || 'Failed', 'error');
         });
 }

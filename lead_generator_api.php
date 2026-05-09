@@ -437,10 +437,24 @@ if ($action==='import_lead') {
     if (!empty($row['owner_name'])) $notes.=" Owner: {$row['owner_name']}.";
     if ($row['address']) $notes.=" Address: {$row['address']}."; if ($row['website']) $notes.=" Website: {$row['website']}.";
     if ($row['rating']) $notes.=" Google Rating: {$row['rating']}/5."; $notes.=$row['has_website']?' Has website: Yes.':" Has website: No.";
+    
+    // Assign to the intern who is importing (keeps pipeline ownership clear)
+    $assign_uid = $uid;
+    // If the stored lead has a specific assignee, use that instead
+    $stored_assign = @$db->query("SELECT assigned_to FROM lead_gen_results WHERE id=$rid")->fetch_assoc();
+    if ($stored_assign && !empty($stored_assign['assigned_to'])) {
+        $assign_uid = (int)$stored_assign['assigned_to'];
+    }
+
     $stmt=$db->prepare("INSERT INTO leads (name,company,email,phone,source,service_interest,budget_est,budget_currency,stage,priority,expected_close,last_contact,notes,loss_reason,assigned_to,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-    $stmt->bind_param("ssssssdsssssssii",$n,$n,$em,$p,$src,$svc,$null,$bc,$st,$pr,$null,$null,$notes,$null,$null,$uid);
+    $stmt->bind_param("ssssssdsssssssii",$n,$n,$em,$p,$src,$svc,$null,$bc,$st,$pr,$null,$null,$notes,$null,$assign_uid,$uid);
     $stmt->execute();$lid=(int)$db->insert_id;
     $db->query("UPDATE lead_gen_results SET imported=1,lead_id=$lid WHERE id=$rid");
+
+    // Auto-log import activity in pipeline so history starts immediately
+    $import_note = $db->real_escape_string("Lead imported from Stored Leads. Industry: {$row['industry']}, Location: {$row['location']}.");
+    $db->query("INSERT INTO lead_activities (lead_id,user_id,activity_type,description,activity_date) VALUES ($lid,$uid,'note','$import_note',NOW())");
+
     logActivity('imported lead',$n,$lid);
     echo json_encode(['ok'=>true,'lead_id'=>$lid,'message'=>"$n imported to CRM Leads",'pipeline_url'=>'leads.php?view='.$lid]);exit;
 }

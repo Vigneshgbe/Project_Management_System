@@ -3,7 +3,13 @@ require_once 'config.php';
 require_once 'includes/layout.php';
 require_once 'includes/attach_widget.php';
 requireLogin();
-requireRole(['admin','manager']);
+// requireRole(['admin','manager']);
+
+// Tele-caller interns + all general members/managers/admins can access leads
+if (!isManager() && !deptCan(['tele_caller','general'])) {
+    header('Location: mywork.php'); exit;
+}
+
 $db = getCRMDB();
 $user = currentUser();
 
@@ -12,7 +18,7 @@ $STAGE_COLORS = ['new'=>'#6366f1','contacted'=>'#f59e0b','qualified'=>'#8b5cf6',
 $SOURCES = ['website'=>'Website','referral'=>'Referral','social'=>'Social Media','cold_outreach'=>'Cold Outreach','event'=>'Event','other'=>'Other'];
 
 ob_start();
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isManager()) {
     $action = $_POST['action'] ?? '';
     if ($action === 'create' || $action === 'edit') {
         $id=$n=$co=$em=$ph=$so=$in=$bu=$bc=$st=$pr=$cl=$lc=$no=$lr=$as=null;

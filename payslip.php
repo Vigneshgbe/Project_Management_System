@@ -2,7 +2,7 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-requireRole(['admin','manager']);
+// requireRole(['admin','manager']);
 $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];
@@ -184,12 +184,33 @@ $edit_tpl = (int)($_GET['edit_tpl'] ?? 0);
 if ($section === 'create' || $edit_id) $section = 'create';
 if ($section === 'templates')          $section = 'templates';
 
-$payslips = $db->query("
-    SELECT p.*, t.company_name
-    FROM payslips p
-    LEFT JOIN payslip_templates t ON t.id=p.template_id
-    ORDER BY p.created_at DESC LIMIT 100
-")->fetch_all(MYSQLI_ASSOC);
+// Members/interns cannot access create or templates — redirect to list
+if (!isManager() && in_array($section, ['create','templates'])) {
+    header('Location: payslip.php'); exit;
+}
+
+// Members/interns only see their own payslips; managers see all
+if (isManager()) {
+    $payslips = $db->query("
+        SELECT p.*, t.company_name
+        FROM payslips p
+        LEFT JOIN payslip_templates t ON t.id=p.template_id
+        ORDER BY p.created_at DESC LIMIT 100
+    ")->fetch_all(MYSQLI_ASSOC);
+} else {
+    $uid_safe = (int)$user['id'];
+    $emp_email_safe = $db->real_escape_string($user['email']);
+    $emp_name_safe  = $db->real_escape_string($user['name']);
+    $payslips = $db->query("
+        SELECT p.*, t.company_name
+        FROM payslips p
+        LEFT JOIN payslip_templates t ON t.id=p.template_id
+        WHERE p.employee_id = {$uid_safe}
+           OR p.employee_email = '{$emp_email_safe}'
+           OR p.employee_name = '{$emp_name_safe}'
+        ORDER BY p.created_at DESC LIMIT 100
+    ")->fetch_all(MYSQLI_ASSOC);
+}
 
 $templates   = $db->query("SELECT * FROM payslip_templates ORDER BY is_default DESC, name ASC")->fetch_all(MYSQLI_ASSOC);
 $default_tpl = null;
@@ -520,8 +541,10 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
 <!-- ══ TABS: LIST / CREATE / TEMPLATES ══ -->
 <div class="ps-tabs">
   <button class="ps-tab <?= $section==='list'?'active':'' ?>" onclick="psTab('list')">📋 Payslips <span id="ps-count-badge" style="font-size:10px;background:var(--bg4);padding:1px 6px;border-radius:99px;margin-left:2px"><?= count($payslips) ?></span></button>
+  <?php if (isManager()): ?>
   <button class="ps-tab <?= $section==='create'?'active':'' ?>" onclick="psTab('create')">➕ <?= $ep?'Edit Payslip':'Create Payslip' ?></button>
   <button class="ps-tab <?= $section==='templates'?'active':'' ?>" onclick="psTab('templates')">⚙ Templates</button>
+  <?php endif; ?>
 </div>
 
 <!-- ── PAYSLIP LIST ── -->

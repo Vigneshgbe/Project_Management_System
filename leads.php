@@ -86,18 +86,6 @@ renderLayout('Leads Pipeline', 'leads');
 .vt a{display:block;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--text2);background:var(--bg3);text-decoration:none;transition:background .15s,color .15s}
 .vt a.on{background:var(--orange);color:#fff}
 
-/*
- * KANBAN SCROLL — THE REAL FIX
- * Problem: body has overflow-x:hidden, #main has no overflow,
- * #content has no overflow. Any overflow:auto child of those
- * gets clipped by the nearest overflow:hidden ancestor (body).
- *
- * Solution: give .kb-scroll a fixed width using calc() so the
- * browser treats it as a scroll root, not a child that overflows.
- * The key is width:calc(100vw - var(--sidebar-w) - 48px) which
- * is exactly the available content width. overflow-x:auto on this
- * element then works correctly.
- */
 .kb-scroll{
   width:calc(100vw - var(--sidebar-w) - 48px);
   overflow-x:auto;
@@ -110,39 +98,51 @@ renderLayout('Leads Pipeline', 'leads');
 .kb-scroll::-webkit-scrollbar{height:6px}
 .kb-scroll::-webkit-scrollbar-track{background:var(--bg3);border-radius:99px}
 .kb-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+@media(max-width:900px){.kb-scroll{width:calc(100vw - 32px)}}
 
-/* On mobile sidebar is hidden so full width minus padding */
-@media(max-width:900px){
-  .kb-scroll{width:calc(100vw - 32px)}
-}
+.kb-board{display:flex;gap:12px;align-items:flex-start}
 
-.kb-board{
-  display:flex;
-  gap:12px;
-  align-items:flex-start;
-  /* Do not constrain width — let it grow with content */
-}
 .kb-col{
-  width:230px;
-  min-width:230px;
-  flex-shrink:0;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-top:3px solid var(--kc);
-  border-radius:var(--radius);
-  display:flex;
-  flex-direction:column;
+  width:235px;min-width:235px;flex-shrink:0;
+  background:var(--bg2);border:1px solid var(--border);
+  border-top:3px solid var(--kc);border-radius:var(--radius);
+  display:flex;flex-direction:column;
+  transition:box-shadow .2s;
 }
+/* drag-over highlight on column */
+.kb-col.drag-over{
+  box-shadow:0 0 0 2px var(--kc),0 4px 20px rgba(0,0,0,.18);
+  background:var(--bg3);
+}
+
 .kb-hd{padding:10px 13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .kb-title{font-size:12.5px;font-weight:700;color:var(--kc);white-space:nowrap}
 .kb-badge{background:var(--kc);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;flex-shrink:0}
-.kb-body{padding:8px;display:flex;flex-direction:column;gap:7px;min-height:90px;max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:hidden}
+.kb-body{
+  padding:8px;display:flex;flex-direction:column;gap:7px;
+  min-height:100px;max-height:calc(100vh - 300px);
+  overflow-y:auto;overflow-x:hidden;
+}
+/* drop zone glow when dragging over body */
+.kb-body.drag-active{
+  background:rgba(249,115,22,.04);
+  border-radius:var(--radius-sm);
+  outline:2px dashed rgba(249,115,22,.35);
+  outline-offset:-2px;
+}
 .kb-foot{padding:6px 13px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:right}
 .kb-empty{text-align:center;padding:20px 8px;font-size:12px;color:var(--text3);border:1px dashed var(--border);border-radius:7px}
 
 /* Lead card */
-.kc{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.kc{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:11px 12px;
+  cursor:grab;
+  transition:border-color .15s,box-shadow .15s,opacity .15s,transform .15s;
+  user-select:none;
+}
 .kc:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.22)}
+.kc.dragging{opacity:.45;transform:scale(.97);cursor:grabbing;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .kc-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:2px}
 .kc-co{font-size:11px;color:var(--text2);margin-bottom:6px}
 .kc-sep{height:1px;background:var(--border);margin:6px 0}
@@ -152,7 +152,14 @@ renderLayout('Leads Pipeline', 'leads');
 .kc-d{font-size:10px;color:var(--text3);margin-top:4px}
 .kc-w{font-size:10px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Single lead detail */
+/* drag placeholder */
+.kc-placeholder{
+  border:2px dashed var(--orange);border-radius:8px;
+  background:var(--orange-bg);height:72px;
+  flex-shrink:0;pointer-events:none;
+}
+
+/* Single lead detail — unchanged */
 .ld-grid{display:grid;grid-template-columns:1fr 260px;gap:18px;align-items:start}
 .ld-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .ld-box{background:var(--bg3);border-radius:8px;padding:10px}
@@ -161,18 +168,9 @@ renderLayout('Leads Pipeline', 'leads');
 .act-item{background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:8px}
 .act-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--orange)}
 
-@media(max-width:960px){
-  .ld-grid{grid-template-columns:1fr}
-  .ld-meta{grid-template-columns:1fr 1fr}
-}
-@media(max-width:768px){
-  .lp-bar{flex-direction:column;align-items:stretch}
-  .kb-col{width:200px;min-width:200px}
-}
-@media(max-width:480px){
-  .kb-col{width:175px;min-width:175px}
-  .ld-meta{grid-template-columns:1fr 1fr}
-}
+@media(max-width:960px){.ld-grid{grid-template-columns:1fr}.ld-meta{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.lp-bar{flex-direction:column;align-items:stretch}.kb-col{width:200px;min-width:200px}}
+@media(max-width:480px){.kb-col{width:175px;min-width:175px}.ld-meta{grid-template-columns:1fr 1fr}}
 </style>
 
 <?php if ($single): ?>

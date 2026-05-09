@@ -2,7 +2,13 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-if (!isManager()) { header('Location: lead_generator.php'); exit; }
+
+// if (!isManager()) { header('Location: lead_generator.php'); exit; }
+// Tele-caller and digital marketing interns + general members can access stored leads
+if (!isManager() && !deptCan(['tele_caller','digital_marketing','general'])) {
+    header('Location: mywork.php'); exit;
+}
+
 $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];

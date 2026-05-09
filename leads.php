@@ -48,10 +48,19 @@ if (!isManager()) {
     $w .= " AND (l.assigned_to = $uid_safe OR l.assigned_to IS NULL)";
 }
 $leads=$db->query("SELECT l.*,u.name AS assignee_name FROM leads l LEFT JOIN users u ON u.id=l.assigned_to WHERE $w ORDER BY FIELD(l.priority,'urgent','high','medium','low'),l.updated_at DESC")->fetch_all(MYSQLI_ASSOC);
-$sc_counts=[];foreach($STAGES as $k=>$v)$sc_counts[$k]=$db->query("SELECT COUNT(*) FROM leads WHERE stage='$k'")->fetch_row()[0];
-$pipeline_val=$db->query("SELECT COALESCE(SUM(budget_est),0) FROM leads WHERE stage NOT IN ('won','lost')")->fetch_row()[0];
-$won_val=$db->query("SELECT COALESCE(SUM(budget_est),0) FROM leads WHERE stage='won'")->fetch_row()[0];
-$total_leads=array_sum($sc_counts);
+
+// Stats and leads scoped by role — managers see all, interns see only their assigned
+$uid_safe = (int)$user['id'];
+$stats_scope = isManager() ? "1=1" : "assigned_to = $uid_safe";
+
+$sc_counts = [];
+foreach ($STAGES as $k => $v)
+    $sc_counts[$k] = $db->query("SELECT COUNT(*) FROM leads WHERE stage='$k' AND ($stats_scope)")->fetch_row()[0];
+
+$pipeline_val = $db->query("SELECT COALESCE(SUM(budget_est),0) FROM leads WHERE stage NOT IN ('won','lost') AND ($stats_scope)")->fetch_row()[0];
+$won_val      = $db->query("SELECT COALESCE(SUM(budget_est),0) FROM leads WHERE stage='won' AND ($stats_scope)")->fetch_row()[0];
+$total_leads  = array_sum($sc_counts);
+
 $all_users=$db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $edit_lead=null;if($edit_id)$edit_lead=$db->query("SELECT * FROM leads WHERE id=$edit_id")->fetch_assoc();
 $single=null;$activities=[];

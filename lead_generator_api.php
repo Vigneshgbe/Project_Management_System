@@ -442,7 +442,7 @@ if ($action==='import_lead') {
     $stmt->execute();$lid=(int)$db->insert_id;
     $db->query("UPDATE lead_gen_results SET imported=1,lead_id=$lid WHERE id=$rid");
     logActivity('imported lead',$n,$lid);
-    echo json_encode(['ok'=>true,'lead_id'=>$lid,'message'=>"$n imported to CRM Leads"]);exit;
+    echo json_encode(['ok'=>true,'lead_id'=>$lid,'message'=>"$n imported to CRM Leads",'pipeline_url'=>'leads.php?view='.$lid]);exit;
 }
 
 // ── IMPORT ALL ────────────────────────────────────────────────────────────────

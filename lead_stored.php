@@ -517,7 +517,22 @@ function impOne(id,btn,evt,fromModal) {
             toast(d.message,'success');
             var row=document.getElementById('row-'+id);
             if(row){var imp_td=row.querySelector('.ls-btn-imp');if(imp_td)imp_td.remove();}
-            if(fromModal){var ma=document.getElementById('modal-actions');if(ma){var ib=ma.querySelector('button[onclick*="impOne"]');if(ib)ib.remove();}}
+            if(fromModal){
+                var ma=document.getElementById('modal-actions');
+                if(ma){
+                    var ib=ma.querySelector('button[onclick*="impOne"]');
+                    if(ib)ib.remove();
+                    // Add "View in Pipeline" button after import
+                    if(d.pipeline_url){
+                        var pb=document.createElement('a');
+                        pb.href=d.pipeline_url;
+                        pb.className='btn btn-sm';
+                        pb.style.cssText='background:#10b981;color:#fff;border:none;text-decoration:none';
+                        pb.textContent='🎯 View in Pipeline';
+                        ma.appendChild(pb);
+                    }
+                }
+            }
             var dataItem=lsAllData.find(l=>l.id==id);if(dataItem)dataItem.imported=true;
             loadStats();
         } else {if(btn){btn.disabled=false;btn.textContent='⬇';}toast(d.error||'Failed','error');}

@@ -260,6 +260,7 @@ var lsIds=[], lsAllData=[], lsDebTimer=null;
 document.addEventListener('DOMContentLoaded', function(){ load(1); loadStats(); });
 
 function loadStats() {
+    // Stats reflect the same filter as the table — interns see only their assigned leads
     fetch('lead_generator_api.php?action=get_all_stored&page=1&per_page=1').then(r=>r.json()).then(d=>{
         if(d.ok){ document.getElementById('st-total').textContent=d.total; document.getElementById('st-loc').textContent=(d.locations||[]).length; }
     });
@@ -330,7 +331,7 @@ function makeWebBadge(l) {
 function renderTable(leads) {
     var tb=document.getElementById('ls-tbody');
     if(!leads.length){
-        tb.innerHTML='<tr><td colspan="11" class="ls-empty"><div style="font-size:32px;margin-bottom:8px">📭</div><div>No leads match your filters</div><button onclick="resetFilters()" class="btn btn-ghost btn-sm" style="margin-top:10px">Clear Filters</button></td></tr>';
+        tb.innerHTML='<tr><td colspan="11" class="ls-empty"><div style="font-size:32px;margin-bottom:8px">📭</div><div style="font-weight:600;font-size:14px;margin-bottom:6px">No leads assigned to you yet</div><div style="font-size:12px;color:var(--text3)">Your manager will assign leads to you. Check back soon.</div><button onclick="resetFilters()" class="btn btn-ghost btn-sm" style="margin-top:10px">Clear Filters</button></td></tr>';
         return;
     }
     tb.innerHTML=leads.map(function(l,i){

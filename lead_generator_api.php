@@ -380,8 +380,8 @@ if ($action==='get_all_stored') {
 
     $where = ['1=1'];
     if (!isManager()) {
-        // Interns: see assigned leads OR unassigned leads (NULL = available to all)
-        $where[] = "(r.assigned_to = $uid OR r.assigned_to IS NULL)";
+        // Interns: ONLY see leads explicitly assigned to them
+        $where[] = "r.assigned_to = $uid";
     } elseif ($user_f) {
         $where[] = "r.assigned_to = $user_f";
     }

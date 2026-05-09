@@ -349,9 +349,11 @@ select.form-control{cursor:pointer}
     </a>
     <?php endif; ?>
 
-    <a href="payslip.php" class="nav-item <?= $activePage==='payslip'?'active':'' ?>">
-        <span class="icon">💵</span> Payslips
-    </a>
+    <?php if (isManager()): ?>
+      <a href="payslip.php" class="nav-item <?= $activePage==='payslip'?'active':'' ?>">
+          <span class="icon">💵</span> Payslips
+      </a>
+    <?php endif; ?>
 
     <?php if (deptCan(['digital_marketing','general'])): ?>
     <a href="social_media.php" class="nav-item <?= $activePage==='social_media'?'active':'' ?>">

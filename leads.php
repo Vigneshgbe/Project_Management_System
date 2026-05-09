@@ -425,4 +425,143 @@ function saveActivity(lid){var desc=document.getElementById('act-desc').value.tr
 </div>
 <?php if($edit_id): ?><script>document.addEventListener('DOMContentLoaded',function(){openModal('modal-lead')})</script><?php endif; ?>
 
-<?php renderLayoutEnd(); ?>
+<?php if ($view_mode === 'kanban' && !$single): ?>
+<script>
+/* ── KANBAN DRAG & DROP ── */
+(function(){
+  var dragId   = null;   // lead id being dragged
+  var dragEl   = null;   // the .kc element
+  var placeholder = null;
+
+  function makePlaceholder(){
+    var p = document.createElement('div');
+    p.className = 'kc-placeholder';
+    return p;
+  }
+
+  // Attach drag events to every card
+  document.querySelectorAll('.kc').forEach(function(card){
+    card.setAttribute('draggable','true');
+
+    card.addEventListener('dragstart', function(e){
+      dragId  = card.dataset.id;
+      dragEl  = card;
+      setTimeout(function(){ card.classList.add('dragging'); }, 0);
+      placeholder = makePlaceholder();
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', function(){
+      card.classList.remove('dragging');
+      if (placeholder && placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+      document.querySelectorAll('.kb-body').forEach(function(b){ b.classList.remove('drag-active'); });
+      document.querySelectorAll('.kb-col').forEach(function(c){ c.classList.remove('drag-over'); });
+      dragId = null; dragEl = null; placeholder = null;
+    });
+  });
+
+  // Column body events
+  document.querySelectorAll('.kb-body').forEach(function(body){
+    var col = body.closest('.kb-col');
+
+    body.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      body.classList.add('drag-active');
+      col.classList.add('drag-over');
+
+      // Show placeholder at correct position
+      var afterEl = getDragAfterElement(body, e.clientY);
+      if (placeholder) {
+        if (afterEl == null) body.appendChild(placeholder);
+        else body.insertBefore(placeholder, afterEl);
+      }
+    });
+
+    body.addEventListener('dragleave', function(e){
+      if (!body.contains(e.relatedTarget)){
+        body.classList.remove('drag-active');
+        col.classList.remove('drag-over');
+      }
+    });
+
+    body.addEventListener('drop', function(e){
+      e.preventDefault();
+      body.classList.remove('drag-active');
+      col.classList.remove('drag-over');
+      if (!dragId) return;
+
+      var newStage = col.dataset.stage;
+      var oldStage = dragEl ? dragEl.dataset.stage : null;
+      if (!newStage || newStage === oldStage) return;
+
+      // Optimistic UI: move card to new column
+      if (placeholder && placeholder.parentNode) {
+        body.insertBefore(dragEl, placeholder);
+        placeholder.parentNode.removeChild(placeholder);
+      } else {
+        body.appendChild(dragEl);
+      }
+      dragEl.dataset.stage = newStage;
+
+      // Update stage badge on card
+      var stageNames = <?= json_encode($STAGES) ?>;
+      var stageColors = <?= json_encode($STAGE_COLORS) ?>;
+
+      // Update column badge counts
+      if (oldStage) {
+        var oldBody = document.querySelector('.kb-col[data-stage="'+oldStage+'"] .kb-body');
+        var oldBadge = document.querySelector('.kb-col[data-stage="'+oldStage+'"] .kb-badge');
+        if (oldBadge) oldBadge.textContent = Math.max(0, (parseInt(oldBadge.textContent)||1) - 1);
+        // Show empty if no cards left
+        if (oldBody && !oldBody.querySelector('.kc')) {
+          var emp = oldBody.querySelector('.kb-empty');
+          if (!emp) {
+            emp = document.createElement('div');
+            emp.className = 'kb-empty';
+            emp.textContent = 'No leads';
+            oldBody.appendChild(emp);
+          }
+        }
+      }
+      var newBadge = col.querySelector('.kb-badge');
+      if (newBadge) newBadge.textContent = (parseInt(newBadge.textContent)||0) + 1;
+      // Remove empty placeholder in new column
+      var emp = body.querySelector('.kb-empty');
+      if (emp) emp.remove();
+
+      // Persist to server
+      var fd = new FormData();
+      fd.append('action','stage_update');
+      fd.append('id', dragId);
+      fd.append('stage', newStage);
+      fetch('leads.php', {method:'POST', body: fd})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.ok){
+            toast('Moved to ' + (stageNames[newStage]||newStage), 'success');
+          } else {
+            toast('Stage update failed','error');
+          }
+        })
+        .catch(function(){ toast('Network error','error'); });
+    });
+  });
+
+  // Find element to insert before based on Y position
+  function getDragAfterElement(container, y){
+    var els = Array.from(container.querySelectorAll('.kc:not(.dragging)'));
+    return els.reduce(function(closest, el){
+      var box    = el.getBoundingClientRect();
+      var offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset){
+        return {offset: offset, element: el};
+      }
+      return closest;
+    }, {offset: Number.NEGATIVE_INFINITY}).element || null;
+  }
+})();
+</script>
+<?php endif; ?>
+
+  <?php renderLayoutEnd(); ?>

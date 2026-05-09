@@ -379,13 +379,13 @@ if ($action==='get_all_stored') {
     $sort_dir=$sort_dir==='asc'?'ASC':'DESC';
 
     $where = ['1=1'];
-    $show_mine = $_GET['mine'] ?? '';
     if (!isManager()) {
-        // Interns: see only leads assigned to them
-        $where[] = "r.assigned_to = $uid";
+        // Interns: see assigned leads OR unassigned leads (NULL = available to all)
+        $where[] = "(r.assigned_to = $uid OR r.assigned_to IS NULL)";
     } elseif ($user_f) {
         $where[] = "r.assigned_to = $user_f";
     }
+
     // Call status filter
     $call_status_f = $_GET['call_status'] ?? '';
     if ($call_status_f !== '') {

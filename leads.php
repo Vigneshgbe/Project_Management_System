@@ -18,7 +18,13 @@ $STAGE_COLORS = ['new'=>'#6366f1','contacted'=>'#f59e0b','qualified'=>'#8b5cf6',
 $SOURCES = ['website'=>'Website','referral'=>'Referral','social'=>'Social Media','cold_outreach'=>'Cold Outreach','event'=>'Event','other'=>'Other'];
 
 ob_start();
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isManager()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Interns can only update stage and log activities — not create/edit/delete leads
+    $intern_allowed = ['stage_update', 'add_activity'];
+    $post_action = $_POST['action'] ?? '';
+    if (!isManager() && !in_array($post_action, $intern_allowed)) {
+        ob_end_clean(); header('Location: leads.php'); exit;
+    }
     $action = $_POST['action'] ?? '';
     if ($action === 'create' || $action === 'edit') {
         $id=$n=$co=$em=$ph=$so=$in=$bu=$bc=$st=$pr=$cl=$lc=$no=$lr=$as=null;
@@ -36,6 +42,11 @@ ob_end_clean();
 
 $view_id=(int)($_GET['view']??0);$edit_id=(int)($_GET['edit']??0);$stage_f=$_GET['stage']??'';$search=trim($_GET['q']??'');$view_mode=$_GET['mode']??'kanban';
 $w="1=1";if($stage_f)$w.=" AND l.stage='".$db->real_escape_string($stage_f)."'";if($search)$w.=" AND (l.name LIKE '%".$db->real_escape_string($search)."%' OR l.company LIKE '%".$db->real_escape_string($search)."%')";
+// Interns see only their assigned leads OR unassigned leads — managers see all
+if (!isManager()) {
+    $uid_safe = (int)$user['id'];
+    $w .= " AND (l.assigned_to = $uid_safe OR l.assigned_to IS NULL)";
+}
 $leads=$db->query("SELECT l.*,u.name AS assignee_name FROM leads l LEFT JOIN users u ON u.id=l.assigned_to WHERE $w ORDER BY FIELD(l.priority,'urgent','high','medium','low'),l.updated_at DESC")->fetch_all(MYSQLI_ASSOC);
 $sc_counts=[];foreach($STAGES as $k=>$v)$sc_counts[$k]=$db->query("SELECT COUNT(*) FROM leads WHERE stage='$k'")->fetch_row()[0];
 $pipeline_val=$db->query("SELECT COALESCE(SUM(budget_est),0) FROM leads WHERE stage NOT IN ('won','lost')")->fetch_row()[0];

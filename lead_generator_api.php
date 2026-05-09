@@ -377,9 +377,22 @@ if ($action==='get_all_stored') {
     $allowed_sort=['id','opportunity_score','rating','created_at','name'];
     if (!in_array($sort,$allowed_sort)) $sort='id';
     $sort_dir=$sort_dir==='asc'?'ASC':'DESC';
-    $where=['1=1'];
-    if (!isManager()) $where[]="r.user_id=$uid";
-    elseif ($user_f)  $where[]="r.user_id=$user_f";
+
+    $where = ['1=1'];
+    $show_mine = $_GET['mine'] ?? '';
+    if (!isManager()) {
+        // Interns: see only leads assigned to them
+        $where[] = "r.assigned_to = $uid";
+    } elseif ($user_f) {
+        $where[] = "r.assigned_to = $user_f";
+    }
+    // Call status filter
+    $call_status_f = $_GET['call_status'] ?? '';
+    if ($call_status_f !== '') {
+        $csf = $db->real_escape_string($call_status_f);
+        $where[] = "r.call_status = '$csf'";
+    }
+
     if ($search!=='') { $se=$db->real_escape_string($search); $where[]="(r.name LIKE '%$se%' OR r.owner_name LIKE '%$se%' OR r.location LIKE '%$se%' OR r.industry LIKE '%$se%' OR r.phone LIKE '%$se%' OR r.email LIKE '%$se%' OR r.address LIKE '%$se%')"; }
     if ($loc_f!=='')  { $le=$db->real_escape_string($loc_f); $where[]="r.location LIKE '%$le%'"; }
     if ($ind_f!=='')  { $ie=$db->real_escape_string($ind_f); $where[]="r.industry='$ie'"; }
@@ -390,7 +403,7 @@ if ($action==='get_all_stored') {
     $whereSQL=implode(' AND ',$where);
     $total=(int)(@$db->query("SELECT COUNT(*) c FROM lead_gen_results r WHERE $whereSQL")->fetch_assoc()['c']??0);
     $rows=[];
-    $q=@$db->query("SELECT r.id,r.name,r.owner_name,r.phone,r.email,r.address,r.website,r.has_website,r.rating,r.ratings_total,r.opportunity_score,r.location,r.industry,r.imported,r.lead_id,r.created_at,r.website_found_by_crawler FROM lead_gen_results r WHERE $whereSQL ORDER BY r.$sort $sort_dir LIMIT $per_page OFFSET $offset");
+    $q=@$db->query("SELECT r.id,r.name,r.owner_name,r.phone,r.email,r.address,r.website,r.has_website,r.rating,r.ratings_total,r.opportunity_score,r.location,r.industry,r.imported,r.lead_id,r.created_at,r.website_found_by_crawler,r.assigned_to,r.call_status,r.call_notes,r.last_called_at, u.name AS assigned_name FROM lead_gen_results r LEFT JOIN users u ON u.id=r.assigned_to WHERE $whereSQL ORDER BY r.$sort $sort_dir LIMIT $per_page OFFSET $offset");
     if ($q) while ($row=$q->fetch_assoc()) $rows[]=$row;
     $locations=[];$industries=[];
     $lq=@$db->query("SELECT DISTINCT location FROM lead_gen_results WHERE location IS NOT NULL AND location!='' ORDER BY location");

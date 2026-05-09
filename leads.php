@@ -19,12 +19,21 @@ $SOURCES = ['website'=>'Website','referral'=>'Referral','social'=>'Social Media'
 
 ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Interns can only update stage and log activities — not create/edit/delete leads
-    $intern_allowed = ['stage_update', 'add_activity'];
     $post_action = $_POST['action'] ?? '';
-    if (!isManager() && !in_array($post_action, $intern_allowed)) {
-        ob_end_clean(); header('Location: leads.php'); exit;
+    $intern_allowed = ['stage_update', 'add_activity'];
+    if (!isManager()) {
+        // Interns can edit only their own assigned leads; block create/delete
+        if ($post_action === 'edit') {
+            $check_id  = (int)($_POST['id'] ?? 0);
+            $uid_check = (int)$user['id'];
+            $owned = $db->query("SELECT id FROM leads WHERE id=$check_id AND assigned_to=$uid_check")->fetch_row();
+            if (!$owned) { ob_end_clean(); header('Location: leads.php'); exit; }
+            // Allow edit to proceed — fall through to the edit handler below
+        } elseif (!in_array($post_action, $intern_allowed)) {
+            ob_end_clean(); header('Location: leads.php'); exit;
+        }
     }
+
     $action = $_POST['action'] ?? '';
     if ($action === 'create' || $action === 'edit') {
         $id=$n=$co=$em=$ph=$so=$in=$bu=$bc=$st=$pr=$cl=$lc=$no=$lr=$as=null;

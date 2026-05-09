@@ -312,7 +312,7 @@ function saveActivity(lid){var desc=document.getElementById('act-desc').value.tr
       $kc=$STAGE_COLORS[$stage_key];
       $col_val=array_sum(array_column($col_leads,'budget_est'));
     ?>
-    <div class="kb-col" style="--kc:<?= $kc ?>">
+    <div class="kb-col" style="--kc:<?= $kc ?>" data-stage="<?= $stage_key ?>">
       <div class="kb-hd">
         <span class="kb-title"><?= $stage_label ?></span>
         <span class="kb-badge"><?= count($col_leads) ?></span>
@@ -323,7 +323,7 @@ function saveActivity(lid){var desc=document.getElementById('act-desc').value.tr
           $pbg=['urgent'=>'rgba(239,68,68,.15)','high'=>'rgba(249,115,22,.15)','medium'=>'rgba(245,158,11,.12)','low'=>'rgba(16,185,129,.12)'][$l['priority']]??'rgba(99,102,241,.1)';
           $ptx=['urgent'=>'#ef4444','high'=>'#f97316','medium'=>'#f59e0b','low'=>'#10b981'][$l['priority']]??'#6366f1';
         ?>
-        <div class="kc" onclick="location.href='leads.php?view=<?= $l['id'] ?>'">
+        <div class="kc" data-id="<?= $l['id'] ?>" data-stage="<?= $stage_key ?>" onclick="location.href='leads.php?view=<?= $l['id'] ?>'">
           <div class="kc-name"><?= h($l['name']) ?></div>
           <?php if($l['company']): ?><div class="kc-co">🏢 <?= h($l['company']) ?></div><?php endif; ?>
           <div class="kc-sep"></div>

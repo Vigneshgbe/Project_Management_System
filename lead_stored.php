@@ -83,6 +83,16 @@ renderLayout('Stored Leads', 'lead_stored');
 @keyframes lsspin{to{transform:rotate(360deg)}}
 @media(max-width:900px){.ls-stats{grid-template-columns:repeat(3,1fr)}.ls-modal-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.ls-stats{grid-template-columns:repeat(2,1fr)}}
+/* ── ASSIGNMENT & CALL STATUS ── */
+.call-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer;border:1px solid transparent;transition:opacity .15s}
+.call-badge:hover{opacity:.8}
+.cb-pending      {background:rgba(148,163,184,.12);color:#94a3b8;border-color:rgba(148,163,184,.25)}
+.cb-called       {background:rgba(99,102,241,.1);color:#6366f1;border-color:rgba(99,102,241,.25)}
+.cb-callback     {background:rgba(245,158,11,.1);color:#f59e0b;border-color:rgba(245,158,11,.25)}
+.cb-not_interested{background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.25)}
+.cb-converted    {background:rgba(16,185,129,.1);color:#10b981;border-color:rgba(16,185,129,.25)}
+.assign-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:11.5px;padding:3px 7px;cursor:pointer;max-width:130px}
+.assign-select:focus{outline:none;border-color:var(--orange)}
 </style>
 
 <!-- STATS -->
@@ -101,6 +111,9 @@ renderLayout('Stored Leads', 'lead_stored');
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="bulkImport()" class="btn btn-sm" id="btn-imp" style="background:var(--orange);color:#fff;border:none" disabled>⬇ Import Selected</button>
       <button onclick="bulkDelete()" class="btn btn-danger btn-sm" id="btn-del" disabled>🗑 Delete Selected</button>
+      <?php if (isManager()): ?>
+      <button onclick="bulkAssignModal()" class="btn btn-ghost btn-sm" id="btn-asgn" disabled>👤 Assign Selected</button>
+      <?php endif; ?>
       <button onclick="exportVisible()" class="btn btn-ghost btn-sm">⬇ Export CSV</button>
       <a href="lead_generator.php" class="btn btn-ghost btn-sm">🔍 Generator</a>
     </div>
@@ -132,6 +145,17 @@ renderLayout('Stored Leads', 'lead_stored');
         <option value="">All</option>
         <option value="0">Not Yet</option>
         <option value="1">Imported</option>
+      </select>
+    </div>
+    <div class="ls-fg">
+      <label>Call Status</label>
+      <select id="f-call" class="ls-sel" onchange="load(1)">
+        <option value="">All Statuses</option>
+        <option value="pending">⏳ Pending</option>
+        <option value="called">📞 Called</option>
+        <option value="callback">🔁 Callback</option>
+        <option value="not_interested">❌ Not Interested</option>
+        <option value="converted">✅ Converted</option>
       </select>
     </div>
     <div class="ls-fg">
@@ -192,6 +216,8 @@ renderLayout('Stored Leads', 'lead_stored');
           <th>Website</th>
           <th class="sortable" onclick="changeSort('rating')" id="th-rat">Rating</th>
           <th class="sortable" onclick="changeSort('created_at')" id="th-date">Date</th>
+          <th>Call Status</th>
+          <?php if (isManager()): ?><th>Assigned To</th><?php endif; ?>
           <th>Actions</th>
         </tr>
       </thead>
@@ -260,6 +286,8 @@ function load(page) {
     if(ind) url+='&industry='+encodeURIComponent(ind);
     if(web) url+='&website='+web;
     if(imp) url+='&imported='+imp;
+    var cs=document.getElementById('f-call')?.value||'';
+    if(cs) url+='&call_status='+cs;
     if(sm>0)   url+='&score_min='+sm;
     if(sx<100) url+='&score_max='+sx;
     var tb=document.getElementById('ls-tbody');
@@ -331,6 +359,8 @@ function renderTable(leads) {
             +'<td>'+webBadge+'</td>'
             +'<td class="ls-rating" style="color:#f59e0b;font-size:12px;font-weight:700">'+rating+'</td>'
             +'<td style="font-size:11px;color:var(--text3);white-space:nowrap">'+fmtDate(l.created_at)+'</td>'
+            +callStatusCell(l)
+            +assignCell(l)
             +'<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;align-items:center">'
                 +'<button onclick="showDetail('+i+')" class="ls-btn ls-btn-view" title="View Details">👁</button>'
                 +imp_btn
@@ -456,7 +486,7 @@ function updateSortHeaders() {
 }
 
 function resetFilters() {
-    ['f-search','f-loc','f-ind','f-web','f-imp'].forEach(id=>{var el=document.getElementById(id);if(el)el.value='';});
+    ['f-search','f-loc','f-ind','f-web','f-imp','f-call'].forEach(id=>{var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('f-smin').value='0';
     document.getElementById('f-smax').value='100';
     document.getElementById('f-sort').value='id';
@@ -473,6 +503,7 @@ function updBulk(){
     var bi=document.getElementById('btn-imp'),bd=document.getElementById('btn-del');
     if(bi){bi.disabled=sel===0;bi.textContent=sel>0?'⬇ Import Selected ('+sel+')':'⬇ Import Selected';}
     if(bd){bd.disabled=sel===0;bd.textContent=sel>0?'🗑 Delete Selected ('+sel+')':'🗑 Delete Selected';}
+    var ba=document.getElementById('btn-asgn');if(ba){ba.disabled=sel===0;ba.textContent=sel>0?'👤 Assign ('+sel+')':'👤 Assign Selected';}
 }
 document.addEventListener('change',e=>{if(e.target.classList.contains('ls-chk'))updBulk();});
 
@@ -539,6 +570,114 @@ function exportVisible() {
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtDate(dt){if(!dt)return'';var d=new Date(dt);return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();}
+
+// ── CALL STATUS & ASSIGNMENT ──────────────────────────────────────────────────
+var lsTeamMembers = <?php
+    $members = $db->query("SELECT id, name FROM users WHERE status='active' ORDER BY name");
+    echo json_encode($members ? $members->fetch_all(MYSQLI_ASSOC) : []);
+?>;
+
+var CALL_LABELS = {
+    pending:       '⏳ Pending',
+    called:        '📞 Called',
+    callback:      '🔁 Callback',
+    not_interested:'❌ Not Interested',
+    converted:     '✅ Converted'
+};
+
+function callStatusCell(l) {
+    var s = l.call_status || 'pending';
+    var lbl = CALL_LABELS[s] || s;
+    return '<td onclick="event.stopPropagation()">'
+        + '<div class="call-badge cb-' + s + '" onclick="cycleCallStatus(' + l.id + ',\'' + s + '\',this)" title="Click to change status">'
+        + lbl + '</div>'
+        + (l.last_called_at ? '<div style="font-size:10px;color:var(--text3);margin-top:3px">' + fmtDate(l.last_called_at) + '</div>' : '')
+        + '</td>';
+}
+
+function assignCell(l) {
+    <?php if (!isManager()): ?>
+    return '';
+    <?php else: ?>
+    var cur = l.assigned_to ? parseInt(l.assigned_to) : 0;
+    var opts = '<option value="0">— Unassigned —</option>'
+        + lsTeamMembers.map(function(u){
+            return '<option value="' + u.id + '"' + (cur == u.id ? ' selected' : '') + '>'
+                + esc(u.name) + '</option>';
+        }).join('');
+    return '<td onclick="event.stopPropagation()">'
+        + '<select class="assign-select" data-lid="' + l.id + '" onchange="assignLead(this)">'
+        + opts + '</select></td>';
+    <?php endif; ?>
+}
+
+function cycleCallStatus(id, current, el) {
+    var order = ['pending','called','callback','not_interested','converted'];
+    var next  = order[(order.indexOf(current) + 1) % order.length];
+    var fd = new FormData();
+    fd.append('action', 'update_call_status');
+    fd.append('result_id', id);
+    fd.append('status', next);
+    fetch('lead_generator_api.php', {method:'POST', body:fd})
+        .then(r => r.json()).then(d => {
+            if (d.ok) {
+                el.className = 'call-badge cb-' + next;
+                el.textContent = CALL_LABELS[next];
+                el.setAttribute('onclick', 'cycleCallStatus(' + id + ',\'' + next + '\',this)');
+                // Update lsAllData
+                var item = lsAllData.find(l => l.id == id);
+                if (item) { item.call_status = next; item.last_called_at = new Date().toISOString(); }
+                toast('Status updated to: ' + CALL_LABELS[next], 'success');
+            } else toast(d.error || 'Failed', 'error');
+        });
+}
+
+function assignLead(sel) {
+    var rid = sel.dataset.lid;
+    var to  = sel.value;
+    var fd  = new FormData();
+    fd.append('action',   'assign_lead');
+    fd.append('result_id', rid);
+    fd.append('assign_to', to);
+    fetch('lead_generator_api.php', {method:'POST', body:fd})
+        .then(r => r.json()).then(d => {
+            if (d.ok) toast('Lead assigned', 'success');
+            else toast(d.error || 'Failed', 'error');
+        });
+}
+
+function bulkAssignModal() {
+    var ids = Array.from(document.querySelectorAll('.ls-chk:checked')).map(c => c.dataset.id);
+    if (!ids.length) return;
+    var opts = '<option value="0">— Unassign —</option>'
+        + lsTeamMembers.map(u => '<option value="' + u.id + '">' + esc(u.name) + '</option>').join('');
+    var sel = document.createElement('select');
+    sel.className = 'ls-sel'; sel.style.cssText = 'margin-top:10px;width:100%';
+    sel.innerHTML = opts;
+    if (confirm('Assign ' + ids.length + ' leads — select assignee in next dialog')) {
+        var name = prompt('Assign ' + ids.length + ' leads to which team member?\n\n'
+            + lsTeamMembers.map((u,i) => (i+1)+'. '+u.name).join('\n')
+            + '\n\nEnter the number:');
+        if (name === null) return;
+        var idx = parseInt(name) - 1;
+        if (isNaN(idx) || !lsTeamMembers[idx]) { toast('Invalid selection', 'error'); return; }
+        var chosen = lsTeamMembers[idx];
+        var fd = new FormData();
+        fd.append('action', 'bulk_assign');
+        fd.append('ids', ids.join(','));
+        fd.append('assign_to', chosen.id);
+        fetch('lead_generator_api.php', {method:'POST', body:fd})
+            .then(r => r.json()).then(d => {
+                if (d.ok) { toast(d.updated + ' leads assigned to ' + chosen.name, 'success'); load(lsPage); }
+                else toast(d.error || 'Failed', 'error');
+            });
+    }
+}
+
+// Also add call_status filter to load() URL
+// Find the existing load() function and add this line after the 'imp' line:
+// var cs=document.getElementById('f-call')?.value||'';
+// if(cs) url+='&call_status='+cs;
 </script>
 
 <?php renderLayoutEnd(); ?>

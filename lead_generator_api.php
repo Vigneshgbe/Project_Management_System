@@ -429,8 +429,10 @@ if ($action==='get_search_history') {
 // ── IMPORT LEAD ───────────────────────────────────────────────────────────────
 if ($action==='import_lead') {
     $rid=(int)($_POST['result_id']??0);
-    $row=@$db->query("SELECT * FROM lead_gen_results WHERE id=$rid AND user_id=$uid")->fetch_assoc();
+
+    $row=@$db->query("SELECT * FROM lead_gen_results WHERE id=$rid")->fetch_assoc();
     if (!$row) { echo json_encode(['ok'=>false,'error'=>'Not found']); exit; }
+
     if ($row['imported']) { echo json_encode(['ok'=>false,'error'=>'Already imported']); exit; }
     $n=$row['name'];$p=$row['phone'];$em=$row['email']??'';$svc=$row['industry'];$src='other';$st='new';$pr='medium';$bc='LKR';$null=null;
     $notes="Lead Generator: {$row['industry']} in {$row['location']}.";
@@ -465,7 +467,7 @@ if ($action==='import_all') {
     if (!$ids) { echo json_encode(['ok'=>false,'error'=>'No IDs']); exit; }
     $imported_count=0;
     foreach ($ids as $rid) {
-        $row=@$db->query("SELECT * FROM lead_gen_results WHERE id=$rid AND user_id=$uid AND imported=0")->fetch_assoc(); if (!$row) continue;
+        $row=@$db->query("SELECT * FROM lead_gen_results WHERE id=$rid AND imported=0")->fetch_assoc(); if (!$row) continue;
         $n=$row['name'];$p=$row['phone'];$em=$row['email']??'';$svc=$row['industry'];$src='other';$st='new';$pr='medium';$bc='LKR';$null=null;
         $notes="Lead Generator: {$row['industry']} in {$row['location']}.";
         if (!empty($row['owner_name'])) $notes.=" Owner: {$row['owner_name']}.";
@@ -562,7 +564,7 @@ if ($action==='test_key') {
 if ($action==='export_csv') {
     $ids=array_filter(array_map('intval',explode(',',$_POST['ids']??'')));
     if (!$ids) { echo json_encode(['ok'=>false,'error'=>'No data']); exit; }
-    $rows=@$db->query("SELECT name,owner_name,phone,email,address,website,has_website,rating,industry,location,imported FROM lead_gen_results WHERE id IN(".implode(',',$ids).") AND user_id=$uid")->fetch_all(MYSQLI_ASSOC);
+    $rows=@$db->query("SELECT name,owner_name,phone,email,address,website,has_website,rating,industry,location,imported FROM lead_gen_results WHERE id IN(".implode(',',$ids).")")->fetch_all(MYSQLI_ASSOC);
     if (!$rows) { echo json_encode(['ok'=>false,'error'=>'No data']); exit; }
     $csv="Business Name,Owner Name,Phone,Email,Address,Website,Has Website,Rating,Industry,Location,Imported\n";
     foreach ($rows as $r) { $r['has_website']=$r['has_website']?'Yes':'No';$r['imported']=$r['imported']?'Yes':'No';$csv.=implode(',',array_map(fn($v)=>'"'.str_replace('"','""',(string)($v??'')).'"',array_values($r)))."\n"; }

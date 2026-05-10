@@ -105,8 +105,8 @@ if ($cat_filter)  $fw .= " AND d.category='".$db->real_escape_string($cat_filter
 if ($search)      $fw .= " AND (d.title LIKE '%".$db->real_escape_string($search)."%' OR d.original_name LIKE '%".$db->real_escape_string($search)."%')";
 
 if (!isManager()) {
-    // Members see docs they uploaded OR access='all' docs on projects they're in
-    $fw .= " AND (d.uploaded_by=$uid OR (d.access='all' AND (d.project_id IS NULL OR EXISTS(SELECT 1 FROM project_members pm WHERE pm.project_id=d.project_id AND pm.user_id=$uid))))";
+    // Members see: docs they uploaded OR any access='all' document
+    $fw .= " AND (d.uploaded_by=$uid OR d.access='all')";
 } else {
     // Managers don't see attachment-only docs in the main list (already excluded via category)
 }

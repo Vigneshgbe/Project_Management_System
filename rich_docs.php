@@ -91,9 +91,9 @@ ob_end_clean();
 $edit_rdid = (int)($_GET['edit'] ?? 0);
 $search    = trim($_GET['q'] ?? '');
 
-// Rich docs: managers see all; members see published docs OR their own
-$rw = "1=1";
-if (!isManager()) {
+if (isManager()) {
+    $rw = "1=1";
+} else {
     $rw = "(r.status='published' OR r.created_by=$uid)";
 }
 if ($search) $rw .= " AND r.title LIKE '%".$db->real_escape_string($search)."%'";
@@ -119,7 +119,7 @@ if ($edit_rdid) {
     }
 }
 
-renderLayout('Rich Documents', 'documents');
+renderLayout('Rich Documents', 'rich_docs');
 ?>
 
 <style>

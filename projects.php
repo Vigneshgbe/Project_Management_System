@@ -3,8 +3,9 @@ require_once 'config.php';
 require_once 'includes/layout.php';
 require_once 'includes/attach_widget.php';
 requireLogin();
-$db = getCRMDB();
+$db  = getCRMDB();
 $user = currentUser();
+$uid  = (int)$user['id'];
 
 // Handle POST
 ob_start();
@@ -227,7 +228,6 @@ function currSymbol(string $c): string {
 @media(max-width:960px){.sp-grid{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:768px){.proj-list{grid-template-columns:1fr}.sp-meta{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.sp-meta{grid-template-columns:1fr 1fr}.proj-card-top{padding:16px 14px 12px}}
-}
 </style>
 
 <?php if ($single): // ════ SINGLE PROJECT VIEW ════

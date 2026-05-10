@@ -11,6 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create' || $action === 'edit') {
+        // Only managers can create or edit contacts
+        if (!isManager()) {
+            flash('Access denied.', 'error');
+            ob_end_clean(); header('Location: contacts.php'); exit;
+        }
         $id      = (int)($_POST['id'] ?? 0);
         $name    = trim($_POST['name'] ?? '');
         $company = trim($_POST['company'] ?? '');

@@ -180,7 +180,7 @@ function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $
           AND ($scope)
         ORDER BY due_date
     ")->fetch_all(MYSQLI_ASSOC);
-    
+
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
@@ -194,7 +194,8 @@ function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $
 }
 
 $task_deadlines  = taskDeadlines($db, $range_start, $range_end, $uid);
-$proj_milestones = projMilestones($db, $range_start, $range_end);
+$proj_milestones = projMilestones($db, $range_start, $range_end, $uid, $is_mgr);
+
 $all_month       = array_merge($month_events, $task_deadlines, $proj_milestones);
 usort($all_month, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));
 
@@ -241,7 +242,7 @@ if ($edit_id) {
 // Upcoming events for list view (next 60 days)
 $list_events = loadEvents($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $type_where, $is_mgr);
 $list_tasks  = taskDeadlines($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid);
-$list_all    = array_merge($list_events, $list_tasks, projMilestones($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days'))));
+$list_all    = array_merge($list_events, $list_tasks, projMilestones($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $is_mgr));
 usort($list_all, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));
 
 // Nav helpers

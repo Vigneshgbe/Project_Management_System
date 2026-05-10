@@ -22,6 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_event') {
+        // Only managers can create/edit events; members can only RSVP
+        if (!isManager()) {
+            flash('Only managers can create or edit events.', 'error');
+            ob_end_clean(); header('Location: calendar.php'); exit;
+        }
         $eid   = (int)($_POST['eid'] ?? 0);
         $title = trim($_POST['title'] ?? '');
         $desc  = trim($_POST['description'] ?? '');

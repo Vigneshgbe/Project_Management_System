@@ -169,12 +169,18 @@ function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
 }
 
 // ── PROJECT MILESTONES (due dates) ──
-function projMilestones(mysqli $db, string $from, string $to): array {
+function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $is_manager=false): array {
+    $scope = $is_manager
+        ? "1=1"
+        : "(created_by=$uid OR EXISTS(SELECT 1 FROM project_members WHERE project_id=projects.id AND user_id=$uid))";
     $rows = $db->query("
         SELECT id,title,due_date,status FROM projects
-        WHERE due_date BETWEEN '$from' AND '$to' AND status NOT IN ('cancelled','completed')
+        WHERE due_date BETWEEN '$from' AND '$to'
+          AND status NOT IN ('cancelled','completed')
+          AND ($scope)
         ORDER BY due_date
     ")->fetch_all(MYSQLI_ASSOC);
+    
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
@@ -233,7 +239,7 @@ if ($edit_id) {
 }
 
 // Upcoming events for list view (next 60 days)
-$list_events = loadEvents($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $type_where);
+$list_events = loadEvents($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $type_where, $is_mgr);
 $list_tasks  = taskDeadlines($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid);
 $list_all    = array_merge($list_events, $list_tasks, projMilestones($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days'))));
 usort($list_all, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));

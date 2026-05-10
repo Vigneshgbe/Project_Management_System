@@ -140,8 +140,9 @@ function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type
     ")->fetch_all(MYSQLI_ASSOC);
 }
 
-$month_events = loadEvents($db, $range_start, $range_end, $uid, $type_where);
-$week_events  = loadEvents($db, $week_start,  $week_end,  $uid, $type_where);
+$is_mgr       = isManager();
+$month_events = loadEvents($db, $range_start, $range_end, $uid, $type_where, $is_mgr);
+$week_events  = loadEvents($db, $week_start,  $week_end,  $uid, $type_where, $is_mgr);
 
 // ── INJECT TASK DEADLINES ── (tasks with due_date in range, as pseudo-events)
 function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {

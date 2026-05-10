@@ -150,7 +150,7 @@ function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
         FROM tasks t LEFT JOIN projects p ON p.id=t.project_id
         WHERE t.due_date BETWEEN '$from' AND '$to'
           AND t.status != 'done'
-          AND (t.assigned_to=$uid OR t.created_by=$uid OR 1=1)
+          AND (t.assigned_to=$uid OR t.created_by=$uid)
         ORDER BY t.due_date ASC
     ")->fetch_all(MYSQLI_ASSOC);
     $out = [];

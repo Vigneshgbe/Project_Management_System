@@ -26,7 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($post_action === 'edit') {
             $check_id  = (int)($_POST['id'] ?? 0);
             $uid_check = (int)$user['id'];
-            $owned = $db->query("SELECT id FROM leads WHERE id=$check_id AND assigned_to=$uid_check")->fetch_row();
+            // Intern can edit leads assigned to them OR unassigned leads (same rule as what they can see)
+            $owned = $db->query("SELECT id FROM leads WHERE id=$check_id AND (assigned_to=$uid_check OR assigned_to IS NULL)")->fetch_row();
             if (!$owned) { ob_end_clean(); header('Location: leads.php'); exit; }
             // Allow edit to proceed — fall through to the edit handler below
         } elseif (!in_array($post_action, $intern_allowed)) {

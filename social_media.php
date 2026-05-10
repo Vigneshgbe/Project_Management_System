@@ -306,7 +306,7 @@ foreach ($stabs as [$sk, $sl]): ?>
     <div class="sm-panel" style="margin-bottom:0">
       <div class="sm-panel-head">
         📅 Upcoming &amp; Scheduled
-        <button onclick="smSec('compose')" class="btn btn-primary btn-sm">✏️ New Post</button>
+        <button onclick="smSec('compose')" class="btn <?= $is_manager ? 'btn-primary' : 'btn-ghost' ?> btn-sm">✏️ <?= $is_manager ? 'New Post' : 'Draft Post' ?></button>
       </div>
       <div style="padding:0">
         <?php
@@ -375,7 +375,11 @@ foreach ($stabs as [$sk, $sl]): ?>
 <!-- ════════════════ PIPELINE ════════════════ -->
 <div id="smsec-pipeline" style="display:<?=$section==='pipeline'?'block':'none'?>">
   <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <?php if ($is_manager): ?>
     <button onclick="smSec('compose')" class="btn btn-primary">✏️ New Post</button>
+    <?php else: ?>
+    <button onclick="smSec('compose')" class="btn btn-ghost">✏️ Draft Post</button>
+    <?php endif; ?>
   </div>
   <div class="sm-kanban">
   <?php foreach (['idea','draft','scheduled','published','cancelled'] as $st):
@@ -409,12 +413,17 @@ foreach ($stabs as [$sk, $sl]): ?>
             <?php if($p['assigned_name']): ?><span>👤 <?=h($p['assigned_name'])?></span><?php endif; ?>
           </div>
         </div>
+        <?php
+        $can_edit_post = $is_manager || ($p['assigned_to'] == $uid) || ($p['created_by'] == $uid);
+        ?>
         <div class="sm-card-foot">
+          <?php if ($can_edit_post): ?>
           <button onclick="location.href='social_media.php?edit=<?=$p['id']?>'">✎ Edit</button>
+          <?php endif; ?>
           <button onclick="quickCopy(<?=$p['id']?>)" title="Copy caption">📋 Copy</button>
-          <?php if($st!=='published'): ?><button onclick="markPublished(<?=$p['id']?>)" style="color:#10b981">✅</button><?php endif; ?>
+          <?php if($is_manager && $st!=='published'): ?><button onclick="markPublished(<?=$p['id']?>)" style="color:#10b981">✅</button><?php endif; ?>
           <?php if(isset($PU[$p['platform']??''])): ?><a href="<?=h($PU[$p['platform']])?>" target="_blank" style="color:<?=$pc['color']?>">↗</a><?php endif; ?>
-          <button onclick="delPost(<?=$p['id']?>)" style="color:var(--red)">🗑</button>
+          <?php if ($can_edit_post): ?><button onclick="delPost(<?=$p['id']?>)" style="color:var(--red)">🗑</button><?php endif; ?>
         </div>
       </div>
       <?php endforeach; ?>
@@ -533,8 +542,10 @@ foreach ($stabs as [$sk, $sl]): ?>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <button type="submit" name="status" value="draft" class="btn btn-ghost" style="flex:1">💾 Draft</button>
+              <?php if ($is_manager): ?>
               <button type="submit" name="status" value="scheduled" class="btn btn-ghost" style="flex:1;color:#6366f1;border-color:#6366f1">📅 Schedule</button>
               <button type="submit" name="status" value="published" class="btn btn-primary" style="flex:1;background:#10b981;border-color:#10b981">✅ Publish</button>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -629,7 +640,7 @@ foreach ($stabs as [$sk, $sl]): ?>
       <div style="font-size:16px;font-weight:700;font-family:var(--font-display)"><?=date('F Y',$first)?></div>
       <a href="?section=calendar&cy=<?=$cm===12?$cy+1:$cy?>&cm=<?=$cm===12?1:$cm+1?>" class="btn btn-ghost btn-sm">Next →</a>
     </div>
-    <button onclick="smSec('compose')" class="btn btn-primary">✏️ New Post</button>
+    <button onclick="smSec('compose')" class="btn <?= $is_manager ? 'btn-primary' : 'btn-ghost' ?>">✏️ <?= $is_manager ? 'New Post' : 'Draft Post' ?></button>
   </div>
   <div class="cal-grid" style="margin-bottom:4px">
     <?php foreach(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $d): ?>
@@ -655,7 +666,7 @@ foreach ($stabs as [$sk, $sl]): ?>
 
 <!-- ════════════════ ACCOUNTS ════════════════ -->
 <div id="smsec-accounts" style="display:<?=$section==='accounts'?'block':'none'?>">
-  <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+  <div style="display:grid;grid-template-columns:<?= $is_manager ? '1fr 340px' : '1fr' ?>;gap:16px;align-items:start">
     <!-- Account cards -->
     <div>
       <div class="acc-grid">
@@ -717,12 +728,16 @@ foreach ($stabs as [$sk, $sl]): ?>
 
           <!-- Actions -->
           <div style="display:flex;gap:6px">
+            <?php if ($is_manager): ?>
             <a href="?section=accounts&edit_acc=<?=$a['id']?>" class="btn btn-ghost btn-sm" style="flex:1;text-align:center">✎ Edit</a>
             <form method="POST" onsubmit="return confirm('Remove this account?')" style="display:inline">
               <input type="hidden" name="action" value="delete_account">
               <input type="hidden" name="account_id" value="<?=$a['id']?>">
               <button type="submit" class="btn btn-danger btn-sm btn-icon">🗑</button>
             </form>
+            <?php else: ?>
+            <?php if($a['url']): ?><a href="<?=h($a['url'])?>" target="_blank" class="btn btn-ghost btn-sm" style="flex:1;text-align:center">↗ Open</a><?php endif; ?>
+            <?php endif; ?>
           </div>
         </div>
         <?php endforeach; ?>
@@ -735,7 +750,8 @@ foreach ($stabs as [$sk, $sl]): ?>
       </div>
     </div>
 
-    <!-- Add/Edit form -->
+    <!-- Add/Edit form — managers only -->
+    <?php if ($is_manager): ?>
     <div class="sm-panel">
       <div class="sm-panel-head"><?=$ea?'✎ Edit Account':'➕ Add Account'?></div>
       <div class="sm-panel-body">
@@ -796,6 +812,7 @@ foreach ($stabs as [$sk, $sl]): ?>
         </form>
       </div>
     </div>
+    <?php endif; // manager account form ?>
   </div>
 </div>
 

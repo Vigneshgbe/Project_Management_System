@@ -12,6 +12,11 @@ ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    // Members cannot create, edit, delete or update progress on projects
+    if (!isManager() && in_array($action, ['create','edit','delete','progress'])) {
+        ob_end_clean(); header('Location: projects.php'); exit;
+    }
+
     if ($action === 'create' || $action === 'edit') {
         $id       = (int)($_POST['id'] ?? 0);
         $title    = trim($_POST['title'] ?? '');
@@ -128,7 +133,7 @@ if ($view_id) {
     $single = $db->query("SELECT p.*,c.name AS client_name,c.email AS client_email FROM projects p LEFT JOIN contacts c ON c.id=p.contact_id WHERE $proj_access")->fetch_assoc();
     // If member tries to access a project they don't belong to, redirect
     if (!$single && $view_id) { header('Location: projects.php'); exit; }
-    
+
     if ($single) {
         $proj_tasks = $db->query("SELECT t.*,u.name AS assignee FROM tasks t LEFT JOIN users u ON u.id=t.assigned_to WHERE t.project_id=$view_id ORDER BY FIELD(t.priority,'urgent','high','medium','low'),t.due_date")->fetch_all(MYSQLI_ASSOC);
         $proj_members_list = $db->query("SELECT u.id,u.name,u.role,u.avatar,pm.role AS pm_role FROM project_members pm JOIN users u ON u.id=pm.user_id WHERE pm.project_id=$view_id")->fetch_all(MYSQLI_ASSOC);

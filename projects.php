@@ -493,7 +493,7 @@ function clickBar(e, el){
 <div class="card">
   <div class="empty-state">
     <div class="icon">📁</div>
-    <p>No projects found.<?= isManager() ? ' <a href="#" onclick="openModal(\'modal-project\')" style="color:var(--orange)">Create the first one</a>' : '' ?></p>
+    <p>No projects found.<?= isManager() ? ' <a href="#" onclick="openModal(\'modal-project\')" style="color:var(--orange)">Create the first one</a>' : ' You have not been added to any projects yet.' ?></p>
   </div>
 </div>
 <?php else: ?>

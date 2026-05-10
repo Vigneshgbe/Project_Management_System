@@ -85,7 +85,12 @@ $search = trim($_GET['q'] ?? '');
 
 $where = "1=1";
 if ($status_filter) $where .= " AND p.status='".$db->real_escape_string($status_filter)."'";
-if ($search) $where .= " AND p.title LIKE '%".$db->real_escape_string($search)."%'";
+if ($search)        $where .= " AND p.title LIKE '%".$db->real_escape_string($search)."%'";
+
+// Members/interns see only projects they are a member of or created
+if (!isManager()) {
+    $where .= " AND (p.created_by = $uid OR EXISTS (SELECT 1 FROM project_members pm WHERE pm.project_id=p.id AND pm.user_id=$uid))";
+}
 
 $projects = $db->query("
   SELECT p.*, u.name AS creator, c.name AS client_name,

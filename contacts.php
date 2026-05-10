@@ -77,10 +77,13 @@ $all_users = $db->query("SELECT id,name FROM users WHERE status='active' ORDER B
 $edit_contact = null;
 if ($edit_id) $edit_contact = $db->query("SELECT * FROM contacts WHERE id=$edit_id")->fetch_assoc();
 
-// Stats
+// Stats — scoped to same role filter so numbers match what user sees
+$stats_scope = isManager()
+    ? "1=1"
+    : "(assigned_to = $uid OR created_by = $uid)";
 $type_stats = [];
 foreach (['client','lead','partner','vendor'] as $t) {
-    $type_stats[$t] = $db->query("SELECT COUNT(*) FROM contacts WHERE type='$t'")->fetch_row()[0];
+    $type_stats[$t] = $db->query("SELECT COUNT(*) FROM contacts WHERE type='$t' AND ($stats_scope)")->fetch_row()[0];
 }
 
 renderLayout('Contacts', 'contacts');
@@ -115,7 +118,9 @@ renderLayout('Contacts', 'contacts');
       <?php endforeach; ?>
     </select>
   </form>
+  <?php if (isManager()): ?>
   <button class="btn btn-primary" onclick="openModal('modal-contact')">＋ <span>Add Contact</span></button>
+  <?php endif; ?>
 </div>
 
 <?php if (empty($contacts)): ?>
@@ -149,13 +154,15 @@ renderLayout('Contacts', 'contacts');
           <td style="font-size:12.5px"><?= h($c['assignee_name'] ?? '—') ?></td>
           <td>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditContact(<?= htmlspecialchars(json_encode($c)) ?>)" title="Edit">✎</button>
               <?php if (isManager()): ?>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditContact(<?= htmlspecialchars(json_encode($c)) ?>)" title="Edit">✎</button>
               <form method="POST" onsubmit="return confirm('Delete contact?')">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="id" value="<?= $c['id'] ?>">
                 <button type="submit" class="btn btn-danger btn-sm btn-icon" title="Delete">🗑</button>
               </form>
+              <?php else: ?>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditContact(<?= htmlspecialchars(json_encode($c)) ?>)" title="View Details" style="cursor:default;opacity:.6" disabled>👁</button>
               <?php endif; ?>
             </div>
           </td>

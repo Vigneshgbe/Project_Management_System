@@ -346,7 +346,7 @@ function currSymbol(string $c): string {
               $ts = statusColor($t['status']);
               $overdue = $t['due_date'] && $t['due_date'] < date('Y-m-d') && $t['status'] !== 'done';
             ?>
-            <tr class="task-tr" onclick="location.href='tasks.php?edit=<?= $t['id'] ?>'" style="cursor:pointer">
+            <tr class="task-tr" onclick="location.href='tasks.php<?= isManager() ? '?edit='.$t['id'] : '?view='.$view_id ?>'" style="cursor:pointer">
               <td class="td-main"><?= priorityIcon($t['priority']) ?> <?= h($t['title']) ?></td>
               <td style="font-size:12.5px;color:var(--text2)"><?= h($t['assignee'] ?? '—') ?></td>
               <td><span class="badge" style="background:<?= $ts ?>18;color:<?= $ts ?>;font-size:11px"><?= h(str_replace('_',' ',$t['status'])) ?></span></td>

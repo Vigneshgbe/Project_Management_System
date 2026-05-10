@@ -146,10 +146,11 @@ renderLayout('Rich Documents', 'rich_docs');
 @media(max-width:480px){.editor-meta{grid-template-columns:1fr}}
 </style>
 
-<!-- TABS: Files | Rich Documents (active) -->
-<div class="doc-tabs">
-    <a href="documents.php" class="doc-tab">📁 Files</a>
-    <a href="rich_docs.php" class="doc-tab active">✍ Rich Documents</a>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:700">✍ Rich Documents</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Create and edit rich documents · <a href="documents.php" style="color:var(--orange)">Switch to Files →</a></div>
+    </div>
 </div>
 
 <?php if ($edit_rd !== null || isset($_GET['new_doc'])): // ── EDITOR VIEW ── ?>

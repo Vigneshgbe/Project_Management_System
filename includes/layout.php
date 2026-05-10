@@ -315,7 +315,10 @@ select.form-control{cursor:pointer}
     <?php endif; ?>
 
     <a href="documents.php" class="nav-item <?= $activePage==='documents'?'active':'' ?>">
-        <span class="icon">📋</span> Documents
+        <span class="icon">📁</span> Files
+    </a>
+    <a href="rich_docs.php" class="nav-item <?= $activePage==='rich_docs'?'active':'' ?>">
+        <span class="icon">✍</span> Rich Docs
     </a>
 
     <?php if (deptCan(['general'])): ?>

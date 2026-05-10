@@ -161,10 +161,11 @@ renderLayout('Documents', 'documents');
 @media(max-width:480px){.doc-grid{grid-template-columns:1fr}.doc-filter{flex-direction:column;align-items:stretch}}
 </style>
 
-<!-- TABS: Files (active) | Rich Documents -->
-<div class="doc-tabs">
-    <a href="documents.php" class="doc-tab active">📁 Files</a>
-    <a href="rich_docs.php" class="doc-tab">✍ Rich Documents</a>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:700">📁 Files</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Upload and manage documents · <a href="rich_docs.php" style="color:var(--orange)">Switch to Rich Docs →</a></div>
+    </div>
 </div>
 
 <!-- FILTER BAR -->

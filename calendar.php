@@ -478,7 +478,9 @@ renderLayout('Calendar', 'calendar');
       <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= $week ?>"   class="<?= $view==='week'?'active':'' ?>">Week</a>
       <a href="calendar.php?view=list"                                  class="<?= $view==='list'?'active':'' ?>">List</a>
     </div>
+    <?php if (isManager()): ?>
     <button class="btn btn-primary" onclick="openModal('modal-event')">＋ Event</button>
+    <?php endif; ?>
   </div>
 </div>
 

@@ -116,8 +116,11 @@ $week_end   = date('Y-m-d', strtotime($year.'W'.sprintf('%02d',$week).'7'));
 $type_where = $type_f ? " AND ce.event_type='".$db->real_escape_string($type_f)."'" : '';
 
 // Fetch events visible to current user:
-// All events where user is creator OR attendee OR event is for their project
-function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type_where=''): array {
+function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type_where='', bool $is_manager=false): array {
+    // Managers see all events; members see only events they created or are invited to
+    $scope = $is_manager
+        ? "1=1"
+        : "(ce.created_by=$uid OR EXISTS(SELECT 1 FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid))";
     return $db->query("
         SELECT ce.*, u.name AS creator_name,
             p.title AS proj_title, t.title AS task_title, c.name AS contact_name,
@@ -131,7 +134,7 @@ function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type
         LEFT JOIN tasks    t ON t.id=ce.task_id
         LEFT JOIN contacts c ON c.id=ce.contact_id
         WHERE DATE(ce.start_datetime) BETWEEN '$from' AND '$to'
-          AND (ce.created_by=$uid OR EXISTS(SELECT 1 FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid) OR 1=1)
+          AND ($scope)
           $type_where
         ORDER BY ce.start_datetime ASC
     ")->fetch_all(MYSQLI_ASSOC);

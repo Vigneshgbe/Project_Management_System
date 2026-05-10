@@ -2,8 +2,9 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-$db = getCRMDB();
+$db   = getCRMDB();
 $user = currentUser();
+$uid  = (int)$user['id'];
 
 ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -55,16 +56,20 @@ $status_f = $_GET['status'] ?? '';
 $search   = trim($_GET['q'] ?? '');
 
 $where = "1=1";
-if ($type_f) $where .= " AND c.type='".$db->real_escape_string($type_f)."'";
+// Members see only contacts assigned to them or created by them
+if (!isManager()) {
+    $where .= " AND (c.assigned_to = $uid OR c.created_by = $uid)";
+}
+if ($type_f)   $where .= " AND c.type='".$db->real_escape_string($type_f)."'";
 if ($status_f) $where .= " AND c.status='".$db->real_escape_string($status_f)."'";
-if ($search) $where .= " AND (c.name LIKE '%".$db->real_escape_string($search)."%' OR c.company LIKE '%".$db->real_escape_string($search)."%' OR c.email LIKE '%".$db->real_escape_string($search)."%')";
+if ($search)   $where .= " AND (c.name LIKE '%".$db->real_escape_string($search)."%' OR c.company LIKE '%".$db->real_escape_string($search)."%' OR c.email LIKE '%".$db->real_escape_string($search)."%')";
 
 $contacts = $db->query("
-  SELECT c.*, u.name AS assignee_name,
-    (SELECT COUNT(*) FROM projects WHERE contact_id=c.id) AS proj_count
-  FROM contacts c
-  LEFT JOIN users u ON u.id=c.assigned_to
-  WHERE $where ORDER BY c.updated_at DESC
+    SELECT c.*, u.name AS assignee_name,
+        (SELECT COUNT(*) FROM projects WHERE contact_id=c.id) AS proj_count
+    FROM contacts c
+    LEFT JOIN users u ON u.id=c.assigned_to
+    WHERE $where ORDER BY c.updated_at DESC
 ")->fetch_all(MYSQLI_ASSOC);
 
 $all_users = $db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);

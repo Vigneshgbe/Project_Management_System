@@ -473,8 +473,10 @@ if ($action==='import_all') {
         if (!empty($row['owner_name'])) $notes.=" Owner: {$row['owner_name']}.";
         if ($row['address']) $notes.=" Address: {$row['address']}."; if ($row['website']) $notes.=" Web: {$row['website']}.";
         $notes.=$row['has_website']?' Has website: Yes.':" Has website: No.";
+        // Carry assignee from stored lead so pipeline ownership is correct
+        $bulk_assign = (int)($row['assigned_to'] ?? 0) ?: null;
         $stmt=$db->prepare("INSERT INTO leads (name,company,email,phone,source,service_interest,budget_est,budget_currency,stage,priority,expected_close,last_contact,notes,loss_reason,assigned_to,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("ssssssdsssssssii",$n,$n,$em,$p,$src,$svc,$null,$bc,$st,$pr,$null,$null,$notes,$null,$null,$uid);
+        $stmt->bind_param("ssssssdsssssssii",$n,$n,$em,$p,$src,$svc,$null,$bc,$st,$pr,$null,$null,$notes,$null,$bulk_assign,$uid);
         $stmt->execute();$lid=(int)$db->insert_id;
         $db->query("UPDATE lead_gen_results SET imported=1,lead_id=$lid WHERE id=$rid");$imported_count++;
     }

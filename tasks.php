@@ -188,6 +188,21 @@ $tasks = $db->query("
              t.due_date ASC
 ")->fetch_all(MYSQLI_ASSOC);
 
+// Bucket counts always use full scope (ignore status/search/label filters)
+// so members always see their real totals, not filtered-down zeros
+$bucket_where = $scope_clause;
+if ($proj_filter)              $bucket_where .= " AND t.project_id=$proj_filter";
+if ($assign_filter === 'me')   $bucket_where .= " AND t.assigned_to=$uid";
+elseif ((int)$assign_filter>0) $bucket_where .= " AND t.assigned_to=".(int)$assign_filter;
+
+$bucket_counts = [];
+foreach (['todo','in_progress','review','done'] as $bk) {
+    $bk_e = $db->real_escape_string($bk);
+    $bucket_counts[$bk] = (int)$db->query("
+        SELECT COUNT(*) FROM tasks t WHERE $bucket_where AND t.status='$bk_e'
+    ")->fetch_row()[0];
+}
+
 $projects  = $db->query("SELECT id,title FROM projects WHERE status NOT IN ('cancelled','completed') ORDER BY title")->fetch_all(MYSQLI_ASSOC);
 $all_users = $db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $label_rows = $db->query("SELECT DISTINCT label FROM tasks WHERE label IS NOT NULL AND label!='' ORDER BY label")->fetch_all(MYSQLI_ASSOC);
@@ -300,7 +315,7 @@ $buckets = ['todo'=>['To Do','#6366f1'],'in_progress'=>['In Progress','#f59e0b']
 ?>
 <div class="tk-buckets">
 <?php foreach ($buckets as $k => [$l, $c]):
-    $cnt    = count(array_filter($tasks, fn($t) => $t['status'] === $k));
+    $cnt    = $bucket_counts[$k] ?? 0;
     $active = ($status_filter === $k) ? "box-shadow:0 0 0 2px {$c}" : '';
     $href   = '?status='.$k.($proj_filter?"&project_id=$proj_filter":'');
 ?>

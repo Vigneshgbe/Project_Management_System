@@ -4,7 +4,8 @@ require_once 'includes/layout.php';
 requireLogin();
 $db   = getCRMDB();
 $user = currentUser();
-$uid  = (int)$user['id'];
+$uid        = (int)$user['id'];
+$is_manager = isManager();
 mysqli_report(MYSQLI_REPORT_OFF);
 
 // ── ENSURE password column exists ──────────────────────────────────────────
@@ -14,6 +15,36 @@ mysqli_report(MYSQLI_REPORT_OFF);
 ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+
+    // Members can only change status of posts assigned to them
+    $write_actions = ['save_account','delete_account','save_template','delete_template'];
+    if (!$is_manager && in_array($action, $write_actions)) {
+        ob_end_clean(); header('Location: social_media.php'); exit;
+    }
+
+    // Members can quick_status only their own assigned posts
+    if (!$is_manager && $action === 'quick_status') {
+        $pid = (int)($_POST['post_id'] ?? 0);
+        $own = $db->query("SELECT id FROM social_posts WHERE id=$pid AND assigned_to=$uid")->fetch_row();
+        if (!$own) { ob_end_clean(); header('Location: social_media.php'); exit; }
+    }
+
+    // Members can only save/delete their own posts
+    if (!$is_manager && $action === 'save_post') {
+        $post_id = (int)($_POST['post_id'] ?? 0);
+        if ($post_id) {
+            // Editing existing: must be assigned to or created by this member
+            $own = $db->query("SELECT id FROM social_posts WHERE id=$post_id AND (assigned_to=$uid OR created_by=$uid)")->fetch_row();
+            if (!$own) { ob_end_clean(); header('Location: social_media.php'); exit; }
+        }
+        // Creating new: allowed for members — they create drafts
+    }
+
+    if (!$is_manager && $action === 'delete_post') {
+        $pid = (int)($_POST['post_id'] ?? 0);
+        $own = $db->query("SELECT id FROM social_posts WHERE id=$pid AND (assigned_to=$uid OR created_by=$uid)")->fetch_row();
+        if (!$own) { ob_end_clean(); header('Location: social_media.php'); exit; }
+    }
 
     if ($action === 'save_account') {
         $platform  = $_POST['platform'] ?? 'other';

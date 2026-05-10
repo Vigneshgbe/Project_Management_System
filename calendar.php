@@ -360,7 +360,7 @@ renderLayout('Calendar', 'calendar');
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
-          <?php if ($single_event['created_by'] == $uid || isManager()): ?>
+          <?php if (isManager()): ?>
           <a href="calendar.php?edit=<?= $view_eid ?>" class="btn btn-ghost btn-sm">✎ Edit</a>
           <form method="POST" onsubmit="return confirm('Delete this event?')" style="display:inline">
             <input type="hidden" name="action" value="delete_event">

@@ -2,7 +2,7 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
-// requireRole(['admin','manager']);
+requireRole(['admin','manager']);
 $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];
@@ -141,11 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ded_json    = json_encode($deductions);
 
         if ($pid) {
-           $stmt = $db->prepare("UPDATE payslips SET template_id=?,employee_id=?,employee_name=?,employee_email=?,employee_phone=?,nic_number=?,epf_member_no=?,designation=?,department=?,employee_id_no=?,pay_period=?,pay_date=?,working_days=?,days_paid=?,basic_salary=?,allowances=?,deductions=?,gross_salary=?,total_deductions=?,net_salary=?,currency=?,bank_name=?,account_no=?,notes=?,status=?,payslip_ref=? WHERE id=$pid");
-            $stmt->bind_param("iissssssssssiidssdddsssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
+            $stmt = $db->prepare("UPDATE payslips SET template_id=?,employee_id=?,employee_name=?,employee_email=?,employee_phone=?,nic_number=?,epf_member_no=?,designation=?,department=?,employee_id_no=?,pay_period=?,pay_date=?,working_days=?,days_paid=?,basic_salary=?,allowances=?,deductions=?,gross_salary=?,total_deductions=?,net_salary=?,currency=?,bank_name=?,account_no=?,notes=?,status=?,payslip_ref=? WHERE id=$pid");
+            $stmt->bind_param("iissssssssssiidssdddssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         } else {
             $stmt = $db->prepare("INSERT INTO payslips (template_id,employee_id,employee_name,employee_email,employee_phone,nic_number,epf_member_no,designation,department,employee_id_no,pay_period,pay_date,working_days,days_paid,basic_salary,allowances,deductions,gross_salary,total_deductions,net_salary,currency,bank_name,account_no,notes,status,payslip_ref,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("iissssssssssiidssdddssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
+            $stmt->bind_param("iissssssssssiidssdddssssssi",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref,$uid);
         }
         $stmt->execute();
         $new_pid = $pid ?: (int)$db->insert_id;
@@ -184,33 +184,12 @@ $edit_tpl = (int)($_GET['edit_tpl'] ?? 0);
 if ($section === 'create' || $edit_id) $section = 'create';
 if ($section === 'templates')          $section = 'templates';
 
-// Members/interns cannot access create or templates — redirect to list
-if (!isManager() && in_array($section, ['create','templates'])) {
-    header('Location: payslip.php'); exit;
-}
-
-// Members/interns only see their own payslips; managers see all
-if (isManager()) {
-    $payslips = $db->query("
-        SELECT p.*, t.company_name
-        FROM payslips p
-        LEFT JOIN payslip_templates t ON t.id=p.template_id
-        ORDER BY p.created_at DESC LIMIT 100
-    ")->fetch_all(MYSQLI_ASSOC);
-} else {
-    $uid_safe = (int)$user['id'];
-    $emp_email_safe = $db->real_escape_string($user['email']);
-    $emp_name_safe  = $db->real_escape_string($user['name']);
-    $payslips = $db->query("
-        SELECT p.*, t.company_name
-        FROM payslips p
-        LEFT JOIN payslip_templates t ON t.id=p.template_id
-        WHERE p.employee_id = {$uid_safe}
-           OR p.employee_email = '{$emp_email_safe}'
-           OR p.employee_name = '{$emp_name_safe}'
-        ORDER BY p.created_at DESC LIMIT 100
-    ")->fetch_all(MYSQLI_ASSOC);
-}
+$payslips = $db->query("
+    SELECT p.*, t.company_name
+    FROM payslips p
+    LEFT JOIN payslip_templates t ON t.id=p.template_id
+    ORDER BY p.created_at DESC LIMIT 100
+")->fetch_all(MYSQLI_ASSOC);
 
 $templates   = $db->query("SELECT * FROM payslip_templates ORDER BY is_default DESC, name ASC")->fetch_all(MYSQLI_ASSOC);
 $default_tpl = null;
@@ -343,13 +322,28 @@ renderLayout('Payslip Generator','payslip');
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <?php if ($single['status']==='draft' && isManager()): ?>
     <form method="POST" style="display:inline">
-      <input type="hidden" name="action"      value="save_payslip">
-      <input type="hidden" name="payslip_id"  value="<?= $single['id'] ?>">
+      <input type="hidden" name="action"         value="save_payslip">
+      <input type="hidden" name="payslip_id"     value="<?= $single['id'] ?>">
+      <input type="hidden" name="template_id"    value="<?= (int)($single['template_id']??0) ?>">
+      <input type="hidden" name="employee_id"    value="<?= (int)($single['employee_id']??0) ?>">
       <input type="hidden" name="employee_name"  value="<?= h($single['employee_name']) ?>">
+      <input type="hidden" name="employee_email" value="<?= h($single['employee_email']??'') ?>">
+      <input type="hidden" name="employee_phone" value="<?= h($single['employee_phone']??'') ?>">
+      <input type="hidden" name="nic_number"     value="<?= h($single['nic_number']??'') ?>">
+      <input type="hidden" name="epf_member_no"  value="<?= h($single['epf_member_no']??'') ?>">
+      <input type="hidden" name="designation"    value="<?= h($single['designation']??'') ?>">
+      <input type="hidden" name="department"     value="<?= h($single['department']??'') ?>">
+      <input type="hidden" name="employee_id_no" value="<?= h($single['employee_id_no']??'') ?>">
       <input type="hidden" name="pay_period"     value="<?= h($single['pay_period']) ?>">
-      <input type="hidden" name="basic_salary"   value="<?= h($single['basic_salary']) ?>">
-      <input type="hidden" name="currency"       value="<?= h($single['currency']) ?>">
-      <input type="hidden" name="payslip_ref"    value="<?= h($single['payslip_ref']) ?>">
+      <input type="hidden" name="pay_date"       value="<?= h($single['pay_date']??'') ?>">
+      <input type="hidden" name="working_days"   value="<?= (int)($single['working_days']??0) ?>">
+      <input type="hidden" name="days_paid"      value="<?= (int)($single['days_paid']??0) ?>">
+      <input type="hidden" name="basic_salary"   value="<?= h($single['basic_salary']??0) ?>">
+      <input type="hidden" name="currency"       value="<?= h($single['currency']??'LKR') ?>">
+      <input type="hidden" name="bank_name"      value="<?= h($single['bank_name']??'') ?>">
+      <input type="hidden" name="account_no"     value="<?= h($single['account_no']??'') ?>">
+      <input type="hidden" name="notes"          value="<?= h($single['notes']??'') ?>">
+      <input type="hidden" name="payslip_ref"    value="<?= h($single['payslip_ref']??'') ?>">
       <button type="submit" name="ps_status" value="issued" class="btn btn-ghost btn-sm" style="color:var(--green);border-color:var(--green)">✅ Mark as Issued</button>
     </form>
     <?php endif; ?>
@@ -548,10 +542,8 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
 <!-- ══ TABS: LIST / CREATE / TEMPLATES ══ -->
 <div class="ps-tabs">
   <button class="ps-tab <?= $section==='list'?'active':'' ?>" onclick="psTab('list')">📋 Payslips <span id="ps-count-badge" style="font-size:10px;background:var(--bg4);padding:1px 6px;border-radius:99px;margin-left:2px"><?= count($payslips) ?></span></button>
-  <?php if (isManager()): ?>
   <button class="ps-tab <?= $section==='create'?'active':'' ?>" onclick="psTab('create')">➕ <?= $ep?'Edit Payslip':'Create Payslip' ?></button>
   <button class="ps-tab <?= $section==='templates'?'active':'' ?>" onclick="psTab('templates')">⚙ Templates</button>
-  <?php endif; ?>
 </div>
 
 <!-- ── PAYSLIP LIST ── -->
@@ -589,9 +581,7 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
         <a href="payslip.php?view=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="View">👁</a>
         <a href="payslip.php?export=print&pid=<?= $ps['id'] ?>" target="_blank" class="btn btn-ghost btn-sm btn-icon" title="Print/PDF">🖨</a>
         <a href="payslip.php?export=docx&pid=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Download DOCX">⬇</a>
-        <?php if (isManager()): ?>
-        <a href="payslip.php?edit=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Edit">✎</a>
-        <?php endif; ?>
+        <?php if (isManager()): ?><a href="payslip.php?edit=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Edit">✎</a><?php endif; ?>
       </div>
     </div>
     <?php endforeach; ?>
@@ -961,7 +951,6 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
 <script>
 var _isManager = <?= isManager() ? 'true' : 'false' ?>;
 function psTab(name) {
-    // Block non-managers from accessing create/templates via JS
     if (!_isManager && (name === 'create' || name === 'templates')) return;
     ['list','create','templates'].forEach(function(n) {
         var sec = document.getElementById('pssec-'+n);

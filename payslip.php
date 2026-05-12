@@ -356,7 +356,9 @@ renderLayout('Payslip Generator','payslip');
     <a href="payslip.php?export=print&pid=<?= $single['id'] ?>" target="_blank"
        class="btn btn-primary btn-sm" style="background:#1e293b;border-color:#1e293b">🖨 Print / PDF</a>
     <a href="payslip.php?export=docx&pid=<?= $single['id'] ?>" class="btn btn-ghost btn-sm">⬇ DOCX</a>
+    <?php if (isManager()): ?>
     <a href="payslip.php?edit=<?= $single['id'] ?>" class="btn btn-ghost btn-sm">✎ Edit</a>
+    <?php endif; ?>
     <?php if (isAdmin()): ?>
     <form method="POST" style="display:inline" onsubmit="return confirm('Permanently delete this payslip?')">
       <input type="hidden" name="action" value="delete_payslip">
@@ -555,7 +557,9 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
 <!-- ── PAYSLIP LIST ── -->
 <div id="pssec-list" style="display:<?= $section==='list'?'block':'none' ?>">
   <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <?php if (isManager()): ?>
     <button onclick="psTab('create')" class="btn btn-primary">＋ New Payslip</button>
+    <?php endif; ?>
   </div>
   <?php if (!$payslips): ?>
   <div class="empty-state"><div class="icon">💵</div><p>No payslips generated yet. Click <strong>+ New Payslip</strong> to create the first one.</p></div>

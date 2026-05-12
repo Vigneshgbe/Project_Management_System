@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("iissssssssssiidssdddsssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         } else {
             $stmt = $db->prepare("INSERT INTO payslips (template_id,employee_id,employee_name,employee_email,employee_phone,nic_number,epf_member_no,designation,department,employee_id_no,pay_period,pay_date,working_days,days_paid,basic_salary,allowances,deductions,gross_salary,total_deductions,net_salary,currency,bank_name,account_no,notes,status,payslip_ref,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("iissssssssssiiidssdddsssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
+            $stmt->bind_param("iissssssssssiidssdddssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         }
         $stmt->execute();
         $new_pid = $pid ?: (int)$db->insert_id;
@@ -341,10 +341,15 @@ renderLayout('Payslip Generator','payslip');
     <?= h($single['employee_name']) ?> <span style="color:var(--text3);font-weight:400">— <?= h($single['pay_period']) ?></span>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <?php if ($single['status']==='draft'): ?>
+    <?php if ($single['status']==='draft' && isManager()): ?>
     <form method="POST" style="display:inline">
-      <input type="hidden" name="action" value="save_payslip">
-      <input type="hidden" name="payslip_id" value="<?= $single['id'] ?>">
+      <input type="hidden" name="action"      value="save_payslip">
+      <input type="hidden" name="payslip_id"  value="<?= $single['id'] ?>">
+      <input type="hidden" name="employee_name"  value="<?= h($single['employee_name']) ?>">
+      <input type="hidden" name="pay_period"     value="<?= h($single['pay_period']) ?>">
+      <input type="hidden" name="basic_salary"   value="<?= h($single['basic_salary']) ?>">
+      <input type="hidden" name="currency"       value="<?= h($single['currency']) ?>">
+      <input type="hidden" name="payslip_ref"    value="<?= h($single['payslip_ref']) ?>">
       <button type="submit" name="ps_status" value="issued" class="btn btn-ghost btn-sm" style="color:var(--green);border-color:var(--green)">✅ Mark as Issued</button>
     </form>
     <?php endif; ?>

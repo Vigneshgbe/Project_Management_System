@@ -589,7 +589,9 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
         <a href="payslip.php?view=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="View">👁</a>
         <a href="payslip.php?export=print&pid=<?= $ps['id'] ?>" target="_blank" class="btn btn-ghost btn-sm btn-icon" title="Print/PDF">🖨</a>
         <a href="payslip.php?export=docx&pid=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Download DOCX">⬇</a>
+        <?php if (isManager()): ?>
         <a href="payslip.php?edit=<?= $ps['id'] ?>" class="btn btn-ghost btn-sm btn-icon" title="Edit">✎</a>
+        <?php endif; ?>
       </div>
     </div>
     <?php endforeach; ?>
@@ -957,7 +959,10 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
 <?php endif; ?>
 
 <script>
+var _isManager = <?= isManager() ? 'true' : 'false' ?>;
 function psTab(name) {
+    // Block non-managers from accessing create/templates via JS
+    if (!_isManager && (name === 'create' || name === 'templates')) return;
     ['list','create','templates'].forEach(function(n) {
         var sec = document.getElementById('pssec-'+n);
         if (sec) sec.style.display = (n === name) ? 'block' : 'none';

@@ -198,7 +198,7 @@ if (!$default_tpl && $templates) $default_tpl = $templates[0];
 
 $single = null;
 if ($view_id) {
-    $single = $db->query("SELECT p.*, t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title
+    $single = $db->query("SELECT p.*, t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image
         FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id
         WHERE p.id=$view_id")->fetch_assoc();
 }
@@ -300,10 +300,16 @@ renderLayout('Payslip Generator','payslip');
 .ps-net-bar .amt{font-size:26px;font-weight:900;color:#f97316}
 
 /* Signature section */
-.ps-sign-section{padding:16px 28px;display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f8fafc;border-top:1px solid #e2e8f0}
-.ps-sign-block{text-align:center}
-.ps-sign-line{border-top:1.5px solid #94a3b8;margin:32px 12px 6px;padding-top:6px;font-size:11px;color:#64748b;font-weight:600}
-.ps-sign-sub{font-size:10px;color:#94a3b8}
+.ps-sign-section{padding:18px 28px 22px;background:#f8fafc;border-top:2px solid #e2e8f0}
+.ps-sign-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+.ps-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px}
+.ps-sign-block{display:flex;flex-direction:column;align-items:flex-start}
+.ps-sig-img-wrap{height:56px;display:flex;align-items:flex-end;margin-bottom:0}
+.ps-sig-img{max-height:52px;max-width:180px;object-fit:contain;display:block}
+.ps-sig-space{height:52px;display:block}
+.ps-sign-line{border-top:1.5px solid #94a3b8;margin-top:0;padding-top:6px;font-size:12px;font-weight:700;color:#334155;width:100%}
+.ps-sign-sub{font-size:10.5px;color:#64748b;margin-top:2px}
+.ps-sign-sub2{font-size:10px;color:#94a3b8;margin-top:1px}
 
 /* Footer */
 .ps-footer-note{padding:10px 28px;background:#f8fafc;font-size:11px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0}
@@ -510,22 +516,49 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
     <div class="amt"><?= $sym ?> <?= number_format($single['net_salary'],2) ?></div>
   </div>
 
-  <!-- Signature section -->
+  <!-- ── AUTHORISATION SECTION (MNC-standard: HR/Payroll signatory only) ── -->
   <div class="ps-sign-section">
-    <div class="ps-sign-block">
-      <div class="ps-sign-line">Employee Signature &amp; Date</div>
-      <div class="ps-sign-sub">I acknowledge receipt of this payslip</div>
+    <div class="ps-sign-title">Authorisation &amp; Certification</div>
+    <div class="ps-sign-grid">
+
+      <!-- Left: Prepared / HR column -->
+      <div class="ps-sign-block">
+        <div class="ps-sig-space"></div>
+        <div class="ps-sign-line">Prepared by: Payroll / HR Department</div>
+        <div class="ps-sign-sub"><?= !empty($single['company_name']) ? h($single['company_name']) : 'Company' ?></div>
+        <div class="ps-sign-sub2">This payslip is system-generated and certified</div>
+      </div>
+
+      <!-- Right: Authorised Signatory with uploaded signature image -->
+      <div class="ps-sign-block">
+        <div class="ps-sig-img-wrap">
+          <?php if (!empty($single['signature_image']) && file_exists($single['signature_image'])): ?>
+          <img src="<?= h($single['signature_image']) ?>" class="ps-sig-img" alt="Authorised Signature">
+          <?php else: ?>
+          <span class="ps-sig-space"></span>
+          <?php endif; ?>
+        </div>
+        <div class="ps-sign-line">
+          <?= !empty($single['authorized_by']) ? h($single['authorized_by']) : 'Authorised Signatory' ?>
+        </div>
+        <div class="ps-sign-sub">
+          <?= !empty($single['authorized_title']) ? h($single['authorized_title']) : 'Director / HR Manager' ?>
+        </div>
+        <div class="ps-sign-sub2">
+          <?= !empty($single['company_name']) ? h($single['company_name']) : '' ?>
+          <?= !empty($single['company_reg_no']) ? ' | Reg: '.h($single['company_reg_no']) : '' ?>
+        </div>
+      </div>
+
     </div>
-    <div class="ps-sign-block">
-      <div class="ps-sign-line">
-        <?php if (!empty($single['authorized_by'])): ?>
-        <?= h($single['authorized_by']) ?>
-        <?php else: ?>Authorised Signatory<?php endif; ?>
-      </div>
-      <div class="ps-sign-sub">
-        <?= !empty($single['authorized_title']) ? h($single['authorized_title']) : 'HR / Finance Department' ?>
-        <?= !empty($single['company_name']) ? ' — '.h($single['company_name']) : '' ?>
-      </div>
+
+    <!-- Declaration note — standard MNC legal text -->
+    <div style="margin-top:14px;padding-top:10px;border-top:1px dashed #e2e8f0;font-size:10.5px;color:#94a3b8;line-height:1.7">
+      <strong style="color:#64748b">Declaration:</strong>
+      This payslip is a confidential document issued to the named employee for the pay period stated above.
+      The figures represent the employee's earnings and statutory deductions as per applicable labour laws.
+      For discrepancies, contact HR/Payroll within 7 working days of receipt.
+      EPF/ETF contributions have been remitted to the Employees' Provident Fund and Employees' Trust Fund as required by law.
     </div>
   </div>
 

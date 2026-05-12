@@ -231,12 +231,16 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#dde3ea}
 .na{font-size:32px;font-weight:900;color:#f97316;letter-spacing:.01em}
 
 /* ── Sign section ── */
-.sign-sec{padding:18px 30px 20px;display:grid;grid-template-columns:1fr 1fr;gap:24px;background:#f8fafc;border-top:1px solid #e2e8f0}
-.sb{display:flex;flex-direction:column;align-items:center}
-.sig-img{height:54px;max-width:190px;object-fit:contain;display:block;margin-bottom:0}
-.sph{height:54px;display:flex;align-items:flex-end;justify-content:center;width:100%}
-.sln{width:80%;border-top:1.5px solid #cbd5e1;margin:0 auto 6px;padding-top:7px;text-align:center;font-size:12px;font-weight:700;color:#475569}
-.ssub{font-size:10px;color:#94a3b8;text-align:center}
+.sign-sec{padding:16px 30px 20px;background:#f8fafc;border-top:2px solid #e2e8f0}
+.sign-sec-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid #e2e8f0}
+.sign-sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.sb{display:flex;flex-direction:column;align-items:flex-start}
+.sig-img{height:52px;max-width:180px;object-fit:contain;display:block}
+.sph{height:52px;display:block}
+.sln{border-top:1.5px solid #94a3b8;margin-top:0;padding-top:6px;font-size:12px;font-weight:700;color:#334155;width:100%}
+.ssub{font-size:10.5px;color:#64748b;margin-top:2px}
+.ssub2{font-size:10px;color:#94a3b8;margin-top:1px}
+.sign-decl{margin-top:13px;padding-top:9px;border-top:1px dashed #e2e8f0;font-size:10.5px;color:#94a3b8;line-height:1.7}
 
 /* ── Footer ── */
 .pf{padding:10px 30px;background:#f1f5f9;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;line-height:1.6}
@@ -361,21 +365,36 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#dde3ea}
     <div class="na"><?= $sym ?>&nbsp;<?= $net_f ?></div>
   </div>
 
-  <!-- ── Signature section ── -->
+  <!-- ── Authorisation Section (MNC-standard) ── -->
   <div class="sign-sec">
-    <div class="sb">
-      <div class="sph">&nbsp;</div>
-      <div class="sln">Employee Signature &amp; Date</div>
-      <div class="ssub">I acknowledge receipt of this payslip</div>
+    <div class="sign-sec-title">Authorisation &amp; Certification</div>
+    <div class="sign-sec-grid">
+
+      <div class="sb">
+        <div class="sph">&nbsp;</div>
+        <div class="sln">Prepared by: Payroll / HR Department</div>
+        <div class="ssub"><?= $cname ?></div>
+        <div class="ssub2">This payslip is system-generated and certified</div>
+      </div>
+
+      <div class="sb">
+        <?php if ($sig_html): ?>
+        <div><?= $sig_html ?></div>
+        <?php else: ?>
+        <div class="sph">&nbsp;</div>
+        <?php endif; ?>
+        <div class="sln"><?= $auth_display ?></div>
+        <div class="ssub"><?= $auth_sub ?></div>
+        <div class="ssub2"><?= $creg ? 'Reg: '.$creg : '' ?></div>
+      </div>
+
     </div>
-    <div class="sb">
-      <?php if ($sig_html): ?>
-      <div><?= $sig_html ?></div>
-      <?php else: ?>
-      <div class="sph">&nbsp;</div>
-      <?php endif; ?>
-      <div class="sln"><?= $auth_display ?></div>
-      <div class="ssub"><?= $auth_sub ?></div>
+    <div class="sign-decl">
+      <strong style="color:#475569">Declaration:</strong>
+      This payslip is a confidential document issued to the named employee for the pay period stated above.
+      The figures represent the employee's earnings and statutory deductions as per applicable labour laws.
+      For discrepancies, contact HR/Payroll within 7 working days of receipt.
+      EPF/ETF contributions have been remitted to the Employees' Provident Fund and Employees' Trust Fund as required by law.
     </div>
   </div>
 
@@ -483,8 +502,9 @@ body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#dde3ea}
 <w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>{$pr}  |  {$pay_date_str}  |  Ref: {$refx}</w:t></w:r></w:p>
 <w:p><w:pPr><w:spacing w:before="280" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>ACKNOWLEDGEMENT</w:t></w:r></w:p>
 <w:tbl><w:tblPr><w:tblW w:type="pct" w:w="5000"/>{$tbdr}</w:tblPr>
-<w:tr><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>Employee Signature &amp; Date</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>I acknowledge receipt of this payslip</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="475569"/></w:rPr><w:t>{$authx}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$attlx}</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="334155"/></w:rPr><w:t>Prepared by: Payroll / HR Department</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>{$cn}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:i/><w:color w:val="94A3B8"/></w:rPr><w:t>This payslip is system-generated and certified</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:spacing w:before="560" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="334155"/></w:rPr><w:t>{$authx}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>{$attlx}</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$cn}</w:t></w:r></w:p></w:tc></w:tr>
 </w:tbl>
+<w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>Declaration: </w:t></w:r><w:r><w:rPr><w:sz w:val="18"/><w:i/><w:color w:val="94A3B8"/></w:rPr><w:t>This payslip is a confidential document. The figures represent earnings and statutory deductions per applicable labour laws. EPF/ETF contributions have been remitted as required by law. For discrepancies contact HR/Payroll within 7 working days.</w:t></w:r></w:p>
 <w:p><w:pPr><w:spacing w:before="240" w:after="0"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>{$ft}  |  Ref: {$refx}</w:t></w:r></w:p>
 <w:sectPr><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr>
 </w:body>

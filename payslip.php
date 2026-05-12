@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("iissssssssssiidssdddsssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         } else {
             $stmt = $db->prepare("INSERT INTO payslips (template_id,employee_id,employee_name,employee_email,employee_phone,nic_number,epf_member_no,designation,department,employee_id_no,pay_period,pay_date,working_days,days_paid,basic_salary,allowances,deductions,gross_salary,total_deductions,net_salary,currency,bank_name,account_no,notes,status,payslip_ref,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("iissssssssssiiidssdddsssssssi",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref,$uid);
+            $stmt->bind_param("iissssssssssiiidssdddsssssss",$tpl_id,$emp_id,$emp_name,$emp_email,$emp_phone,$nic_no,$epf_mno,$desig,$dept,$emp_no,$period,$pay_date,$wdays,$ddays,$basic,$allow_json,$ded_json,$gross,$total_ded,$net,$currency,$bank_name,$acct_no,$notes,$status,$ps_ref);
         }
         $stmt->execute();
         $new_pid = $pid ?: (int)$db->insert_id;

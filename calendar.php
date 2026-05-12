@@ -16,6 +16,22 @@ $TYPES = [
     'other'       => ['label'=>'Other',       'color'=>'#8b5cf6','icon'=>'📌'],
 ];
 
+// ── GOOGLE MEET HELPER ──
+// Generates a Google Meet link using Google Meet's direct join URL pattern.
+// We store the generated meet room ID in the event location field.
+function generateMeetLink(): string {
+    // Google Meet room codes follow the pattern: xxx-yyyy-zzz (10 chars + 2 dashes)
+    $chars = 'abcdefghijklmnopqrstuvwxyz';
+    $part1 = substr(str_shuffle($chars), 0, 3);
+    $part2 = substr(str_shuffle($chars), 0, 4);
+    $part3 = substr(str_shuffle($chars), 0, 3);
+    return "https://meet.google.com/{$part1}-{$part2}-{$part3}";
+}
+
+function isMeetLink(string $str): bool {
+    return (bool)preg_match('#^https://meet\.google\.com/[a-z]{3}-[a-z]{4}-[a-z]{3}$#', trim($str));
+}
+
 // ── POST HANDLERS ──
 ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -42,6 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recur = $_POST['recur'] ?? 'none';
         $stat  = $_POST['status'] ?? 'scheduled';
         $atts  = $_POST['attendees'] ?? [];
+
+        // Auto-generate Google Meet link for meeting type if requested
+        if ($type === 'meeting' && isset($_POST['auto_meet']) && !$loc) {
+            $loc = generateMeetLink();
+        }
 
         if (!$title || !$start) {
             flash('Title and start date/time are required.', 'error');
@@ -70,6 +91,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: calendar.php?y='.date('Y',strtotime($start)).'&m='.date('m',strtotime($start))); exit;
     }
 
+    // ── INSTANT MEET: create a quick meeting event with Google Meet link ──
+    if ($action === 'instant_meet') {
+        if (!isManager()) {
+            flash('Only managers can create instant meetings.', 'error');
+            ob_end_clean(); header('Location: calendar.php'); exit;
+        }
+        $title   = trim($_POST['meet_title'] ?? 'Instant Meeting');
+        $meetLink= generateMeetLink();
+        $now     = date('Y-m-d H:i:s');
+        $end_dt  = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $atts    = $_POST['meet_attendees'] ?? [];
+
+        $s = $db->prepare("INSERT INTO calendar_events (title,description,event_type,start_datetime,end_datetime,all_day,location,color,recur,status,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        $desc = 'Instant Google Meet — click the link to join now.';
+        $color = '#6366f1';
+        $s->bind_param("ssssssisssi",$title,$desc,'meeting',$now,$end_dt,0,$meetLink,$color,'none','scheduled',$uid);
+        $s->execute();
+        $eid = $db->insert_id;
+        logActivity('started instant meeting',$title,$eid);
+
+        // Add attendees
+        $atts[] = $uid;
+        $atts = array_unique(array_map('intval', $atts));
+        $sa = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
+        foreach ($atts as $aid) { $sa->bind_param("ii",$eid,$aid); $sa->execute(); }
+
+        flash('Instant meeting created! <a href="'.$meetLink.'" target="_blank" style="color:#6366f1;font-weight:700">Join Google Meet →</a>','success');
+        ob_end_clean(); header('Location: calendar.php?view=event&eid='.$eid); exit;
+    }
+
     if ($action === 'delete_event') {
         $eid = (int)$_POST['eid'];
         $ev  = $db->query("SELECT created_by,title FROM calendar_events WHERE id=$eid")->fetch_assoc();
@@ -92,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_end_clean();
 
 // ── VIEW PARAMS ──
-$view   = $_GET['view']   ?? 'month';    // month | week | list | event
+$view   = $_GET['view']   ?? 'month';    // month | week | list | event | meetings
 $year   = (int)($_GET['y'] ?? date('Y'));
 $month  = (int)($_GET['m'] ?? date('m'));
 $week   = (int)($_GET['w'] ?? date('W'));
@@ -122,7 +173,6 @@ $type_where = $type_f ? " AND ce.event_type='".$db->real_escape_string($type_f).
 
 // Fetch events visible to current user:
 function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type_where='', bool $is_manager=false): array {
-    // Managers see all events; members see only events they created or are invited to
     $scope = $is_manager
         ? "1=1"
         : "(ce.created_by=$uid OR EXISTS(SELECT 1 FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid))";
@@ -149,7 +199,7 @@ $is_mgr       = isManager();
 $month_events = loadEvents($db, $range_start, $range_end, $uid, $type_where, $is_mgr);
 $week_events  = loadEvents($db, $week_start,  $week_end,  $uid, $type_where, $is_mgr);
 
-// ── INJECT TASK DEADLINES ── (tasks with due_date in range, as pseudo-events)
+// ── INJECT TASK DEADLINES ──
 function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
     $rows = $db->query("
         SELECT t.id, t.title, t.due_date, t.priority, t.status, p.title AS proj_title
@@ -173,7 +223,7 @@ function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
     return $out;
 }
 
-// ── PROJECT MILESTONES (due dates) ──
+// ── PROJECT MILESTONES ──
 function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $is_manager=false): array {
     $scope = $is_manager
         ? "1=1"
@@ -185,7 +235,6 @@ function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $
           AND ($scope)
         ORDER BY due_date
     ")->fetch_all(MYSQLI_ASSOC);
-
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
@@ -210,6 +259,36 @@ foreach ($all_month as $e) {
     $d = substr($e['start_datetime'],0,10);
     $events_by_date[$d][] = $e;
 }
+
+// ── MEETINGS VIEW: load all meeting-type events ──
+$meetings_scope = $is_mgr
+    ? "1=1"
+    : "(ce.created_by=$uid OR EXISTS(SELECT 1 FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid))";
+$meetings_filter = $_GET['mfilt'] ?? 'upcoming'; // upcoming | past | all
+$meetings_search = trim($_GET['msearch'] ?? '');
+$meet_date_where = '';
+if ($meetings_filter === 'upcoming') $meet_date_where = "AND ce.start_datetime >= NOW()";
+elseif ($meetings_filter === 'past')  $meet_date_where = "AND ce.start_datetime < NOW()";
+$meet_search_where = $meetings_search ? " AND ce.title LIKE '%".$db->real_escape_string($meetings_search)."%'" : '';
+
+$all_meetings = $db->query("
+    SELECT ce.*, u.name AS creator_name,
+        p.title AS proj_title,
+        (SELECT GROUP_CONCAT(us.name ORDER BY us.name SEPARATOR ', ')
+         FROM calendar_attendees ca JOIN users us ON us.id=ca.user_id
+         WHERE ca.event_id=ce.id) AS attendee_names,
+        (SELECT COUNT(*) FROM calendar_attendees WHERE event_id=ce.id) AS attendee_count,
+        (SELECT rsvp FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid) AS my_rsvp
+    FROM calendar_events ce
+    LEFT JOIN users u ON u.id=ce.created_by
+    LEFT JOIN projects p ON p.id=ce.project_id
+    WHERE ce.event_type='meeting'
+      AND ($meetings_scope)
+      $meet_date_where
+      $meet_search_where
+    ORDER BY ce.start_datetime " . ($meetings_filter==='past' ? 'DESC' : 'ASC') . "
+    LIMIT 100
+")->fetch_all(MYSQLI_ASSOC);
 
 // Single event view
 $single_event = null;
@@ -253,6 +332,13 @@ usort($list_all, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));
 // Nav helpers
 $prev_m = $month === 1  ? ['y'=>$year-1,'m'=>12] : ['y'=>$year,'m'=>$month-1];
 $next_m = $month === 12 ? ['y'=>$year+1,'m'=>1]  : ['y'=>$year,'m'=>$month+1];
+
+// Count upcoming meetings for badge
+$upcoming_meeting_count = $db->query("
+    SELECT COUNT(*) AS c FROM calendar_events ce
+    WHERE ce.event_type='meeting' AND ce.start_datetime >= NOW()
+      AND ($meetings_scope)
+")->fetch_assoc()['c'] ?? 0;
 
 renderLayout('Calendar', 'calendar');
 ?>
@@ -319,17 +405,78 @@ renderLayout('Calendar', 'calendar');
 .type-pill{padding:4px 12px;border-radius:99px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);text-decoration:none;transition:all .15s}
 .type-pill:hover,.type-pill.active{border-color:var(--orange);color:var(--orange);background:var(--orange-bg)}
 
+/* ── MEETINGS VIEW ── */
+.meetings-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.meetings-search-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.meetings-search-bar input{padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);font-size:13px;width:220px}
+.meetings-filter-tabs{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.meetings-filter-tabs a{padding:6px 14px;font-size:12px;font-weight:600;color:var(--text2);background:var(--bg3);text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.meetings-filter-tabs a.active{background:#6366f1;color:#fff}
+
+.meeting-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px;transition:box-shadow .15s,border-color .15s;position:relative}
+.meeting-card:hover{box-shadow:0 3px 12px rgba(99,102,241,.12);border-color:#6366f133}
+.meeting-card .meet-time-col{min-width:90px;flex-shrink:0;text-align:center;background:var(--bg3);border-radius:8px;padding:8px 6px}
+.meeting-card .meet-time-date{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:2px}
+.meeting-card .meet-time-hour{font-size:14px;font-weight:800;color:var(--text)}
+.meeting-card .meet-time-end{font-size:10.5px;color:var(--text3);margin-top:1px}
+.meeting-card .meet-body{flex:1;min-width:0}
+.meeting-card .meet-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.meeting-card .meet-meta{font-size:12px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.meeting-card .meet-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+
+/* Google Meet button */
+.btn-gmeet{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:700;background:linear-gradient(135deg,#1a73e8,#4285f4);color:#fff;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s,transform .1s;white-space:nowrap}
+.btn-gmeet:hover{opacity:.9;transform:translateY(-1px)}
+.btn-gmeet svg{width:16px;height:16px;flex-shrink:0}
+
+/* Instant Meet modal */
+.instant-meet-modal .modal{max-width:480px}
+.meet-link-display{background:var(--bg3);border:1px solid #6366f133;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:13px;color:#6366f1;font-weight:600;word-break:break-all;margin:10px 0}
+
+/* Meeting status badges */
+.meet-status-live{background:#10b98120;color:#10b981;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.meet-status-live::before{content:'';width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse-dot 1.2s ease-in-out infinite}
+.meet-status-upcoming{background:#6366f120;color:#6366f1;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700}
+.meet-status-past{background:var(--bg3);color:var(--text3);border-radius:99px;padding:2px 10px;font-size:11px;font-weight:600}
+
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+
+/* Meetings stats row */
+.meetings-stats{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.meetings-stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:12px;flex:1;min-width:130px}
+.meetings-stat-icon{font-size:22px}
+.meetings-stat-val{font-size:20px;font-weight:800;color:var(--text)}
+.meetings-stat-lbl{font-size:11.5px;color:var(--text3)}
+
+/* Instant meet quick panel */
+.instant-meet-panel{background:linear-gradient(135deg,#6366f115,#4f46e510);border:1px solid #6366f130;border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.instant-meet-panel .imp-icon{font-size:28px}
+.instant-meet-panel .imp-text{flex:1}
+.instant-meet-panel .imp-title{font-size:14px;font-weight:700;color:var(--text)}
+.instant-meet-panel .imp-sub{font-size:12px;color:var(--text3)}
+
+/* Meet link inside event detail */
+.meet-link-box{background:linear-gradient(135deg,#1a73e810,#4285f408);border:1px solid #1a73e830;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.meet-link-box .mlb-icon{font-size:24px}
+.meet-link-box .mlb-body{flex:1;min-width:0}
+.meet-link-box .mlb-label{font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;letter-spacing:.04em;margin-bottom:2px}
+.meet-link-box .mlb-url{font-size:12px;color:#1a73e8;font-weight:600;word-break:break-all}
+
 @media(max-width:900px){
   .ev-detail-grid{grid-template-columns:1fr}
   .cal-cell{min-height:60px}
   .cal-event-pill{display:none}
   .cal-cell.has-events .cal-day-num::after{content:'●';color:var(--orange);font-size:8px;margin-left:2px}
   .week-grid{grid-template-columns:30px repeat(7,1fr)}
+  .meeting-card{flex-wrap:wrap}
+  .meeting-card .meet-time-col{min-width:auto;flex-basis:100%}
 }
 @media(max-width:600px){
   .cal-grid{grid-template-columns:repeat(7,1fr)}
   .cal-dow{font-size:9px;padding:5px 2px}
   .cal-day-num{font-size:10px}
+  .meetings-stats{flex-wrap:wrap}
+  .meetings-stat-card{flex-basis:calc(50% - 6px)}
 }
 </style>
 
@@ -357,6 +504,17 @@ renderLayout('Calendar', 'calendar');
             <?php if ($single_event['recur'] !== 'none'): ?>
             <span class="badge" style="background:var(--bg3);color:var(--text2)">🔁 <?= ucfirst($single_event['recur']) ?></span>
             <?php endif; ?>
+            <?php
+              // Live meeting badge
+              if ($single_event['event_type'] === 'meeting' && $single_event['status'] === 'scheduled') {
+                  $s_ts = strtotime($single_event['start_datetime']);
+                  $e_ts = $single_event['end_datetime'] ? strtotime($single_event['end_datetime']) : $s_ts + 3600;
+                  $now_ts = time();
+                  if ($now_ts >= $s_ts && $now_ts <= $e_ts) {
+                      echo '<span class="meet-status-live">LIVE</span>';
+                  }
+              }
+            ?>
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
@@ -375,6 +533,23 @@ renderLayout('Calendar', 'calendar');
       <p style="color:var(--text2);font-size:13.5px;line-height:1.7;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px"><?= nl2br(h($single_event['description'])) ?></p>
       <?php endif; ?>
 
+      <!-- Google Meet Link Box (if meeting and location is a meet link) -->
+      <?php if ($single_event['event_type'] === 'meeting' && $single_event['location'] && isMeetLink($single_event['location'])): ?>
+      <div class="meet-link-box">
+        <div class="mlb-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none"><path d="M4 6h16v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" fill="#1a73e820" stroke="#1a73e8" stroke-width="1.5"/><path d="M16 10l4-3v10l-4-3" stroke="#1a73e8" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="mlb-body">
+          <div class="mlb-label">Google Meet Link</div>
+          <div class="mlb-url"><?= h($single_event['location']) ?></div>
+        </div>
+        <a href="<?= h($single_event['location']) ?>" target="_blank" class="btn-gmeet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+          Join Meet
+        </a>
+      </div>
+      <?php endif; ?>
+
       <!-- Meta grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
         <div class="ev-meta-box">
@@ -387,7 +562,15 @@ renderLayout('Calendar', 'calendar');
         </div>
         <div class="ev-meta-box">
           <div class="ev-meta-lbl">Location</div>
-          <div class="ev-meta-val"><?= $single_event['location'] ? h($single_event['location']) : '—' ?></div>
+          <div class="ev-meta-val">
+            <?php if ($single_event['location'] && isMeetLink($single_event['location'])): ?>
+              <span style="color:#1a73e8;font-size:12px">📹 Google Meet</span>
+            <?php elseif ($single_event['location']): ?>
+              <?= h($single_event['location']) ?>
+            <?php else: ?>
+              —
+            <?php endif; ?>
+          </div>
         </div>
         <?php if ($single_event['proj_title']): ?>
         <div class="ev-meta-box">
@@ -454,7 +637,166 @@ renderLayout('Calendar', 'calendar');
   </div>
 </div>
 
-<?php else: // ══ CALENDAR VIEWS ══ ?>
+<?php elseif ($view === 'meetings'): // ══ MEETINGS VIEW ══ ?>
+
+<!-- Meetings Header -->
+<div class="meetings-header">
+  <div>
+    <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;margin-bottom:2px">🤝 Meetings</h2>
+    <div style="font-size:13px;color:var(--text3)">Manage and join all your meetings</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="calendar.php" class="btn btn-ghost btn-sm">← Calendar</a>
+    <?php if (isManager()): ?>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('modal-instant-meet')" style="border-color:#6366f1;color:#6366f1">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+      Instant Meet
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="openMeetingModal()">＋ Schedule Meeting</button>
+    <?php endif; ?>
+  </div>
+</div>
+
+<!-- Stats -->
+<?php
+$stat_total    = count($db->query("SELECT id FROM calendar_events WHERE event_type='meeting' AND ($meetings_scope)")->fetch_all());
+$stat_today    = count($db->query("SELECT id FROM calendar_events WHERE event_type='meeting' AND DATE(start_datetime)=CURDATE() AND ($meetings_scope)")->fetch_all());
+$stat_upcoming = $upcoming_meeting_count;
+$stat_live     = count($db->query("SELECT id FROM calendar_events WHERE event_type='meeting' AND start_datetime<=NOW() AND (end_datetime IS NULL OR end_datetime>=NOW()) AND status='scheduled' AND ($meetings_scope)")->fetch_all());
+?>
+<div class="meetings-stats">
+  <div class="meetings-stat-card">
+    <div class="meetings-stat-icon">🔴</div>
+    <div>
+      <div class="meetings-stat-val"><?= $stat_live ?></div>
+      <div class="meetings-stat-lbl">Live Now</div>
+    </div>
+  </div>
+  <div class="meetings-stat-card">
+    <div class="meetings-stat-icon">📅</div>
+    <div>
+      <div class="meetings-stat-val"><?= $stat_today ?></div>
+      <div class="meetings-stat-lbl">Today</div>
+    </div>
+  </div>
+  <div class="meetings-stat-card">
+    <div class="meetings-stat-icon">🗓</div>
+    <div>
+      <div class="meetings-stat-val"><?= $stat_upcoming ?></div>
+      <div class="meetings-stat-lbl">Upcoming</div>
+    </div>
+  </div>
+  <div class="meetings-stat-card">
+    <div class="meetings-stat-icon">📊</div>
+    <div>
+      <div class="meetings-stat-val"><?= $stat_total ?></div>
+      <div class="meetings-stat-lbl">Total</div>
+    </div>
+  </div>
+</div>
+
+<!-- Instant Meet Panel (managers only) -->
+<?php if (isManager()): ?>
+<div class="instant-meet-panel">
+  <div class="imp-icon">⚡</div>
+  <div class="imp-text">
+    <div class="imp-title">Start an Instant Meeting</div>
+    <div class="imp-sub">Create a Google Meet link instantly and invite your team in seconds</div>
+  </div>
+  <button class="btn-gmeet" onclick="openModal('modal-instant-meet')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+    New Instant Meet
+  </button>
+</div>
+<?php endif; ?>
+
+<!-- Filter + Search -->
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <div class="meetings-filter-tabs">
+    <a href="calendar.php?view=meetings&mfilt=upcoming<?= $meetings_search?"&msearch=".urlencode($meetings_search):'' ?>" class="<?= $meetings_filter==='upcoming'?'active':'' ?>">Upcoming</a>
+    <a href="calendar.php?view=meetings&mfilt=past<?= $meetings_search?"&msearch=".urlencode($meetings_search):'' ?>"     class="<?= $meetings_filter==='past'?'active':'' ?>">Past</a>
+    <a href="calendar.php?view=meetings&mfilt=all<?= $meetings_search?"&msearch=".urlencode($meetings_search):'' ?>"      class="<?= $meetings_filter==='all'?'active':'' ?>">All</a>
+  </div>
+  <form method="GET" class="meetings-search-bar">
+    <input type="hidden" name="view" value="meetings">
+    <input type="hidden" name="mfilt" value="<?= h($meetings_filter) ?>">
+    <input type="text" name="msearch" placeholder="Search meetings…" value="<?= h($meetings_search) ?>">
+    <button type="submit" class="btn btn-ghost btn-sm">🔍</button>
+    <?php if ($meetings_search): ?><a href="calendar.php?view=meetings&mfilt=<?= $meetings_filter ?>" class="btn btn-ghost btn-sm">✕</a><?php endif; ?>
+  </form>
+</div>
+
+<!-- Meeting Cards -->
+<?php if (empty($all_meetings)): ?>
+<div class="card"><div class="empty-state"><div class="icon">🤝</div><p>No meetings found<?= $meetings_filter==='upcoming'?' — nothing scheduled ahead':'' ?>.</p>
+<?php if (isManager()): ?><button class="btn btn-primary" onclick="openMeetingModal()">Schedule First Meeting</button><?php endif; ?>
+</div></div>
+<?php else: ?>
+<?php foreach ($all_meetings as $m):
+  $m_start  = strtotime($m['start_datetime']);
+  $m_end    = $m['end_datetime'] ? strtotime($m['end_datetime']) : $m_start + 3600;
+  $now_ts   = time();
+  $is_live  = ($now_ts >= $m_start && $now_ts <= $m_end && $m['status']==='scheduled');
+  $is_past  = ($m_start < $now_ts && !$is_live);
+  $has_meet = $m['location'] && isMeetLink($m['location']);
+?>
+<div class="meeting-card" style="<?= $is_live ? 'border-color:#10b98150;box-shadow:0 0 0 2px #10b98115' : '' ?>">
+  <!-- Time Column -->
+  <div class="meet-time-col">
+    <div class="meet-time-date"><?= date('M j', $m_start) ?></div>
+    <div class="meet-time-hour"><?= date('g:ia', $m_start) ?></div>
+    <div class="meet-time-end"><?= date('g:ia', $m_end) ?></div>
+    <div style="margin-top:5px">
+      <?php if ($is_live): ?>
+        <span class="meet-status-live">LIVE</span>
+      <?php elseif ($is_past): ?>
+        <span class="meet-status-past">Past</span>
+      <?php else: ?>
+        <span class="meet-status-upcoming">Scheduled</span>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="meet-body">
+    <div class="meet-title">
+      <?= h($m['title']) ?>
+      <?php if ($has_meet): ?>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" title="Google Meet"><path d="M4 6h16v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" fill="#1a73e820" stroke="#1a73e8" stroke-width="1.5"/><path d="M16 10l4-3v10l-4-3" stroke="#1a73e8" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <?php endif; ?>
+    </div>
+    <div class="meet-meta">
+      <?php if ($m['proj_title']): ?><span>📁 <?= h($m['proj_title']) ?></span><?php endif; ?>
+      <?php if ($m['attendee_count'] > 0): ?><span>👥 <?= $m['attendee_count'] ?> attendee<?= $m['attendee_count']!==1?'s':'' ?></span><?php endif; ?>
+      <?php if ($m['attendee_names']): ?><span style="color:var(--text2)"><?= h(mb_substr($m['attendee_names'],0,60)).(mb_strlen($m['attendee_names'])>60?'…':'') ?></span><?php endif; ?>
+      <span>By <?= h($m['creator_name']) ?></span>
+      <?php if ($m['my_rsvp']): ?>
+        <?php $rc=['accepted'=>'#10b981','declined'=>'#ef4444','pending'=>'#f59e0b'][$m['my_rsvp']]??'#94a3b8'; ?>
+        <span style="color:<?= $rc ?>">● <?= ucfirst($m['my_rsvp']) ?></span>
+      <?php endif; ?>
+    </div>
+
+    <div class="meet-actions">
+      <a href="calendar.php?view=event&eid=<?= $m['id'] ?>" class="btn btn-ghost btn-sm">View Details</a>
+      <?php if ($has_meet): ?>
+      <a href="<?= h($m['location']) ?>" target="_blank" class="btn-gmeet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+        <?= $is_live ? 'Join Now' : 'Open Meet' ?>
+      </a>
+      <button class="btn btn-ghost btn-sm" onclick="copyMeetLink('<?= h($m['location']) ?>', this)" style="font-size:11px">📋 Copy Link</button>
+      <?php elseif ($m['location']): ?>
+      <span style="font-size:12px;color:var(--text3)">📍 <?= h($m['location']) ?></span>
+      <?php endif; ?>
+      <?php if (isManager()): ?>
+      <a href="calendar.php?edit=<?= $m['id'] ?>" class="btn btn-ghost btn-sm" style="font-size:11px">✎ Edit</a>
+      <?php endif; ?>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
+
+<?php else: // ══ CALENDAR VIEWS (month/week/list) ══ ?>
 
 <!-- TOOLBAR -->
 <div class="cal-toolbar">
@@ -477,10 +819,19 @@ renderLayout('Calendar', 'calendar');
       <a href="calendar.php?view=month&y=<?= $year ?>&m=<?= $month ?>" class="<?= $view==='month'?'active':'' ?>">Month</a>
       <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= $week ?>"   class="<?= $view==='week'?'active':'' ?>">Week</a>
       <a href="calendar.php?view=list"                                  class="<?= $view==='list'?'active':'' ?>">List</a>
+      <a href="calendar.php?view=meetings"                              class="<?= $view==='meetings'?'active':'' ?>" style="<?= $upcoming_meeting_count>0?'position:relative':'' ?>">
+        🤝 Meetings<?php if ($upcoming_meeting_count > 0): ?> <span style="background:#6366f1;color:#fff;border-radius:99px;font-size:10px;padding:0 5px;margin-left:3px"><?= $upcoming_meeting_count ?></span><?php endif; ?>
+      </a>
     </div>
-    <?php if (isManager()): ?>
-    <button class="btn btn-primary" onclick="openModal('modal-event')">＋ Event</button>
-    <?php endif; ?>
+    <div style="display:flex;gap:6px">
+      <?php if (isManager()): ?>
+      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-instant-meet')" style="border-color:#6366f1;color:#6366f1;font-size:12px" title="Start Instant Google Meet">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+        Instant Meet
+      </button>
+      <button class="btn btn-primary" onclick="openModal('modal-event')">＋ Event</button>
+      <?php endif; ?>
+    </div>
   </div>
 </div>
 
@@ -540,13 +891,15 @@ renderLayout('Calendar', 'calendar');
           $shown++;
           $ec = $e['color'] ?? '#f97316';
           $is_task = !empty($e['is_task']) || !empty($e['is_project']);
+          // Show meet camera icon for meetings with meet links
+          $has_meet_icon = (!$is_task && ($e['event_type']??'')==='meeting' && !empty($e['location']) && isMeetLink($e['location'])) ? '📹 ' : '';
       ?>
       <a href="<?= $is_task ? 'calendar.php?view=event&eid=0&date='.$actual_date : 'calendar.php?view=event&eid='.$e['id'] ?>"
          class="cal-event-pill"
          style="background:<?= $ec ?>22;color:<?= $ec ?>;border-left:2px solid <?= $ec ?>"
          onclick="event.stopPropagation()"
          title="<?= h($e['title']) ?>">
-        <?= h(mb_substr($e['title'],0,22)).(mb_strlen($e['title'])>22?'…':'') ?>
+        <?= $has_meet_icon ?><?= h(mb_substr($e['title'],0,22)).(mb_strlen($e['title'])>22?'…':'') ?>
       </a>
       <?php endforeach; ?>
       <?php if (count($day_events) > 3): ?>
@@ -641,6 +994,7 @@ $hours = range(8, 20);
                     : 'calendar.php?view=event&eid='.$e['id'];
   $tstr   = $e['all_day'] ? 'All day' : date('g:ia', strtotime($e['start_datetime']));
   $type_cfg = $TYPES[$e['event_type']] ?? $TYPES['other'];
+  $has_meet_link = (!$is_sys && ($e['event_type']??'')==='meeting' && !empty($e['location']) && isMeetLink($e['location']));
 ?>
 <div class="list-event-row" style="--ec:<?= $ec ?>" onclick="location.href='<?= $href ?>'">
   <div class="list-event-time"><?= $tstr ?></div>
@@ -649,18 +1003,26 @@ $hours = range(8, 20);
     <div class="list-event-meta">
       <span><?= $type_cfg['icon'] ?> <?= $type_cfg['label'] ?></span>
       <?php if (!empty($e['proj_title'])): ?> · 📁 <?= h($e['proj_title']) ?><?php endif; ?>
-      <?php if (!empty($e['location'])): ?> · 📍 <?= h($e['location']) ?><?php endif; ?>
+      <?php if (!empty($e['location']) && !isMeetLink($e['location']??'')): ?> · 📍 <?= h($e['location']) ?><?php endif; ?>
+      <?php if ($has_meet_link): ?> · <span style="color:#1a73e8;font-weight:600">📹 Google Meet</span><?php endif; ?>
       <?php if (!empty($e['attendee_names'])): ?> · 👥 <?= h($e['attendee_names']) ?><?php endif; ?>
     </div>
   </div>
+  <?php if ($has_meet_link): ?>
+  <a href="<?= h($e['location']) ?>" target="_blank" class="btn-gmeet" style="font-size:11px;padding:5px 10px" onclick="event.stopPropagation()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+    Join
+  </a>
+  <?php else: ?>
   <div style="width:10px;height:10px;border-radius:50%;background:<?= $ec ?>;flex-shrink:0;margin-top:4px"></div>
+  <?php endif; ?>
 </div>
 <?php endforeach; ?>
 <?php endforeach; ?>
 <?php endif; ?>
 <?php endif; // end views ?>
 
-<?php endif; // end single/list ?>
+<?php endif; // end single/meetings/list ?>
 
 <!-- ══ CREATE / EDIT EVENT MODAL ══ -->
 <div class="modal-overlay <?= ($edit_id)?'open':'' ?>" id="modal-event">
@@ -684,7 +1046,7 @@ $hours = range(8, 20);
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Event Type</label>
-            <select name="event_type" class="form-control" id="ev-type" onchange="updateColor(this)">
+            <select name="event_type" class="form-control" id="ev-type" onchange="updateColor(this);toggleMeetOptions(this)">
               <?php foreach ($TYPES as $tk=>$tv): ?>
               <option value="<?= $tk ?>" data-color="<?= $tv['color'] ?>"
                 <?= ($edit_event['event_type']??'other')===$tk?'selected':'' ?>><?= $tv['icon'] ?> <?= $tv['label'] ?></option>
@@ -729,11 +1091,34 @@ $hours = range(8, 20);
           </div>
         </div>
 
+        <!-- Google Meet Options (shown only for Meeting type) -->
+        <div id="meet-options-box" style="display:none;background:#6366f108;border:1px solid #6366f130;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:#6366f1;margin-bottom:8px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#6366f1" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+            Google Meet Options
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:8px">
+            <input type="checkbox" name="auto_meet" id="auto-meet-chk" style="accent-color:#6366f1" <?= (($edit_event['event_type']??'')==='meeting'&&empty($edit_event['location']))?'checked':'' ?>>
+            <span>Auto-generate Google Meet link (only if location is empty)</span>
+          </label>
+          <?php
+            $existing_meet = '';
+            if ($edit_event && $edit_event['location'] && isMeetLink($edit_event['location'])) {
+                $existing_meet = $edit_event['location'];
+            }
+          ?>
+          <?php if ($existing_meet): ?>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">
+            Current link: <a href="<?= h($existing_meet) ?>" target="_blank" style="color:#1a73e8"><?= h($existing_meet) ?></a>
+          </div>
+          <?php endif; ?>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Location</label>
-            <input type="text" name="location" class="form-control"
-              value="<?= h($edit_event['location']??'') ?>" placeholder="Room, URL, or address">
+            <label class="form-label">Location <span id="loc-or-meet" style="color:#1a73e8;font-size:11px"></span></label>
+            <input type="text" name="location" class="form-control" id="loc-input"
+              value="<?= h($edit_event['location']??'') ?>" placeholder="Room, URL, or leave blank for auto-Meet">
           </div>
           <div class="form-group">
             <label class="form-label">Link to Project</label>
@@ -796,18 +1181,110 @@ $hours = range(8, 20);
   </div>
 </div>
 
+<!-- ══ INSTANT MEET MODAL ══ -->
+<div class="modal-overlay" id="modal-instant-meet">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Start Instant Meeting</div>
+      <button class="modal-close" onclick="closeModal('modal-instant-meet')">✕</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="action" value="instant_meet">
+      <div class="modal-body">
+        <div style="background:#6366f110;border:1px solid #6366f130;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12.5px;color:var(--text2)">
+          <strong style="color:#6366f1">📹 Google Meet</strong> — A unique meeting link will be generated instantly and the event will be created on the calendar.
+        </div>
+        <div class="form-group">
+          <label class="form-label">Meeting Title</label>
+          <input type="text" name="meet_title" class="form-control" value="Instant Meeting — <?= date('M j, g:ia') ?>" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Invite Team Members</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto">
+            <?php foreach ($all_users as $u): ?>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding:3px">
+              <input type="checkbox" name="meet_attendees[]" value="<?= $u['id'] ?>"
+                <?= $u['id']==$uid?'checked':'' ?>
+                style="accent-color:#6366f1">
+              <?= h($u['name']) ?>
+            </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);padding:8px;background:var(--bg3);border-radius:6px">
+          💡 The meeting will start now (1 hour duration) and appear on everyone's calendar. Share the Meet link to let attendees join.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-instant-meet')">Cancel</button>
+        <button type="submit" class="btn-gmeet" style="padding:9px 18px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.89L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+          Start Meeting Now
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function dayClick(date) {
   document.querySelector('[name="start_datetime"]').value = date + 'T09:00';
   document.querySelector('[name="end_datetime"]').value   = date + 'T10:00';
   openModal('modal-event');
 }
+
 function updateColor(sel) {
   // Optional: could update a color preview
 }
-<?php if ($edit_id): ?>
-document.addEventListener('DOMContentLoaded', function(){ openModal('modal-event'); });
-<?php endif; ?>
+
+// Show/hide Google Meet options when event type changes
+function toggleMeetOptions(sel) {
+  var isMeeting = sel.value === 'meeting';
+  var box = document.getElementById('meet-options-box');
+  var locHint = document.getElementById('loc-or-meet');
+  if (box) box.style.display = isMeeting ? 'block' : 'none';
+  if (locHint) locHint.textContent = isMeeting ? '(auto-Meet if empty)' : '';
+}
+
+// Open meeting modal pre-filled as meeting type
+function openMeetingModal() {
+  var sel = document.getElementById('ev-type');
+  if (sel) {
+    sel.value = 'meeting';
+    toggleMeetOptions(sel);
+    var autoChk = document.getElementById('auto-meet-chk');
+    if (autoChk) autoChk.checked = true;
+  }
+  openModal('modal-event');
+}
+
+// Copy meet link to clipboard
+function copyMeetLink(link, btn) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.color = '#10b981';
+      setTimeout(function(){ btn.textContent = orig; btn.style.color = ''; }, 2000);
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    var orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(function(){ btn.textContent = orig; }, 2000);
+  }
+}
+
+// Initialize meet options on page load
+document.addEventListener('DOMContentLoaded', function() {
+  var sel = document.getElementById('ev-type');
+  if (sel) toggleMeetOptions(sel);
+  <?php if ($edit_id): ?>
+  openModal('modal-event');
+  <?php endif; ?>
+});
 </script>
 
 <?php renderLayoutEnd(); ?>

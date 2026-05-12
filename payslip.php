@@ -105,16 +105,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dept      = trim($_POST['department'] ?? '');
         $emp_no    = trim($_POST['employee_id_no'] ?? '');
         $period    = trim($_POST['pay_period'] ?? '');
-        $pay_date  = $_POST['pay_date'] ?: null;
-        $wdays     = (int)($_POST['working_days'] ?? 0) ?: null;
-        $ddays     = (int)($_POST['days_paid'] ?? 0) ?: null;
+        $pay_date  = ($_POST['pay_date'] ?? '') ?: null;
+        $wdays     = (int)($_POST['working_days'] ?? 0);
+        $ddays     = (int)($_POST['days_paid'] ?? 0);
         $basic     = (float)($_POST['basic_salary'] ?? 0);
         $currency  = $_POST['currency'] ?? 'LKR';
         $bank_name = trim($_POST['bank_name'] ?? '');
         $acct_no   = trim($_POST['account_no'] ?? '');
         $notes     = trim($_POST['notes'] ?? '');
-        $tpl_id    = (int)($_POST['template_id'] ?? 0) ?: null;
-        $emp_id    = (int)($_POST['employee_id'] ?? 0) ?: null;
+        $tpl_id    = (int)($_POST['template_id'] ?? 0);
+        $emp_id    = (int)($_POST['employee_id'] ?? 0);
         $status    = $_POST['ps_status'] ?? 'draft';
 
         // Auto-generate payslip ref if new

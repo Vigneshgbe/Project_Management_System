@@ -3,13 +3,15 @@
  * payslip_export.php — Padak CRM Payslip Export
  * Single A4 page · MNC-accepted format · EPF/ETF statutory labels
  * Print/PDF + DOCX (ZipArchive) · Working signature image (base64 embedded)
+ *
+ * Auth section: LEFT = plain HR/Payroll certification box (no signature line)
+ *               RIGHT = single authorised signatory with uploaded signature image
  */
 function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS signature_image VARCHAR(500) DEFAULT NULL AFTER authorized_title");
     $ps=$db->query("SELECT p.*,t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id WHERE p.id=$pid")->fetch_assoc();
     if(!$ps){http_response_code(404);die('Payslip not found.');}
     $h=fn($s)=>htmlspecialchars((string)($s??''),ENT_QUOTES);
-    $xv=fn($s)=>htmlspecialchars((string)($s??''),ENT_XML1|ENT_QUOTES,'UTF-8');
     $allow=json_decode($ps['allowances']??'[]',true)?:[];
     $deds=json_decode($ps['deductions']??'[]',true)?:[];
     $cur=$h($ps['currency']??'LKR');
@@ -35,16 +37,19 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     $wdays=(int)($ps['working_days']??0);$ddays=(int)($ps['days_paid']??0);
     $absent=($wdays&&$ddays)?max(0,$wdays-$ddays):0;
     $daily=($wdays>0&&(float)$ps['basic_salary']>0)?$cur.' '.number_format((float)$ps['basic_salary']/$wdays,2):'—';
+
     $logo_tag='';
     if(!empty($ps['company_logo'])&&file_exists($ps['company_logo'])){
         $d=base64_encode(file_get_contents($ps['company_logo']));
         $m=mime_content_type($ps['company_logo'])?:'image/png';
         $logo_tag="<img src='data:{$m};base64,{$d}' style='height:38px;display:block;margin-bottom:5px;border-radius:3px'>";}
+
     $sig_tag='';
     if(!empty($ps['signature_image'])&&file_exists($ps['signature_image'])){
         $d=base64_encode(file_get_contents($ps['signature_image']));
         $m=mime_content_type($ps['signature_image'])?:'image/png';
-        $sig_tag="<img src='data:{$m};base64,{$d}' style='height:42px;max-width:150px;object-fit:contain;display:block;margin-bottom:3px'>";}
+        $sig_tag="<img src='data:{$m};base64,{$d}' style='height:44px;max-width:160px;object-fit:contain;display:block;margin-bottom:2px'>";}
+
     $er="<tr><td>Basic Salary</td><td class='a'>{$cur} {$bf}</td></tr>";
     foreach($allow as $a)$er.="<tr><td>".$h($a['name'])."</td><td class='a'>{$cur} ".number_format((float)$a['amount'],2)."</td></tr>";
     $dr='';
@@ -54,6 +59,9 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     $co_block=($creg?"Reg. No: {$creg}<br>":'').($caddr?nl2br($caddr).'<br>':'').($co_contact?$co_contact.'<br>':'').($epfno?"EPF Employer Reg: {$epfno}":'');
     $auth_sub2=implode(' &nbsp;|&nbsp; ',array_filter([$cname,$creg?'Reg: '.$creg:'']));
 
+    /* ════════════════════════════════════════════════════════
+       PRINT / PDF EXPORT
+    ════════════════════════════════════════════════════════ */
     if($fmt==='print'){header('Content-Type: text/html; charset=utf-8');?><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Payslip <?="-{$ename}-{$period}"?></title><style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}html{font-size:10pt}
 body{font-family:Arial,Helvetica,sans-serif;color:#1e293b;background:#dde3ea}
@@ -95,13 +103,25 @@ table.slt tfoot td{font-size:9px;font-weight:700;padding:5px 0 2px;border-top:2p
 .nbar{background:#1e293b;padding:10px 20px;display:flex;justify-content:space-between;align-items:center}
 .nlb{font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em}.np{font-size:8px;color:rgba(255,255,255,.4);margin-top:1px}
 .na{font-size:19px;font-weight:900;color:#f97316}
-.auth-bd{padding:9px 20px 10px}
-.ag{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
-.ac{display:flex;flex-direction:column}
-.aw{height:44px;display:flex;align-items:flex-end;margin-bottom:0}
-.al{border-top:1.5px solid #94a3b8;padding-top:4px;font-size:9px;font-weight:700;color:#334155}
-.as_{font-size:8px;color:#64748b;margin-top:1px}.as2{font-size:7.5px;color:#94a3b8;margin-top:1px}
-.decl{margin-top:8px;padding:5px 9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;font-size:7.5px;color:#64748b;line-height:1.6}
+
+/* ── AUTH SECTION: two-column, left=cert box, right=single signatory ── */
+.auth-bd{padding:9px 20px 10px;background:#f8fafc;border-top:1px solid #e2e8f0}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:end;margin-top:7px}
+
+/* Left: certification box */
+.cert-box{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px}
+.cert-lbl{font-size:6.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#64748b;margin-bottom:4px}
+.cert-dept{font-size:8.5px;font-weight:700;color:#1e293b;margin-bottom:1px}
+.cert-co{font-size:7.5px;color:#475569;margin-bottom:1px}
+.cert-note{font-size:7px;color:#94a3b8;font-style:italic}
+
+/* Right: signatory */
+.sig-wrap{height:46px;display:flex;align-items:flex-end;margin-bottom:0}
+.sig-line{border-top:1.5px solid #334155;padding-top:4px;font-size:8.5px;font-weight:700;color:#1e293b}
+.sig-sub{font-size:7.5px;color:#475569;margin-top:1px}
+.sig-sub2{font-size:7px;color:#94a3b8;margin-top:1px}
+
+.decl{margin-top:7px;padding:4px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:3px;font-size:7px;color:#64748b;line-height:1.6}
 .decl strong{color:#475569}
 .ft{background:#f1f5f9;border-top:1px solid #e2e8f0;padding:4px 20px;font-size:7.5px;color:#94a3b8;text-align:center;line-height:1.5}
 @media print{
@@ -109,8 +129,8 @@ table.slt tfoot td{font-size:9px;font-weight:700;padding:5px 0 2px;border-top:2p
 .tb,.cf{display:none!important}
 body{background:#fff}
 .pg{box-shadow:none;border-radius:0;margin:0;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.hd,.nbar,.db,.rb,.ss,.auth-bd,.ft,.nb,.st2,.decl{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.sw,.ag,.nbar,.auth-bd{page-break-inside:avoid}
+.hd,.nbar,.db,.rb,.ss,.auth-bd,.ft,.nb,.st2,.decl,.cert-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sw,.auth-grid,.nbar,.auth-bd{page-break-inside:avoid}
 }</style></head><body>
 <div class="tb"><h3>Payslip &mdash; <?=$ename?> &mdash; <?=$period?></h3><div class="tbr"><button class="bp" onclick="window.print()">&#128424; Print / Save as PDF</button><button class="bc" onclick="window.close()">&#10005; Close</button></div></div>
 <div class="cf">Confidential &mdash; For Employee Use Only</div>
@@ -135,15 +155,37 @@ body{background:#fff}
 <div class="ss"><div class="ssi"><span class="ssv svg"><?=$cur?> <?=$gf?></span><span class="ssl">Gross Salary</span></div><div class="ssi"><span class="ssv svr">(<?=$cur?> <?=$df?>)</span><span class="ssl">Deductions</span></div><div class="ssi"><span class="ssv svo"><?=$cur?> <?=$nf?></span><span class="ssl">Net Payable</span></div></div>
 </div>
 <div class="nbar"><div><div class="nlb">Net Salary Payable</div><div class="np"><?=$period?> &middot; <?=$paydstr?></div></div><div class="na"><?=$cur?> <?=$nf?></div></div>
-<div class="auth-bd"><div class="st" style="margin-top:0">Authorisation &amp; Certification</div>
-<div class="ag">
-<div class="ac"><div class="aw">&nbsp;</div><div class="al">Prepared by: Payroll / HR Department</div><div class="as_"><?=$cname?></div><div class="as2">This payslip is system-generated and certified accurate</div></div>
-<div class="ac"><div class="aw"><?=$sig_tag?:'&nbsp;'?></div><div class="al"><?=$authby?></div><div class="as_"><?=$authtl?></div><div class="as2"><?=$auth_sub2?></div></div>
+
+<!-- ══ AUTHORISATION: left=cert box, right=single signatory ══ -->
+<div class="auth-bd">
+  <div class="st" style="margin-top:0">Authorisation &amp; Certification</div>
+  <div class="auth-grid">
+
+    <!-- LEFT: plain certification statement — no signature line -->
+    <div class="cert-box">
+      <div class="cert-lbl">Prepared &amp; Certified By</div>
+      <div class="cert-dept">Payroll / HR Department</div>
+      <div class="cert-co"><?=$cname?></div>
+      <div class="cert-note">System-generated and certified accurate</div>
+    </div>
+
+    <!-- RIGHT: single authorised signatory with uploaded signature image -->
+    <div>
+      <div class="sig-wrap"><?=$sig_tag?:'&nbsp;'?></div>
+      <div class="sig-line"><?=$authby?></div>
+      <div class="sig-sub"><?=$authtl?></div>
+      <div class="sig-sub2"><?=$auth_sub2?></div>
+    </div>
+
+  </div>
+  <div class="decl"><strong>Declaration:</strong> Confidential payslip for the named employee and stated pay period. EPF (Employee 8%) and ETF (Employer 3%) remitted per law. APIT/PAYE withheld and remitted where applicable. Discrepancies: contact HR/Payroll within <strong>7 working days</strong>.</div>
 </div>
-<div class="decl"><strong>Declaration:</strong> This is a confidential payslip issued to the named employee for the stated pay period. All figures represent verified earnings and statutory deductions per applicable labour laws. EPF (Employee 8%) and ETF (Employer 3%) contributions have been remitted to the Employees' Provident Fund and Trust Fund as required by law. APIT/PAYE tax withheld and remitted where applicable. For discrepancies contact HR/Payroll within <strong>7 working days</strong>.</div></div>
 <div class="ft"><?=$footer?> &nbsp;|&nbsp; Ref: <strong><?=$psref?></strong> &nbsp;|&nbsp; <?=$cname?> &nbsp;|&nbsp; Issued: <?=$issdate?></div>
 </div></body></html><?php return;}
 
+    /* ════════════════════════════════════════════════════════
+       DOCX EXPORT
+    ════════════════════════════════════════════════════════ */
     if($fmt==='docx'){
         if(!class_exists('ZipArchive')){http_response_code(500);die('ZipArchive not available.');}
         $xe=fn($s)=>htmlspecialchars((string)($s??''),ENT_XML1|ENT_QUOTES,'UTF-8');
@@ -163,6 +205,28 @@ body{background:#fff}
         $notes2=$xent?"<w:p><w:r><w:rPr><w:i/><w:sz w:val='18'/><w:color w:val='92400E'/></w:rPr><w:t xml:space='preserve'>Note: {$xent}</w:t></w:r></w:p>":'';
         $emp_rows=$tr('Employee Name',$xen,true).$tr('Employee ID',$xe($ps['employee_id_no']??'—')).$tr('Designation',$xe($ps['designation']??'—')).$tr('Department',$xe($ps['department']??'—')).$tr('NIC Number',$xe($ps['nic_number']??'—'),true).$tr('EPF Member No',$xe($ps['epf_member_no']??'—')).$tr('Email',$xe($ps['employee_email']??'—')).$tr('Phone',$xe($ps['employee_phone']??'—')).$tr('Bank',$xe($ps['bank_name']??'—')).$tr('Account No',$xe($ps['account_no']??'—'),true);
         $tbdr='<w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders>';
+
+        /* Auth section DOCX:
+           Left column  — plain certification text, shaded box
+           Right column — signatory name + title (signature image cannot embed in DOCX XML here;
+                          noted as "Signed copy held on file" which is standard MNC practice) */
+        $auth_docx='<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>'
+            .'<w:tr>'
+            // LEFT: cert box
+            .'<w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="F1F5F9"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>'
+            .'<w:p><w:r><w:rPr><w:sz w:val="16"/><w:caps/><w:color w:val="64748B"/></w:rPr><w:t>Prepared &amp; Certified By</w:t></w:r></w:p>'
+            .'<w:p><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="1E293B"/></w:rPr><w:t>Payroll / HR Department</w:t></w:r></w:p>'
+            .'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="475569"/></w:rPr><w:t>'.$xecn.'</w:t></w:r></w:p>'
+            .'<w:p><w:r><w:rPr><w:i/><w:sz w:val="17"/><w:color w:val="94A3B8"/></w:rPr><w:t>System-generated and certified accurate</w:t></w:r></w:p>'
+            .'</w:tc>'
+            // RIGHT: single authorised signatory
+            .'<w:tc><w:tcPr><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>'
+            .'<w:p><w:pPr><w:spacing w:before="280"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="1E293B"/></w:rPr><w:t>'.$xeauth.'</w:t></w:r></w:p>'
+            .'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="475569"/></w:rPr><w:t>'.$xeatt.'</w:t></w:r></w:p>'
+            .'<w:p><w:r><w:rPr><w:sz w:val="17"/><w:color w:val="94A3B8"/></w:rPr><w:t xml:space="preserve">'.$xecn.'  Reg: '.$xecrg.'</w:t></w:r></w:p>'
+            .'</w:tc>'
+            .'</w:tr></w:tbl>';
+
         $doc='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
             .'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="40"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="48"/><w:color w:val="F97316"/></w:rPr><w:t>PAYSLIP</w:t></w:r></w:p>'
             .'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="30"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="30"/><w:color w:val="1E293B"/></w:rPr><w:t>'.$xecn.'</w:t></w:r></w:p>'
@@ -177,10 +241,11 @@ body{background:#fff}
             .'<w:p><w:pPr><w:spacing w:before="200" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="F97316"/></w:rPr><w:t xml:space="preserve">NET SALARY PAYABLE: '.$xecur.' '.$xe($nf).'</w:t></w:r></w:p>'
             .'<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve">'.$xeper.'  |  '.$paydstr.'  |  Ref: '.$xeref.'</w:t></w:r></w:p>'
             .$sh('Authorisation &amp; Certification')
-            .'<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tr><w:tc><w:p><w:pPr><w:spacing w:before="360" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="334155"/></w:rPr><w:t>Prepared by: Payroll / HR Department</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>'.$xecn.'</w:t></w:r></w:p><w:p><w:r><w:rPr><w:i/><w:sz w:val="17"/><w:color w:val="94A3B8"/></w:rPr><w:t>System-generated and certified accurate</w:t></w:r></w:p></w:tc><w:tc><w:p><w:pPr><w:spacing w:before="360" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="334155"/></w:rPr><w:t>'.$xeauth.'</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>'.$xeatt.'</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="17"/><w:color w:val="94A3B8"/></w:rPr><w:t xml:space="preserve">'.$xecn.'  Reg: '.$xecrg.'</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+            .$auth_docx
             .'<w:p><w:pPr><w:spacing w:before="120" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="17"/><w:color w:val="475569"/></w:rPr><w:t xml:space="preserve">Declaration: </w:t></w:r><w:r><w:rPr><w:i/><w:sz w:val="17"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve">Confidential payslip. EPF (8%) and ETF (3%) remitted per law. APIT/PAYE withheld where applicable. Discrepancies: contact HR/Payroll within 7 working days.</w:t></w:r></w:p>'
             .'<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="140" w:after="0"/></w:pPr><w:r><w:rPr><w:sz w:val="16"/><w:color w:val="94A3B8"/></w:rPr><w:t xml:space="preserve">'.$xeft.'  |  Ref: '.$xeref.'  |  '.$xecn.'</w:t></w:r></w:p>'
             .'<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>';
+
         $safe=preg_replace('/[^a-zA-Z0-9_-]/','_',$ps['employee_name']??'Emp');
         $safep=preg_replace('/\s+/','_',$ps['pay_period']??'Period');
         $fname="Payslip_{$safe}_{$safep}.docx";

@@ -19,6 +19,8 @@ $uid  = (int)$user['id'];
 @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS epf_employer_no VARCHAR(50) DEFAULT NULL AFTER company_email");
 @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS authorized_by VARCHAR(150) DEFAULT NULL AFTER epf_employer_no");
 @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS authorized_title VARCHAR(150) DEFAULT NULL AFTER authorized_by");
+// ── NEW: company stamp column ─────────────────────────────────────────────
+@$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS company_stamp VARCHAR(500) DEFAULT NULL AFTER signature_image");
 
 // ── POST HANDLERS ──────────────────────────────────────────────────────────
 ob_start();
@@ -60,12 +62,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $sig = 'uploads/documents/'.$sfn;
                 }
             }
+            // ── NEW: company stamp upload ─────────────────────────────────
+            $stamp = null;
+            if (!empty($_FILES['company_stamp']['tmp_name']) && $_FILES['company_stamp']['error'] === 0) {
+                $stx = strtolower(pathinfo($_FILES['company_stamp']['name'], PATHINFO_EXTENSION));
+                if (in_array($stx, ['png','jpg','jpeg'])) {
+                    if (!is_dir(UPLOAD_DOC_DIR)) mkdir(UPLOAD_DOC_DIR, 0755, true);
+                    $stfn = 'stamp_'.uniqid().'.'.$stx;
+                    if (move_uploaded_file($_FILES['company_stamp']['tmp_name'], UPLOAD_DOC_DIR.$stfn))
+                        $stamp = 'uploads/documents/'.$stfn;
+                }
+            }
             if ($def) $db->query("UPDATE payslip_templates SET is_default=0");
             if ($tid) {
                 $set = "name=?,company_name=?,company_reg_no=?,company_phone=?,company_email=?,company_address=?,epf_employer_no=?,authorized_by=?,authorized_title=?,footer_note=?,is_default=?";
                 $types = "ssssssssssi"; $params = [$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def];
-                if ($logo) { $set .= ",company_logo=?";    $types .= "s"; $params[] = $logo; }
-                if ($sig)  { $set .= ",signature_image=?"; $types .= "s"; $params[] = $sig; }
+                if ($logo)  { $set .= ",company_logo=?";    $types .= "s"; $params[] = $logo; }
+                if ($sig)   { $set .= ",signature_image=?"; $types .= "s"; $params[] = $sig; }
+                if ($stamp) { $set .= ",company_stamp=?";   $types .= "s"; $params[] = $stamp; }
                 $types .= "i"; $params[] = $tid;
                 $stmt = $db->prepare("UPDATE payslip_templates SET {$set} WHERE id=?");
                 $stmt->bind_param($types, ...$params);
@@ -73,8 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $cols = "name,company_name,company_reg_no,company_phone,company_email,company_address,epf_employer_no,authorized_by,authorized_title,footer_note,is_default,created_by";
                 $phs  = "?,?,?,?,?,?,?,?,?,?,?,?";
                 $types = "ssssssssssi i"; $params = [$name,$cname,$creg,$cphone,$cemail,$caddr,$epf_eno,$auth_by,$auth_ttl,$foot,$def,$uid];
-                if ($logo) { $cols .= ",company_logo";    $phs .= ",?"; $types .= "s"; $params[] = $logo; }
-                if ($sig)  { $cols .= ",signature_image"; $phs .= ",?"; $types .= "s"; $params[] = $sig; }
+                if ($logo)  { $cols .= ",company_logo";    $phs .= ",?"; $types .= "s"; $params[] = $logo; }
+                if ($sig)   { $cols .= ",signature_image"; $phs .= ",?"; $types .= "s"; $params[] = $sig; }
+                if ($stamp) { $cols .= ",company_stamp";   $phs .= ",?"; $types .= "s"; $params[] = $stamp; }
                 $stmt = $db->prepare("INSERT INTO payslip_templates ({$cols}) VALUES ({$phs})");
                 $stmt->bind_param(str_replace(' ','',$types), ...$params);
             }
@@ -195,7 +210,7 @@ if (!$default_tpl && $templates) $default_tpl = $templates[0];
 
 $single = null;
 if ($view_id) {
-    $single = $db->query("SELECT p.*, t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image
+    $single = $db->query("SELECT p.*, t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image,t.company_stamp
         FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id
         WHERE p.id=$view_id")->fetch_assoc();
 }
@@ -296,28 +311,28 @@ renderLayout('Payslip Generator','payslip');
 .ps-net-bar .lbl{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
 .ps-net-bar .amt{font-size:26px;font-weight:900;color:#f97316}
 
-/* ══ AUTHORISATION SECTION — REDESIGNED ══
-   Left  = plain HR certification box  (no signature line, no image slot)
-   Right = single authorised signatory (signature image + name + title)
-*/
+/* ══ AUTHORISATION SECTION ══ */
 .ps-sign-section{padding:18px 28px 22px;background:#f8fafc;border-top:2px solid #e2e8f0}
 .ps-sign-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
 
 /* Two-column grid: left cert box + right signatory */
 .ps-auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:end}
 
-/* LEFT — certification statement box */
-.ps-cert-box{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px}
+/* LEFT — certification statement box (position:relative for stamp overlay) */
+.ps-cert-box{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;position:relative;overflow:hidden;min-height:72px}
 .ps-cert-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:6px}
 .ps-cert-dept{font-size:12.5px;font-weight:700;color:#1e293b;margin-bottom:2px}
 .ps-cert-co{font-size:11.5px;color:#475569;margin-bottom:2px}
 .ps-cert-note{font-size:10.5px;color:#94a3b8;font-style:italic}
 
+/* ── COMPANY STAMP overlay inside cert box ── */
+.ps-stamp{position:absolute;bottom:-8px;right:-8px;width:88px;height:88px;object-fit:contain;opacity:.55;pointer-events:none;transform:rotate(-8deg)}
+
 /* RIGHT — single signatory block */
 .ps-signatory{display:flex;flex-direction:column;align-items:flex-start}
 .ps-sig-img-wrap{height:58px;display:flex;align-items:flex-end;margin-bottom:0}
 .ps-sig-img{max-height:54px;max-width:190px;object-fit:contain;display:block}
-.ps-sig-space{height:54px;display:block}/* placeholder when no image uploaded */
+.ps-sig-space{height:54px;display:block}
 .ps-sign-line{border-top:1.5px solid #334155;margin-top:0;padding-top:6px;font-size:12.5px;font-weight:700;color:#1e293b;width:100%}
 .ps-sign-sub{font-size:11px;color:#475569;margin-top:2px}
 .ps-sign-sub2{font-size:10px;color:#94a3b8;margin-top:1px}
@@ -535,20 +550,20 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
     <div class="amt"><?= $sym ?> <?= number_format($single['net_salary'],2) ?></div>
   </div>
 
-  <!-- ══ AUTHORISATION & CERTIFICATION ══
-       Left  = Payroll/HR certification box  — NO signature line
-       Right = Single authorised signatory   — uploaded signature image + name + title
-  -->
+  <!-- ══ AUTHORISATION & CERTIFICATION ══ -->
   <div class="ps-sign-section">
     <div class="ps-sign-title">Authorisation &amp; Certification</div>
     <div class="ps-auth-grid">
 
-      <!-- LEFT: plain HR certification statement (not a signatory) -->
+      <!-- LEFT: plain HR certification statement — stamp overlaid on this box -->
       <div class="ps-cert-box">
         <div class="ps-cert-label">Prepared &amp; Certified By</div>
         <div class="ps-cert-dept">Payroll / HR Department</div>
         <div class="ps-cert-co"><?= !empty($single['company_name']) ? h($single['company_name']) : 'Company' ?></div>
         <div class="ps-cert-note">This payslip is system-generated and certified accurate</div>
+        <?php if (!empty($single['company_stamp']) && file_exists($single['company_stamp'])): ?>
+        <img src="<?= h($single['company_stamp']) ?>" class="ps-stamp" alt="Company Stamp">
+        <?php endif; ?>
       </div>
 
       <!-- RIGHT: single authorised signatory with uploaded signature image -->
@@ -891,9 +906,20 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
             </div>
             <div style="font-size:12px;color:var(--text3)"><?= h($t['company_name']) ?><?= !empty($t['company_reg_no'])?' · Reg: '.h($t['company_reg_no']):'' ?></div>
             <?php if (!empty($t['authorized_by'])): ?><div style="font-size:11px;color:var(--text3)">Auth: <?= h($t['authorized_by']) ?><?= !empty($t['authorized_title'])?' · '.h($t['authorized_title']):'' ?></div><?php endif; ?>
-            <?php if (!empty($t['signature_image']) && file_exists($t['signature_image'])): ?>
-            <div style="margin-top:4px"><img src="<?= h($t['signature_image']) ?>" style="height:22px;object-fit:contain;border:1px solid var(--border);border-radius:3px;padding:2px 4px;background:#fff"> <span style="font-size:10px;color:var(--text3)">signature uploaded</span></div>
-            <?php endif; ?>
+            <div style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap">
+              <?php if (!empty($t['signature_image']) && file_exists($t['signature_image'])): ?>
+              <div style="display:flex;align-items:center;gap:5px">
+                <img src="<?= h($t['signature_image']) ?>" style="height:22px;object-fit:contain;border:1px solid var(--border);border-radius:3px;padding:2px 4px;background:#fff">
+                <span style="font-size:10px;color:var(--text3)">signature</span>
+              </div>
+              <?php endif; ?>
+              <?php if (!empty($t['company_stamp']) && file_exists($t['company_stamp'])): ?>
+              <div style="display:flex;align-items:center;gap:5px">
+                <img src="<?= h($t['company_stamp']) ?>" style="height:22px;width:22px;object-fit:contain;border:1px solid var(--border);border-radius:3px;padding:2px;background:#fff">
+                <span style="font-size:10px;color:var(--text3)">stamp</span>
+              </div>
+              <?php endif; ?>
+            </div>
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
@@ -975,7 +1001,7 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
             <input type="file" name="company_logo" class="form-control" accept=".png,.jpg,.jpeg">
           </div>
 
-          <!-- ── SINGLE SIGNATURE UPLOAD — clear labelling ── -->
+          <!-- ── SIGNATURE UPLOAD ── -->
           <div class="form-group">
             <label class="form-label">
               Authorised Signatory's Signature Image
@@ -997,7 +1023,36 @@ $total_ded   = array_sum(array_column($deductions,'amount'));
             <input type="file" name="signature_image" class="form-control" accept=".png,.jpg,.jpeg">
           </div>
 
-          <div class="form-group">
+          <!-- ── NEW: COMPANY STAMP UPLOAD ── -->
+          <div class="form-group" style="background:rgba(249,115,22,.04);border:1px solid rgba(249,115,22,.15);border-radius:8px;padding:12px 14px">
+            <label class="form-label" style="color:var(--text)">
+              🔵 Company Stamp / Seal
+              <span style="font-size:10px;color:var(--orange);font-weight:700;margin-left:6px">Appears on payslip authorisation section</span>
+            </label>
+            <small style="display:block;font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.6">
+              Upload your company's official round stamp or seal as a PNG/JPG.
+              For best results use a <strong>PNG with transparent background</strong> — the stamp renders semi-transparent (watermark style) overlaid on the certification box, which is standard IT-industry payslip practice.
+            </small>
+            <?php if ($et&&!empty($et['company_stamp'])&&file_exists($et['company_stamp'])): ?>
+            <div style="margin-bottom:10px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:inline-flex;align-items:center;gap:14px">
+              <div style="position:relative;width:60px;height:60px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                <img src="<?= h($et['company_stamp']) ?>" style="max-width:56px;max-height:56px;object-fit:contain;opacity:.7">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--text2)">Current stamp uploaded ✓</div>
+                <div style="font-size:10.5px;color:var(--text3);margin-top:2px">Upload a new file below to replace</div>
+              </div>
+            </div>
+            <?php else: ?>
+            <div style="margin-bottom:8px;display:inline-flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text3)">
+              <span style="width:40px;height:40px;border:2px dashed var(--border);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:18px">🔵</span>
+              No stamp uploaded yet
+            </div>
+            <?php endif; ?>
+            <input type="file" name="company_stamp" class="form-control" accept=".png,.jpg,.jpeg">
+          </div>
+
+          <div class="form-group" style="margin-top:14px">
             <label class="form-label">Footer Note</label>
             <input type="text" name="footer_note" class="form-control" value="<?= h($et['footer_note']??'This is a computer-generated payslip and requires no signature.') ?>">
           </div>

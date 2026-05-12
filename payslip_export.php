@@ -3,13 +3,15 @@
  * payslip_export.php — Padak CRM Payslip Export
  * Single A4 page · MNC-accepted format · EPF/ETF statutory labels
  * Print/PDF + DOCX (ZipArchive) · Working signature image (base64 embedded)
+ * Company stamp overlay on authorisation cert box (base64 embedded)
  *
- * Auth section: LEFT = plain HR/Payroll certification box (no signature line)
+ * Auth section: LEFT = plain HR/Payroll certification box with company stamp watermark
  *               RIGHT = single authorised signatory with uploaded signature image
  */
 function exportPayslip(mysqli $db, int $pid, string $fmt): void {
     @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS signature_image VARCHAR(500) DEFAULT NULL AFTER authorized_title");
-    $ps=$db->query("SELECT p.*,t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id WHERE p.id=$pid")->fetch_assoc();
+    @$db->query("ALTER TABLE payslip_templates ADD COLUMN IF NOT EXISTS company_stamp VARCHAR(500) DEFAULT NULL AFTER signature_image");
+    $ps=$db->query("SELECT p.*,t.company_name,t.company_reg_no,t.company_phone,t.company_email,t.company_address,t.company_logo,t.footer_note,t.epf_employer_no,t.authorized_by,t.authorized_title,t.signature_image,t.company_stamp FROM payslips p LEFT JOIN payslip_templates t ON t.id=p.template_id WHERE p.id=$pid")->fetch_assoc();
     if(!$ps){http_response_code(404);die('Payslip not found.');}
     $h=fn($s)=>htmlspecialchars((string)($s??''),ENT_QUOTES);
     $allow=json_decode($ps['allowances']??'[]',true)?:[];
@@ -49,6 +51,13 @@ function exportPayslip(mysqli $db, int $pid, string $fmt): void {
         $d=base64_encode(file_get_contents($ps['signature_image']));
         $m=mime_content_type($ps['signature_image'])?:'image/png';
         $sig_tag="<img src='data:{$m};base64,{$d}' style='height:44px;max-width:160px;object-fit:contain;display:block;margin-bottom:2px'>";}
+
+    // ── NEW: company stamp (base64 embedded, renders as semi-transparent overlay) ──
+    $stamp_tag='';
+    if(!empty($ps['company_stamp'])&&file_exists($ps['company_stamp'])){
+        $d=base64_encode(file_get_contents($ps['company_stamp']));
+        $m=mime_content_type($ps['company_stamp'])?:'image/png';
+        $stamp_tag="<img src='data:{$m};base64,{$d}' class='stmp' alt='Company Stamp'>";}
 
     $er="<tr><td>Basic Salary</td><td class='a'>{$cur} {$bf}</td></tr>";
     foreach($allow as $a)$er.="<tr><td>".$h($a['name'])."</td><td class='a'>{$cur} ".number_format((float)$a['amount'],2)."</td></tr>";
@@ -104,16 +113,19 @@ table.slt tfoot td{font-size:9px;font-weight:700;padding:5px 0 2px;border-top:2p
 .nlb{font-size:8px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em}.np{font-size:8px;color:rgba(255,255,255,.4);margin-top:1px}
 .na{font-size:19px;font-weight:900;color:#f97316}
 
-/* ── AUTH SECTION: two-column, left=cert box, right=single signatory ── */
+/* ── AUTH SECTION: two-column, left=cert box+stamp, right=single signatory ── */
 .auth-bd{padding:9px 20px 10px;background:#f8fafc;border-top:1px solid #e2e8f0}
 .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:end;margin-top:7px}
 
-/* Left: certification box */
-.cert-box{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px}
+/* Left: certification box with stamp overlay */
+.cert-box{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px;position:relative;overflow:hidden;min-height:62px}
 .cert-lbl{font-size:6.5px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#64748b;margin-bottom:4px}
 .cert-dept{font-size:8.5px;font-weight:700;color:#1e293b;margin-bottom:1px}
 .cert-co{font-size:7.5px;color:#475569;margin-bottom:1px}
 .cert-note{font-size:7px;color:#94a3b8;font-style:italic}
+
+/* ── COMPANY STAMP: positioned bottom-right, watermark style ── */
+.stmp{position:absolute;bottom:-6px;right:-6px;width:72px;height:72px;object-fit:contain;opacity:.5;pointer-events:none;transform:rotate(-8deg);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 
 /* Right: signatory */
 .sig-wrap{height:46px;display:flex;align-items:flex-end;margin-bottom:0}
@@ -129,7 +141,7 @@ table.slt tfoot td{font-size:9px;font-weight:700;padding:5px 0 2px;border-top:2p
 .tb,.cf{display:none!important}
 body{background:#fff}
 .pg{box-shadow:none;border-radius:0;margin:0;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.hd,.nbar,.db,.rb,.ss,.auth-bd,.ft,.nb,.st2,.decl,.cert-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hd,.nbar,.db,.rb,.ss,.auth-bd,.ft,.nb,.st2,.decl,.cert-box,.stmp{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .sw,.auth-grid,.nbar,.auth-bd{page-break-inside:avoid}
 }</style></head><body>
 <div class="tb"><h3>Payslip &mdash; <?=$ename?> &mdash; <?=$period?></h3><div class="tbr"><button class="bp" onclick="window.print()">&#128424; Print / Save as PDF</button><button class="bc" onclick="window.close()">&#10005; Close</button></div></div>
@@ -156,17 +168,18 @@ body{background:#fff}
 </div>
 <div class="nbar"><div><div class="nlb">Net Salary Payable</div><div class="np"><?=$period?> &middot; <?=$paydstr?></div></div><div class="na"><?=$cur?> <?=$nf?></div></div>
 
-<!-- ══ AUTHORISATION: left=cert box, right=single signatory ══ -->
+<!-- ══ AUTHORISATION: left=cert box with stamp, right=single signatory ══ -->
 <div class="auth-bd">
   <div class="st" style="margin-top:0">Authorisation &amp; Certification</div>
   <div class="auth-grid">
 
-    <!-- LEFT: plain certification statement — no signature line -->
+    <!-- LEFT: certification box — company stamp overlaid watermark-style -->
     <div class="cert-box">
       <div class="cert-lbl">Prepared &amp; Certified By</div>
       <div class="cert-dept">Payroll / HR Department</div>
       <div class="cert-co"><?=$cname?></div>
       <div class="cert-note">System-generated and certified accurate</div>
+      <?=$stamp_tag?>
     </div>
 
     <!-- RIGHT: single authorised signatory with uploaded signature image -->
@@ -206,10 +219,17 @@ body{background:#fff}
         $emp_rows=$tr('Employee Name',$xen,true).$tr('Employee ID',$xe($ps['employee_id_no']??'—')).$tr('Designation',$xe($ps['designation']??'—')).$tr('Department',$xe($ps['department']??'—')).$tr('NIC Number',$xe($ps['nic_number']??'—'),true).$tr('EPF Member No',$xe($ps['epf_member_no']??'—')).$tr('Email',$xe($ps['employee_email']??'—')).$tr('Phone',$xe($ps['employee_phone']??'—')).$tr('Bank',$xe($ps['bank_name']??'—')).$tr('Account No',$xe($ps['account_no']??'—'),true);
         $tbdr='<w:tblBorders><w:top w:val="single" w:sz="4" w:color="E2E8F0"/><w:left w:val="single" w:sz="4" w:color="E2E8F0"/><w:bottom w:val="single" w:sz="4" w:color="E2E8F0"/><w:right w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideH w:val="single" w:sz="4" w:color="E2E8F0"/><w:insideV w:val="single" w:sz="4" w:color="E2E8F0"/></w:tblBorders>';
 
+        // ── DOCX stamp note: DOCX XML inline images require relationship setup;
+        //    for stamp we embed a note line "Official stamp on file" which is the
+        //    standard MNC practice for DOCX payslips (the print/PDF version carries the stamp image).
+        //    If stamp is uploaded, show a visible "STAMPED" indicator row.
+        $stamp_docx_note = !empty($ps['company_stamp']) && file_exists($ps['company_stamp'])
+            ? '<w:p><w:r><w:rPr><w:b/><w:sz w:val="17"/><w:color w:val="1D4ED8"/></w:rPr><w:t xml:space="preserve">&#x2605; Official Company Stamp: On File — See PDF/Print version for stamped copy</w:t></w:r></w:p>'
+            : '';
+
         /* Auth section DOCX:
-           Left column  — plain certification text, shaded box
-           Right column — signatory name + title (signature image cannot embed in DOCX XML here;
-                          noted as "Signed copy held on file" which is standard MNC practice) */
+           Left column  — plain certification text, shaded box + stamp note
+           Right column — signatory name + title */
         $auth_docx='<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>'
             .'<w:tr>'
             // LEFT: cert box
@@ -218,6 +238,7 @@ body{background:#fff}
             .'<w:p><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="1E293B"/></w:rPr><w:t>Payroll / HR Department</w:t></w:r></w:p>'
             .'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:color w:val="475569"/></w:rPr><w:t>'.$xecn.'</w:t></w:r></w:p>'
             .'<w:p><w:r><w:rPr><w:i/><w:sz w:val="17"/><w:color w:val="94A3B8"/></w:rPr><w:t>System-generated and certified accurate</w:t></w:r></w:p>'
+            .$stamp_docx_note
             .'</w:tc>'
             // RIGHT: single authorised signatory
             .'<w:tc><w:tcPr><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>'

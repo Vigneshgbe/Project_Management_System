@@ -8,7 +8,6 @@ $user = currentUser();
 $uid  = (int)$user['id'];
 
 // ── POST HANDLERS ──
-ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -16,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'save_meeting') {
         if (!isManager()) {
             flash('Only managers can create or edit meetings.', 'error');
-            ob_end_clean(); header('Location: meetings.php'); exit;
+            header('Location: meetings.php'); exit;
         }
         $mid        = (int)($_POST['mid'] ?? 0);
         $title      = trim($_POST['title'] ?? '');
@@ -32,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$title || !$start) {
             flash('Title and start date/time are required.', 'error');
-            ob_end_clean(); header('Location: meetings.php'); exit;
+            header('Location: meetings.php'); exit;
         }
 
         if ($mid) {
@@ -56,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($atts as $aid) { $sa->bind_param("ii", $mid, $aid); $sa->execute(); }
 
         flash('Meeting saved.', 'success');
-        ob_end_clean(); header('Location: meetings.php?view=detail&mid='.$mid); exit;
+        header('Location: meetings.php?view=detail&mid='.$mid); exit;
     }
 
     // ── DELETE MEETING ──
     if ($action === 'delete_meeting') {
         if (!isManager()) {
             flash('Only managers can delete meetings.', 'error');
-            ob_end_clean(); header('Location: meetings.php'); exit;
+            header('Location: meetings.php'); exit;
         }
         $mid = (int)$_POST['mid'];
         $ev  = $db->query("SELECT title,created_by FROM meetings WHERE id=$mid")->fetch_assoc();
@@ -72,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logActivity('deleted meeting', $ev['title'], $mid);
             flash('Meeting deleted.', 'success');
         }
-        ob_end_clean(); header('Location: meetings.php'); exit;
+        header('Location: meetings.php'); exit;
     }
 
     // ── RSVP ──
@@ -81,27 +80,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rsvp = in_array($_POST['rsvp'], ['accepted','declined','pending']) ? $_POST['rsvp'] : 'pending';
         $db->query("UPDATE meeting_attendees SET rsvp='$rsvp' WHERE meeting_id=$mid AND user_id=$uid");
         flash('Response saved.', 'success');
-        ob_end_clean(); header('Location: meetings.php?view=detail&mid='.$mid); exit;
+        header('Location: meetings.php?view=detail&mid='.$mid); exit;
     }
 
     // ── SAVE NOTES ──
+    // BUG FIX: Removed the broken chained prepare()->bind_param()->execute() ?? null line
+    // that was causing a fatal error. Only one correct prepare/bind/execute is used.
     if ($action === 'save_notes') {
         $mid   = (int)$_POST['mid'];
         $notes = trim($_POST['notes'] ?? '');
         // Only attendees or managers can save notes
         $is_att = $db->query("SELECT 1 FROM meeting_attendees WHERE meeting_id=$mid AND user_id=$uid")->num_rows > 0;
         if ($is_att || isManager()) {
-            $db->prepare("UPDATE meetings SET notes=? WHERE id=?")->bind_param("si",$notes,$mid)->execute() ?? null;
             $upd = $db->prepare("UPDATE meetings SET notes=? WHERE id=?");
             $upd->bind_param("si", $notes, $mid);
             $upd->execute();
             logActivity('updated notes for meeting', '', $mid);
             flash('Notes saved.', 'success');
         }
-        ob_end_clean(); header('Location: meetings.php?view=detail&mid='.$mid); exit;
+        header('Location: meetings.php?view=detail&mid='.$mid); exit;
     }
 }
-ob_end_clean();
 
 // ── VIEW PARAMS ──
 $view    = $_GET['view']   ?? 'list';   // list | upcoming | detail
@@ -540,6 +539,7 @@ if ($view === 'detail' && $single_meeting): ?>
 </div>
 
 <!-- STATS ROW -->
+<!-- BUG FIX: Removed invalid space in hex color '#f97316 20' → '#f9731620' -->
 <div class="meet-stats">
     <div class="meet-stat-card">
         <div class="meet-stat-icon" style="background:#6366f120">📅</div>
@@ -556,7 +556,7 @@ if ($view === 'detail' && $single_meeting): ?>
         </div>
     </div>
     <div class="meet-stat-card">
-        <div class="meet-stat-icon" style="background:#f97316 20">⏳</div>
+        <div class="meet-stat-icon" style="background:#f9731620">⏳</div>
         <div>
             <div class="meet-stat-num"><?= $scheduled ?></div>
             <div class="meet-stat-lbl">Scheduled</div>
@@ -606,7 +606,7 @@ if ($view === 'detail' && $single_meeting): ?>
             <button class="btn btn-ghost btn-sm" onclick="prefillMeetLink()">📋 Schedule with Link</button>
         </div>
     </div>
-    <div id="instant-meet-result" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid rgba(26,115,232,.3);border-radius:8px;padding:10px;display:none;align-items:center;gap:10px;flex-wrap:wrap">
+    <div id="instant-meet-result" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid rgba(26,115,232,.3);border-radius:8px;padding:10px;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--text3)">Your meet link:</span>
         <a id="instant-meet-link" href="#" target="_blank" style="color:#1a73e8;font-size:13px;font-weight:600;word-break:break-all"></a>
         <button onclick="copyInstantLink()" class="btn btn-ghost btn-sm">Copy</button>

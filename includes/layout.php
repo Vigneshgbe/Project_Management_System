@@ -389,7 +389,7 @@ select.form-control{cursor:pointer}
         <span class="icon">📊</span> Analytics
     </a>
     <a href="users.php" class="nav-item <?= $activePage==='users'?'active':'' ?>">
-        <span class="icon">👤</span> Team
+        <span class="icon">👤</span> Team Members
     </a>
     <a href="activity.php" class="nav-item <?= $activePage==='activity'?'active':'' ?>">
         <span class="icon">📋</span> Activity Log

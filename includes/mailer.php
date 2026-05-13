@@ -322,12 +322,8 @@ function pushNotification(array $opts, mysqli $db): void {
     $entity_type = $opts['entity_type'] ?? null;
     $entity_id   = isset($opts['entity_id']) ? (int)$opts['entity_id'] : null;
     $stmt = $db->prepare("INSERT INTO notifications (user_id,type,entity_type,entity_id,title,body,link) VALUES (?,?,?,?,?,?,?)");
-    $stmt->bind_param("issssss", $user_id, $type, $entity_type, $entity_id, $title, $body, $link);
-    // entity_id is int - fix type
-    $stmt->close();
-    $stmt2 = $db->prepare("INSERT INTO notifications (user_id,type,entity_type,entity_id,title,body,link) VALUES (?,?,?,?,?,?,?)");
-    $stmt2->bind_param("issiiss", $user_id, $type, $entity_type, $entity_id, $title, $body, $link);
-    $stmt2->execute();
+    $stmt->bind_param("issiiss", $user_id, $type, $entity_type, $entity_id, $title, $body, $link);
+    $stmt->execute();
 
     // Email notification — get user's email
     $urow = $db->query("SELECT name,email FROM users WHERE id=$user_id AND status='active'")->fetch_assoc();

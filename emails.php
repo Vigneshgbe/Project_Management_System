@@ -190,17 +190,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         ob_end_clean(); header('Location: emails.php?tab=sent'); exit;
     }
-
-    // ── MARK NOTIFICATION READ ──
-    if ($action === 'mark_read') {
-        $nid = (int)$_POST['nid'];
-        $db->query("UPDATE notifications SET is_read=1 WHERE id=$nid AND user_id=$uid");
-        ob_end_clean(); header('Location: emails.php?tab=notifications'); exit;
-    }
-    if ($action === 'mark_all_read') {
-        $db->query("UPDATE notifications SET is_read=1 WHERE user_id=$uid");
-        ob_end_clean(); header('Location: emails.php?tab=notifications'); exit;
-    }
 }
 ob_end_clean();
 
@@ -235,13 +224,6 @@ $templates = $db->query("SELECT * FROM email_templates ORDER BY category,name")-
 
 // SMTP accounts
 $smtp_accounts = $db->query("SELECT * FROM email_settings ORDER BY is_default DESC,id")->fetch_all(MYSQLI_ASSOC);
-
-// Notifications for current user
-$notifs = $db->query("
-    SELECT * FROM notifications WHERE user_id=$uid
-    ORDER BY created_at DESC LIMIT 80
-")->fetch_all(MYSQLI_ASSOC);
-$unread_notif = (int)$db->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id=$uid AND is_read=0")->fetch_assoc()['c'];
 
 // Contacts + leads + projects + invoices for compose dropdowns
 $contacts = $db->query("SELECT id,name,email,company FROM contacts WHERE email IS NOT NULL AND email!='' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
@@ -303,13 +285,6 @@ renderLayout('Emails', 'emails');
 .tmpl-card:hover{border-color:var(--border2)}
 .tmpl-cat{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:99px}
 
-/* Notification list */
-.notif-row{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);margin-bottom:5px;transition:background .12s;position:relative}
-.notif-row.unread{background:var(--orange-bg);border-left:3px solid var(--orange)}
-.notif-row.read{background:var(--bg2);border:1px solid var(--border)}
-.notif-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.notif-dot{position:absolute;top:14px;right:14px;width:7px;height:7px;background:var(--orange);border-radius:50%}
-
 /* Compose layout */
 .compose-grid{display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start}
 
@@ -332,7 +307,6 @@ renderLayout('Emails', 'emails');
     ['sent',        '📤', 'Sent Log'],
     ['inbox',       '📥', 'Inbox'],
     ['templates',   '📋', 'Templates'],
-    ['notifications','🔔','Alerts', $unread_notif],
     ['settings',    '⚙',  'SMTP Settings'],
   ];
   foreach ($tabs as $t):
@@ -728,52 +702,6 @@ elseif ($tab === 'inbox'):
 <?php endforeach; ?>
 <?php endif; ?>
 <?php endif; // view vs list ?>
-
-
-<?php // ══════════════ NOTIFICATIONS TAB ══════════════
-elseif ($tab === 'notifications'): ?>
-
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-  <div style="font-size:13px;color:var(--text3)"><?= $unread_notif ?> unread notification<?= $unread_notif!=1?'s':'' ?></div>
-  <?php if ($unread_notif): ?>
-  <form method="POST" style="display:inline"><input type="hidden" name="action" value="mark_all_read"><button class="btn btn-ghost btn-sm">✓ Mark all read</button></form>
-  <?php endif; ?>
-</div>
-
-<?php if (!$notifs): ?>
-<div class="card"><div class="empty-state"><div class="icon">🔔</div><p>No notifications yet.</p></div></div>
-<?php else: ?>
-<?php
-$type_icons = [
-  'task_assigned'=>['🧑‍💼','rgba(99,102,241,.15)','#6366f1'],
-  'task_due'     =>['⏰',   'rgba(239,68,68,.15)', '#ef4444'],
-  'invoice_sent' =>['🧾',   'rgba(249,115,22,.15)','#f97316'],
-  'lead_update'  =>['🎯',   'rgba(16,185,129,.15)','#10b981'],
-  'mention'      =>['@',    'rgba(139,92,246,.15)', '#8b5cf6'],
-  'info'         =>['ℹ',    'rgba(148,163,184,.15)','#94a3b8'],
-];
-foreach ($notifs as $n):
-  [$ic,$ibg,$icolor] = $type_icons[$n['type']] ?? $type_icons['info'];
-  $cls = $n['is_read'] ? 'read' : 'unread';
-?>
-<div class="notif-row <?= $cls ?>">
-  <div class="notif-icon" style="background:<?= $ibg ?>;color:<?= $icolor ?>"><?= $ic ?></div>
-  <div style="flex:1;min-width:0">
-    <div style="font-size:13.5px;font-weight:<?= $n['is_read']?'500':'700' ?>;color:var(--text);margin-bottom:2px"><?= h($n['title']) ?></div>
-    <?php if ($n['body']): ?><div style="font-size:12px;color:var(--text3)"><?= h($n['body']) ?></div><?php endif; ?>
-    <div style="font-size:11px;color:var(--text3);margin-top:3px"><?= date('M j, Y g:ia',strtotime($n['created_at'])) ?></div>
-  </div>
-  <div style="display:flex;gap:6px;flex-shrink:0">
-    <?php if ($n['link']): ?><a href="<?= h($n['link']) ?>" class="btn btn-ghost btn-sm">View</a><?php endif; ?>
-    <?php if (!$n['is_read']): ?>
-    <form method="POST" style="display:inline"><input type="hidden" name="action" value="mark_read"><input type="hidden" name="nid" value="<?= $n['id'] ?>"><button class="btn btn-ghost btn-sm">✓</button></form>
-    <?php endif; ?>
-  </div>
-  <?php if (!$n['is_read']): ?><div class="notif-dot"></div><?php endif; ?>
-</div>
-<?php endforeach; ?>
-<?php endif; ?>
-
 
 <?php // ══════════════ SETTINGS TAB ══════════════
 elseif ($tab === 'settings' && isAdmin()): ?>

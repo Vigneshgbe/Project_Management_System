@@ -4,6 +4,10 @@ function renderLayout(string $pageTitle, string $activePage): void {
     $user = currentUser();
     $initials = implode('', array_map(fn($w) => strtoupper($w[0]), explode(' ', $user['name'])));
     $initials = substr($initials, 0, 2);
+    // ADD THIS:
+    $db_layout = getCRMDB();
+    $layout_uid = (int)$user['id'];
+    $notif_unread_count = (int)$db_layout->query("SELECT COUNT(*) FROM notifications WHERE user_id=$layout_uid AND is_read=0")->fetch_row()[0];
 ?>
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -308,6 +312,9 @@ select.form-control{cursor:pointer}
 
     <a href="notifications.php" class="nav-item <?= $activePage==='notifications'?'active':'' ?>">
         <span class="icon">🔔</span> Notifications
+        <?php if ($notif_unread_count > 0): ?>
+        <span class="nav-badge"><?= $notif_unread_count > 99 ? '99+' : $notif_unread_count ?></span>
+        <?php endif; ?>
     </a>
 
     <!-- RESOURCES -->

@@ -56,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s->execute();
             $db->query("DELETE FROM calendar_attendees WHERE event_id=$eid");
             logActivity('updated event',$title,$eid);
+            // ADD THIS LINE:
+            notifyMany($db, $atts, 'calendar_updated', 'meeting', $eid, 'Event Updated: '.$title, 'Updated by '.$user['name'], 'calendar.php?view=event&eid='.$eid, $uid);
         } else {
             $s = $db->prepare("INSERT INTO calendar_events (title,description,event_type,start_datetime,end_datetime,all_day,location,color,project_id,task_id,contact_id,recur,status,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
             $s->bind_param("sssssiissiiissi",$title,$desc,$type,$start,$end,$allday,$loc,$color,$proj,$task,$cont,$recur,$stat,$uid);

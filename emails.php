@@ -492,7 +492,7 @@ elseif ($tab === 'sent'):
 <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
   <a href="emails.php?tab=sent" style="color:var(--text3);font-size:13px">← Back to Log</a>
   <div style="display:flex;gap:8px">
-    <?php if ($view_email['opened_count'] > 0): ?><span style="font-size:12px;color:var(--green);font-weight:600">👁 Opened <?= $view_email['opened_count'] ?> time<?= $view_email['opened_count']>1?'s':'' ?><?= $view_email['opened_at']?' · '.date('M j g:ia',strtotime($view_email['opened_at'])):'' ?></span><?php endif; ?>
+    <?php if ($em['opened_count'] > 0): ?><span style="font-size:12px;color:var(--green);font-weight:600">👁 Opened <?= $view_email['opened_count'] ?> time<?= $view_email['opened_count']>1?'s':'' ?><?= $view_email['opened_at']?' · '.date('M j g:ia',strtotime($view_email['opened_at'])):'' ?></span><?php endif; ?>
     <span class="badge" style="background:<?= $view_email['status']==='sent'?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)' ?>;color:<?= $view_email['status']==='sent'?'var(--green)':'var(--red)' ?>"><?= ucfirst($view_email['status']) ?></span>
   </div>
 </div>

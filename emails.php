@@ -145,6 +145,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: emails.php?tab=settings'); exit;
     }
 
+    // ── FETCH INBOX ──
+    if ($action === 'fetch_inbox') {
+        require_once 'includes/mailer.php';
+        $result = fetchInboxEmails($db, 50);
+        flash($result['ok'] ? '📥 Fetched '.$result['fetched'].' new email(s).' : '❌ IMAP Error: '.$result['error'],
+              $result['ok'] ? 'success' : 'error');
+        ob_end_clean(); header('Location: emails.php?tab=inbox'); exit;
+    }
+
     // ── DELETE LOG ENTRY ──
     if ($action === 'delete_log') {
         $lid = (int)($_POST['log_id'] ?? 0);

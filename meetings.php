@@ -71,12 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s->execute();
             $db->query("DELETE FROM meeting_attendees WHERE meeting_id=$mid");
             logActivity('updated meeting', $title, $mid);
+            // ADD THIS LINE:
+            notifyMany($db, $atts, 'meeting_updated', 'meeting', $mid, 'Meeting Updated: '.$title, 'Updated by '.$user['name'], 'meetings.php?view=detail&mid='.$mid, $uid);
         } else {
             $s = $db->prepare("INSERT INTO meetings (title,agenda,start_datetime,end_datetime,location,meet_link,project_id,status,meeting_type,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)");
             $s->bind_param("ssssssissi", $title,$agenda,$start,$end,$location,$meet_link,$proj,$status,$type,$uid);
             $s->execute();
             $mid = (int)$db->insert_id;
             logActivity('created meeting', $title, $mid);
+            // ADD THIS LINE:
+            notifyMany($db, $atts, 'meeting_invited', 'meeting', $mid, 'Meeting: '.$title, 'Invited by '.$user['name'], 'meetings.php?view=detail&mid='.$mid, $uid);
         }
 
         // Save attendees — always include creator

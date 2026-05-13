@@ -24,6 +24,9 @@ define('SESSION_TIMEOUT', 3600 * 8); // 8 hours
 // Timezone
 date_default_timezone_set('Asia/Colombo');
 
+//Adding Notification api calls
+require_once __DIR__.'/notify_helper.php';
+
 // DB Connection
 function getCRMDB(): mysqli {
     static $conn = null;

@@ -306,6 +306,10 @@ select.form-control{cursor:pointer}
         <span class="icon">💬</span> Team Chat
     </a>
 
+    <a href="notifications.php" class="nav-item <?= $activePage==='notifications'?'active':'' ?>">
+        <span class="icon">🔔</span> Notifications
+    </a>
+
     <!-- RESOURCES -->
     <?php if (deptCan(['general'])): // Emails: admin/manager/general member only ?>
     <a href="emails.php" class="nav-item <?= $activePage==='emails'?'active':'' ?>">

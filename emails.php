@@ -665,6 +665,65 @@ document.addEventListener('click', function(e) {
 });
 </script>
 
+<?php // ══════════════ INBOX TAB ══════════════
+elseif ($tab === 'inbox'):
+    $inbox_emails = $db->query("
+        SELECT * FROM email_log
+        WHERE direction='in'
+        ORDER BY sent_at DESC
+        LIMIT 100
+    ")->fetch_all(MYSQLI_ASSOC);
+    $view_inbox = $view_id ? $db->query("SELECT * FROM email_log WHERE id=$view_id AND direction='in'")->fetch_assoc() : null;
+?>
+
+<?php if ($view_inbox): ?>
+<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+  <a href="emails.php?tab=inbox" style="color:var(--text3);font-size:13px">← Back to Inbox</a>
+</div>
+<div class="em-detail-header">
+  <div style="font-size:18px;font-weight:700;margin-bottom:12px"><?= h($view_inbox['subject']) ?></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+    <?php foreach ([
+      ['From', h($view_inbox['from_name'] ? $view_inbox['from_name'].' <'.$view_inbox['from_email'].'>' : $view_inbox['from_email'])],
+      ['To',   h(implode(', ', json_decode($view_inbox['to_email']??'[]',true)))],
+      ['Date', $view_inbox['sent_at'] ? date('M j, Y g:ia', strtotime($view_inbox['sent_at'])) : '—'],
+    ] as [$l,$v]): ?>
+    <div><div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;margin-bottom:2px"><?= $l ?></div><div style="font-size:12.5px;color:var(--text2)"><?= $v ?></div></div>
+    <?php endforeach; ?>
+  </div>
+</div>
+<div class="em-detail-body"><?= $view_inbox['body_html'] ?: nl2br(h($view_inbox['body_text']??'')) ?></div>
+
+<?php else: ?>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+  <div style="font-size:13px;color:var(--text3)"><?= count($inbox_emails) ?> email<?= count($inbox_emails)!=1?'s':'' ?> in inbox</div>
+  <form method="POST" style="display:inline">
+    <input type="hidden" name="action" value="fetch_inbox">
+    <button class="btn btn-primary">📥 Fetch New Emails</button>
+  </form>
+</div>
+
+<?php if (!$inbox_emails): ?>
+<div class="card">
+  <div class="empty-state">
+    <div class="icon">📥</div>
+    <p>No emails in inbox yet.<br><small style="color:var(--text3)">Configure IMAP in SMTP Settings, then click Fetch New Emails.</small></p>
+  </div>
+</div>
+<?php else: ?>
+<?php foreach ($inbox_emails as $em): ?>
+<div class="em-row" onclick="location.href='emails.php?tab=inbox&view=<?= $em['id'] ?>'" style="cursor:pointer">
+  <div class="em-from"><?= h($em['from_name'] ?: $em['from_email']) ?></div>
+  <div class="em-subj">
+    <div class="em-subj-text"><?= h($em['subject']) ?></div>
+    <div class="em-subj-preview"><?= h(mb_substr(strip_tags($em['body_text'] ?? $em['body_html'] ?? ''), 0, 80)) ?></div>
+  </div>
+  <div class="em-date"><?= $em['sent_at'] ? date('M j, g:ia', strtotime($em['sent_at'])) : '—' ?></div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
+<?php endif; // view vs list ?>
+
 
 <?php // ══════════════ NOTIFICATIONS TAB ══════════════
 elseif ($tab === 'notifications'): ?>

@@ -784,6 +784,14 @@ elseif ($tab === 'settings' && isAdmin()): ?>
           </div>
           <div class="form-group"><label class="form-label">Password <span style="font-weight:400;color:var(--text3)">(leave blank to keep)</span></label><input type="password" name="password" id="smtp-pass" class="form-control" autocomplete="new-password"></div>
         </div>
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">IMAP (Inbox Receiving — optional)</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">IMAP Host</label><input type="text" name="imap_host" id="smtp-imap-host" class="form-control" placeholder="imap.gmail.com"></div>
+            <div class="form-group"><label class="form-label">IMAP Port</label><input type="number" name="imap_port" id="smtp-imap-port" class="form-control" value="993"></div>
+          </div>
+          <div class="form-group"><label class="form-label">IMAP Password <span style="font-weight:400;color:var(--text3)">(if different from SMTP)</span></label><input type="password" name="imap_password" id="smtp-imap-pass" class="form-control" autocomplete="new-password"></div>
+        </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
           <input type="checkbox" name="is_default" id="smtp-def" style="accent-color:var(--orange)"> Set as default account
         </label>

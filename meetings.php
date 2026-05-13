@@ -505,11 +505,20 @@ renderLayout('Meetings', 'meetings');
             <button class="btn btn-ghost btn-sm" onclick="prefillMeetLink()">📋 Schedule with Link</button>
         </div>
     </div>
-    <div id="instant-meet-result" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid rgba(26,115,232,.3);border-radius:8px;padding:10px;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--text3)">Meet link:</span>
-        <a id="instant-meet-link" href="#" target="_blank" style="color:#1a73e8;font-size:13px;font-weight:600;word-break:break-all"></a>
-        <button onclick="copyInstantLink(event)" class="btn btn-ghost btn-sm">Copy</button>
-        <button onclick="saveMeetingFromInstant()" class="btn btn-primary btn-sm">＋ Save as Meeting</button>
+    <div id="instant-meet-result" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid rgba(26,115,232,.3);border-radius:8px;padding:12px;flex-direction:column;gap:10px">
+        <div style="font-size:12.5px;color:var(--text2);font-weight:600">
+            📋 Copy the link from your Google Meet tab and paste it below:
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="instant-meet-link-input" placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                style="flex:1;min-width:220px;background:var(--bg3);border:1px solid rgba(26,115,232,.4);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--text);outline:none"
+                oninput="onInstantLinkInput(this.value)">
+            <button onclick="copyInstantLink(event)" class="btn btn-ghost btn-sm" id="instant-copy-btn" disabled>Copy</button>
+            <button onclick="saveMeetingFromInstant()" class="btn btn-primary btn-sm" id="instant-save-btn" disabled>＋ Save as Meeting</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3)">
+            💡 Tip: The same Google Meet link can be reused for all sessions of a recurring meeting.
+        </div>
     </div>
 </div>
 <?php endif; ?>
@@ -756,6 +765,31 @@ function prefillMeetLink() {
 function saveMeetingFromInstant() {
     if (_instantLink) {
         document.getElementById('meet-link-input').value = _instantLink;
+        openModal('modal-meeting');
+    }
+}
+
+function onInstantLinkInput(val) {
+    _instantLink = val.trim();
+    var valid = _instantLink.startsWith('https://meet.google.com/');
+    document.getElementById('instant-copy-btn').disabled = !valid;
+    document.getElementById('instant-save-btn').disabled = !valid;
+}
+
+function copyInstantLink(e) {
+    var val = document.getElementById('instant-meet-link-input')?.value.trim() || _instantLink;
+    if (val) {
+        navigator.clipboard.writeText(val).catch(function(){});
+        var btn = e.target;
+        btn.textContent = '✓ Copied!';
+        setTimeout(function(){ btn.textContent = 'Copy'; }, 2000);
+    }
+}
+
+function saveMeetingFromInstant() {
+    var val = document.getElementById('instant-meet-link-input')?.value.trim() || _instantLink;
+    if (val) {
+        document.getElementById('meet-link-input').value = val;
         openModal('modal-meeting');
     }
 }

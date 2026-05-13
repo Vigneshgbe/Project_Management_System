@@ -723,23 +723,20 @@ document.getElementById('meet-start')?.addEventListener('change', function() {
 });
 
 function generateMeetLink() {
-    var c = 'abcdefghijklmnopqrstuvwxyz';
-    var r = function(n){ var s=''; for(var i=0;i<n;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; };
-    document.getElementById('meet-link-input').value = 'https://meet.google.com/'+r(3)+'-'+r(4)+'-'+r(3);
+    // Open real Google Meet to create a room, user pastes the link back
+    window.open('https://meet.google.com/new', '_blank');
+    toast('Google Meet opened — copy the link from your browser and paste it above.', 'info');
 }
 
 var _instantLink = '';
 
 function startInstantMeet() {
-    var c = 'abcdefghijklmnopqrstuvwxyz';
-    var r = function(n){ var s=''; for(var i=0;i<n;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; };
-    _instantLink = 'https://meet.google.com/'+r(3)+'-'+r(4)+'-'+r(3);
+    // Opens real Google Meet new room — user must be signed into Google
+    window.open('https://meet.google.com/new', '_blank');
+    // Show the "paste your link" input box
     var res = document.getElementById('instant-meet-result');
-    var lnk = document.getElementById('instant-meet-link');
-    lnk.href = _instantLink;
-    lnk.textContent = _instantLink;
     res.style.display = 'flex';
-    window.open(_instantLink, '_blank');
+    document.getElementById('instant-meet-link-input').focus();
 }
 
 function copyInstantLink(e) {

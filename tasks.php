@@ -51,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $new_id = $db->insert_id;
             logActivity('created task',$title,$new_id);
+            // ADD THIS LINE:
+            if ($assign && $assign !== $uid) notify($db, $assign, 'task_assigned', 'task', $new_id, 'Task Assigned: '.$title, 'Assigned by '.$user['name'], 'tasks.php?edit='.$new_id, $uid);
             if ($assign && $assign !== $uid) {
                 @include_once 'includes/mailer.php';
                 $proj_row = $proj ? $db->query("SELECT title FROM projects WHERE id=$proj")->fetch_assoc() : null;
@@ -75,6 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param("ssiisssssi",$title,$desc,$proj,$assign,$status,$prio,$due,$start,$label,$id);
             $stmt->execute();
             logActivity('updated task',$title,$id);
+            // ADD THESE TWO LINES:
+            if ($status === 'done') {
+                $row = $db->query("SELECT created_by FROM tasks WHERE id=$id")->fetch_assoc();
+                if ($row && $row['created_by'] !== $uid) notify($db, $row['created_by'], 'task_completed', 'task', $id, 'Task Completed: '.$title, $user['name'].' completed it.', 'tasks.php?edit='.$id, $uid);
+            }
             flash('Task updated.','success');
         }
         ob_end_clean();

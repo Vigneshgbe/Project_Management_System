@@ -404,3 +404,115 @@ function sendDueReminders(mysqli $db): int {
     }
     return $sent;
 }
+
+/**
+ * Fetch inbox emails via IMAP and store in email_log
+ */
+function fetchInboxEmails(mysqli $db, int $limit = 50): array {
+    $smtp = $db->query("SELECT * FROM email_settings WHERE is_default=1 AND is_active=1 LIMIT 1")->fetch_assoc();
+    if (!$smtp || !$smtp['imap_host']) return ['ok'=>false,'error'=>'No IMAP configured'];
+
+    $imap_host = $smtp['imap_host'];
+    $imap_port = (int)($smtp['imap_port'] ?? 993);
+    $username  = $smtp['username'];
+    // Use imap_password if set, else fall back to smtp password
+    $password  = $smtp['imap_password'] ?: $smtp['password'];
+
+    if (!function_exists('imap_open')) return ['ok'=>false,'error'=>'PHP IMAP extension not installed'];
+
+    $mailbox = '{'.$imap_host.':'.$imap_port.'/imap/ssl/novalidate-cert}INBOX';
+
+    $conn = @imap_open($mailbox, $username, $password, 0, 1);
+    if (!$conn) return ['ok'=>false,'error'=>imap_last_error()];
+
+    $emails  = imap_search($conn, 'ALL', SE_UID);
+    if (!$emails) { imap_close($conn); return ['ok'=>true,'fetched'=>0]; }
+
+    // Sort newest first, take last $limit
+    rsort($emails);
+    $emails = array_slice($emails, 0, $limit);
+
+    $fetched = 0;
+    foreach ($emails as $uid) {
+        // Check if already stored
+        $existing = $db->query("SELECT id FROM email_log WHERE imap_uid=$uid AND direction='in'")->fetch_row();
+        if ($existing) continue;
+
+        $header  = imap_fetchheader($conn, $uid, FT_UID);
+        $overview = imap_fetch_overview($conn, $uid, FT_UID);
+        $ov      = $overview[0] ?? null;
+        if (!$ov) continue;
+
+        $subject  = isset($ov->subject) ? imap_utf8($ov->subject) : '(no subject)';
+        $from     = isset($ov->from)    ? imap_utf8($ov->from)    : '';
+        $date     = isset($ov->date)    ? date('Y-m-d H:i:s', strtotime($ov->date)) : date('Y-m-d H:i:s');
+        $msg_id   = isset($ov->message_id) ? substr($ov->message_id, 0, 255) : null;
+
+        // Get body
+        $body_html = '';
+        $body_text = '';
+        $structure = imap_fetchstructure($conn, $uid, FT_UID);
+
+        if ($structure->type === 0) {
+            // Plain text only
+            $raw = imap_fetchbody($conn, $uid, '1', FT_UID);
+            $enc = $structure->encoding ?? 0;
+            $body_text = _decodeImapBody($raw, $enc);
+            $body_html = nl2br(htmlspecialchars($body_text));
+        } else {
+            // Multipart — look for HTML and text parts
+            if (isset($structure->parts)) {
+                foreach ($structure->parts as $pi => $part) {
+                    $part_num = $pi + 1;
+                    $raw = imap_fetchbody($conn, $uid, (string)$part_num, FT_UID);
+                    $enc = $part->encoding ?? 0;
+                    $decoded = _decodeImapBody($raw, $enc);
+                    if ($part->subtype === 'HTML')  $body_html = $decoded;
+                    if ($part->subtype === 'PLAIN') $body_text = $decoded;
+                }
+            }
+            if (!$body_html && !$body_text) {
+                $raw = imap_fetchbody($conn, $uid, '1', FT_UID);
+                $body_text = _decodeImapBody($raw, $structure->encoding ?? 0);
+                $body_html = nl2br(htmlspecialchars($body_text));
+            }
+        }
+
+        $from_email = '';
+        $from_name  = '';
+        if (preg_match('/<([^>]+)>/', $from, $m)) {
+            $from_email = $m[1];
+            $from_name  = trim(str_replace('<'.$m[1].'>', '', $from));
+        } else {
+            $from_email = trim($from);
+        }
+
+        $to_json = json_encode([$smtp['from_email']]);
+        $msg_id_safe = $msg_id ? "'".$db->real_escape_string($msg_id)."'" : 'NULL';
+        $bh = $db->real_escape_string($body_html);
+        $bt = $db->real_escape_string($body_text);
+        $fe = $db->real_escape_string($from_email);
+        $fn = $db->real_escape_string($from_name);
+        $su = $db->real_escape_string($subject);
+        $dt = $db->real_escape_string($date);
+        $tj = $db->real_escape_string($to_json);
+
+        $db->query("INSERT INTO email_log
+            (direction, imap_uid, message_id, from_email, from_name, to_email, subject,
+             body_html, body_text, status, sent_at, created_at)
+            VALUES ('in', $uid, $msg_id_safe, '$fe', '$fn', '$tj', '$su',
+                    '$bh', '$bt', 'received', '$dt', NOW())");
+        $fetched++;
+    }
+
+    imap_close($conn);
+    return ['ok'=>true, 'fetched'=>$fetched];
+}
+
+function _decodeImapBody(string $raw, int $encoding): string {
+    return match($encoding) {
+        3 => base64_decode($raw),
+        4 => quoted_printable_decode($raw),
+        default => $raw,
+    };
+}

@@ -297,6 +297,11 @@ select.form-control{cursor:pointer}
     <a href="calendar.php" class="nav-item <?= $activePage==='calendar'?'active':'' ?>">
         <span class="icon">📅</span> Calendar
     </a>
+
+    <a href="meetings.php" class="nav-item <?= $activePage==='meetings'?'active':'' ?>">
+       <span class="icon">🤝</span> Meetings
+    </a>
+
     <a href="chat.php" class="nav-item <?= $activePage==='chat'?'active':'' ?>">
         <span class="icon">💬</span> Chat
     </a>

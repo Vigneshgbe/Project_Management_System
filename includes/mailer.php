@@ -265,16 +265,8 @@ function logEmail(array $opts, string $status, string $error, string $msg_id, my
         $status,$error,$msg_id,$token,$sent_by,$sent_at,
         $cid,$lid,$invid,$pid,$tid);
     $stmt->execute();
-    $log_id = $db->insert_id;
-
-    // ── TRACKING PIXEL ──
-        $tracking_token = bin2hex(random_bytes(16));
-        $db->query("UPDATE email_log SET tracking_token='$tracking_token' WHERE id=$log_id");
-        $pixel_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']==='on' ? 'https' : 'http')
-                   . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
-                   . '/email_track.php?t=' . $tracking_token;
-        $pixel_tag = '<img src="'.htmlspecialchars($pixel_url).'" width="1" height="1" style="display:none;border:0" alt="">';
-        $html = ($html ?? '') . $pixel_tag;
+    $log_id = (int)$db->insert_id;
+    return $log_id;
 }
 
 // ══════════════════════════════════════════════════════

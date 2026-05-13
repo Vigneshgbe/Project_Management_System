@@ -321,6 +321,7 @@ renderLayout('Emails', 'emails');
   $tabs = [
     ['compose',     '✉',  'Compose'],
     ['sent',        '📤', 'Sent Log'],
+    ['inbox',       '📥', 'Inbox'],
     ['templates',   '📋', 'Templates'],
     ['notifications','🔔','Alerts', $unread_notif],
     ['settings',    '⚙',  'SMTP Settings'],

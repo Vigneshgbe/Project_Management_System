@@ -303,7 +303,7 @@ select.form-control{cursor:pointer}
     </a>
 
     <a href="chat.php" class="nav-item <?= $activePage==='chat'?'active':'' ?>">
-        <span class="icon">💬</span> Chat
+        <span class="icon">💬</span> Team Chat
     </a>
 
     <!-- RESOURCES -->

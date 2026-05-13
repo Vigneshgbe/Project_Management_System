@@ -48,6 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ob_end_clean(); header('Location: calendar.php'); exit;
         }
 
+        // ADD THIS LINE:
+        $eid_was_existing = (bool)$eid;
         if ($eid) {
             $s = $db->prepare("UPDATE calendar_events SET title=?,description=?,event_type=?,start_datetime=?,end_datetime=?,all_day=?,location=?,color=?,project_id=?,task_id=?,contact_id=?,recur=?,status=? WHERE id=?");
             $s->bind_param("sssssiissiiissi",$title,$desc,$type,$start,$end,$allday,$loc,$color,$proj,$task,$cont,$recur,$stat,$eid);
@@ -66,6 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $atts = array_unique(array_map('intval', $atts));
         $sa = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
         foreach ($atts as $aid) { $sa->bind_param("ii",$eid,$aid); $sa->execute(); }
+        // ADD THESE LINES:
+        if (!$eid_was_existing) {
+            foreach ($atts as $aid) {
+                if ($aid !== $uid) {
+                    notify($db, $aid, 'calendar_invited', 'meeting', $eid, 'Event: '.$title, 'Invited by '.$user['name'], 'calendar.php?view=event&eid='.$eid, $uid);
+                }
+            }
+        }
         flash('Event saved.','success');
         ob_end_clean(); header('Location: calendar.php?y='.date('Y',strtotime($start)).'&m='.date('m',strtotime($start))); exit;
     }

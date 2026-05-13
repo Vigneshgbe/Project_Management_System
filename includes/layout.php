@@ -452,7 +452,7 @@ select.form-control{cursor:pointer}
       </div>
       <div class="notif-panel-foot">
         <span style="font-size:11.5px;color:var(--text3)" id="notif-foot-count"></span>
-        <a href="emails.php?tab=notifications" style="font-size:12px;color:var(--orange);font-weight:600">View all →</a>
+        <a href="notifications.php" style="font-size:12px;color:var(--orange);font-weight:600">View all →</a>
       </div>
     </div>
     <button id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">

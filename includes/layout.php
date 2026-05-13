@@ -296,7 +296,7 @@ select.form-control{cursor:pointer}
     <?php endif; ?>
 
     <a href="tasks.php" class="nav-item <?= $activePage==='tasks'?'active':'' ?>">
-        <span class="icon">✅</span> Tasks
+        <span class="icon">✅</span> My Tasks
     </a>
     <a href="calendar.php" class="nav-item <?= $activePage==='calendar'?'active':'' ?>">
         <span class="icon">📅</span> Calendar

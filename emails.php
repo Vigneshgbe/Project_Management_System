@@ -98,15 +98,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pass = trim($_POST['password']   ?? '');
         $def  = isset($_POST['is_default']) ? 1 : 0;
         if (!$n || !$fe) { flash('Name and From Email required.','error'); ob_end_clean(); header('Location: emails.php?tab=settings'); exit; }
+        $imap_host = trim($_POST['imap_host'] ?? '');
+        $imap_port = (int)($_POST['imap_port'] ?? 993);
+        $imap_pass = trim($_POST['imap_password'] ?? '');
         if ($def) $db->query("UPDATE email_settings SET is_default=0");
         if ($sid) {
-            $q = "UPDATE email_settings SET name=?,from_name=?,from_email=?,host=?,port=?,encryption=?,username=?,is_default=? WHERE id=?";
+            $q = "UPDATE email_settings SET name=?,from_name=?,from_email=?,host=?,port=?,encryption=?,username=?,is_default=?,imap_host=?,imap_port=? WHERE id=?";
             $stmt = $db->prepare($q);
-            $stmt->bind_param("ssssissii",$n,$fn,$fe,$host,$port,$enc,$user,$def,$sid);
-            if ($pass) { $db->query("UPDATE email_settings SET password='".$db->real_escape_string($pass)."' WHERE id=$sid"); }
+            $stmt->bind_param("ssssissisii",$n,$fn,$fe,$host,$port,$enc,$user,$def,$imap_host,$imap_port,$sid);
+            if ($pass)      { $db->query("UPDATE email_settings SET password='".$db->real_escape_string($pass)."' WHERE id=$sid"); }
+            if ($imap_pass) { $db->query("UPDATE email_settings SET imap_password='".$db->real_escape_string($imap_pass)."' WHERE id=$sid"); }
         } else {
-            $stmt = $db->prepare("INSERT INTO email_settings (name,from_name,from_email,host,port,encryption,username,password,is_default) VALUES (?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("ssssisssi",$n,$fn,$fe,$host,$port,$enc,$user,$pass,$def);
+            $stmt = $db->prepare("INSERT INTO email_settings (name,from_name,from_email,host,port,encryption,username,password,is_default,imap_host,imap_port,imap_password) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("ssssisssisii",$n,$fn,$fe,$host,$port,$enc,$user,$pass,$def,$imap_host,$imap_port,$imap_pass);
         }
         $stmt->execute();
         flash('SMTP settings saved.','success');

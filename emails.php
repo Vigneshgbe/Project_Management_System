@@ -855,6 +855,9 @@ function editSmtp(s) {
   document.getElementById('smtp-user').value    = s.username || '';
   document.getElementById('smtp-pass').value    = '';
   document.getElementById('smtp-def').checked   = s.is_default == 1;
+  document.getElementById('smtp-imap-host').value = s.imap_host || '';
+  document.getElementById('smtp-imap-port').value = s.imap_port || 993;
+  document.getElementById('smtp-imap-pass').value = '';
   openModal('modal-smtp');
 }
 </script>

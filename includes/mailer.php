@@ -237,7 +237,7 @@ function extractEmail(string $addr): string {
 // ══════════════════════════════════════════════════════
 // LOG EMAIL TO DB
 // ══════════════════════════════════════════════════════
-function logEmail(array $opts, string $status, string $error, string $msg_id, mysqli $db): {
+function logEmail(array $opts, string $status, string $error, string $msg_id, mysqli $db): int {
     $dir      = $opts['direction']  ?? 'out';
     $subject  = $opts['subject']    ?? '';
     $from_e   = $opts['from_email'] ?? '';

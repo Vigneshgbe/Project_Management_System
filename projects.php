@@ -44,6 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($members as $mid) { $mid=(int)$mid; $sm->bind_param("ii",$pid,$mid); $sm->execute(); }
             }
             logActivity('created project',$title,$pid);
+            // ADD THESE LINES:
+            if ($members) {
+                foreach ($members as $member_id) {
+                    $member_id = (int)$member_id;
+                    if ($member_id !== $uid) {
+                        notify($db, $member_id, 'project_assigned', 'project', $pid, 'Added to Project: '.$title, 'Added by '.$user['name'], 'projects.php?view='.$pid, $uid);
+                    }
+                }
+            }
             flash('Project created.','success');
         } else {
             if (!isManager()) { flash('Access denied.','error'); ob_end_clean(); header('Location: projects.php'); exit; }
@@ -56,6 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($members as $mid) { $mid=(int)$mid; $sm->bind_param("ii",$id,$mid); $sm->execute(); }
             }
             logActivity('updated project',$title,$id);
+            // ADD THESE LINES:
+            if ($members) {
+                foreach ($members as $member_id) {
+                    $member_id = (int)$member_id;
+                    if ($member_id !== $uid) {
+                        notify($db, $member_id, 'project_assigned', 'project', $id, 'Added to Project: '.$title, 'Updated by '.$user['name'], 'projects.php?view='.$id, $uid);
+                    }
+                }
+            }
             flash('Project updated.','success');
         }
         ob_end_clean();

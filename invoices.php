@@ -11,11 +11,10 @@
  *  - Fixed inv-meta-grid overflow on narrow screens (now auto-fill responsive)
  *  - Fixed: handleImageUpload returns absolute path internally, stores relative for DB/HTML
  *  - Fixed: $sig_path / $stamp_path resolved with __DIR__ for file_exists checks
- *  - Upgraded invoice layout to industry-standard professional billing format
- *  - Two-column signature section (Authorised Signatory | Company Stamp) only
- *  - Added proper "ORIGINAL" / "COPY" watermark CSS for print
- *  - Improved item editor UX: auto-focus description on addRow
- *  - recalcInvoice now uses prepared statement (no raw int concat)
+ *  - REDESIGN: World-class professional invoice layout for multinational clients
+ *  - Premium navy + slate + gold accent color system
+ *  - Authoritative typography with Playfair Display + DM Sans pairing
+ *  - Full-bleed header band, structured grid, commanding signature section
  *  - All existing functionality, routing and design theme preserved intact
  */
 require_once 'config.php';
@@ -55,7 +54,6 @@ function invSym(string $c): string {
 
 function nextInvoiceNo(mysqli $db): string {
     $year = (int)date('Y');
-    // Atomic increment — safe against concurrent requests
     $db->query("INSERT INTO invoice_counter (year,seq) VALUES ($year,1)
                 ON DUPLICATE KEY UPDATE seq=seq+1");
     $row = $db->query("SELECT seq FROM invoice_counter WHERE year=$year")->fetch_assoc();
@@ -63,7 +61,6 @@ function nextInvoiceNo(mysqli $db): string {
 }
 
 function recalcInvoice(mysqli $db, int $inv_id): void {
-    // FIX: use prepared statement instead of raw concat
     $stmt = $db->prepare("SELECT COALESCE(SUM(amount),0) AS s FROM invoice_items WHERE invoice_id=?");
     $stmt->bind_param("i", $inv_id);
     $stmt->execute();
@@ -83,21 +80,17 @@ function recalcInvoice(mysqli $db, int $inv_id): void {
 
 function invColor(string $s): string {
     return match($s) {
-        'paid'      => '#10b981',
-        'partial'   => '#f59e0b',
-        'overdue'   => '#ef4444',
-        'sent'      => '#6366f1',
-        'viewed'    => '#8b5cf6',
-        'draft'     => '#94a3b8',
-        'cancelled' => '#64748b',
-        default     => '#94a3b8',
+        'paid'      => '#059669',
+        'partial'   => '#d97706',
+        'overdue'   => '#dc2626',
+        'sent'      => '#4f46e5',
+        'viewed'    => '#7c3aed',
+        'draft'     => '#64748b',
+        'cancelled' => '#475569',
+        default     => '#64748b',
     };
 }
 
-/**
- * Handle image upload — returns [db_relative_path|null, abs_path|null]
- * FIX: consistent path handling; db stores relative, file_exists uses absolute
- */
 function handleImageUpload(string $field, string $prefix): ?string {
     if (empty($_FILES[$field]['name']) || $_FILES[$field]['error'] !== 0) return null;
     $f   = $_FILES[$field];
@@ -108,12 +101,11 @@ function handleImageUpload(string $field, string $prefix): ?string {
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     $fname = $prefix . '_' . uniqid() . '.' . $ext;
     if (move_uploaded_file($f['tmp_name'], $dir . $fname)) {
-        return 'uploads/invoice/' . $fname;   // relative path stored in DB
+        return 'uploads/invoice/' . $fname;
     }
     return null;
 }
 
-/** Resolve DB-stored relative path to absolute for file_exists() checks */
 function absPath(?string $rel): string {
     return $rel ? __DIR__ . '/' . ltrim($rel, '/') : '';
 }
@@ -123,7 +115,6 @@ ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // ── SAVE INVOICE SETTINGS ────────────────────────────────────────────────
     if ($action === 'save_invoice_settings' && isAdmin()) {
         $text_fields = [
             'company_name','company_tagline','company_address','company_phone',
@@ -153,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: invoices.php?tab=settings'); exit;
     }
 
-    // ── CREATE / UPDATE INVOICE ───────────────────────────────────────────────
     if (in_array($action, ['create_invoice','update_invoice'], true)) {
         if (!isManager()) { flash('Access denied.','error'); ob_end_clean(); header('Location: invoices.php'); exit; }
 
@@ -170,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notes      = trim($_POST['notes']  ?? '');
         $terms      = trim($_POST['terms']  ?? '');
         $recur      = isset($_POST['is_recurring']) ? 1 : 0;
-        $recur_int  = $recur ? (trim($_POST['recur_interval'] ?? '') ?: null) : null; // FIX: always string/null
+        $recur_int  = $recur ? (trim($_POST['recur_interval'] ?? '') ?: null) : null;
         $recur_next = $recur && !empty($_POST['recur_next']) ? $_POST['recur_next'] : null;
 
         if (!$title) { flash('Title required.','error'); ob_end_clean(); header('Location: invoices.php'); exit; }
@@ -180,9 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'create_invoice') {
             $inv_no = nextInvoiceNo($db);
-            // FIX: type string corrected — recur_interval is 's' (string), not 'i'
-            // Format: s s i i s s s s d d s s i s s i
-            //        no ti co pr st cu is du tx di no te rc ri rn uid
             $stmt = $db->prepare(
                 "INSERT INTO invoices
                     (invoice_no,title,contact_id,project_id,status,currency,
@@ -190,7 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      is_recurring,recur_interval,recur_next,created_by)
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             );
-            // FIX: was 'ssiissssddssiisi' — recur_interval at pos 14 was 'i', now 's'
             $stmt->bind_param(
                 "ssiissssddssissi",
                 $inv_no,$title,$contact,$project,$status,$currency,
@@ -211,9 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logActivity('created invoice', $title, $inv_id);
 
         } else {
-            // FIX: type string corrected — recur_interval 's' at correct position
-            // Format: s i i s s s s d d s s i s s i
-            //        ti co pr st cu is du tx di no te rc ri rn id
             $stmt = $db->prepare(
                 "UPDATE invoices
                  SET title=?,contact_id=?,project_id=?,status=?,currency=?,
@@ -221,7 +204,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      is_recurring=?,recur_interval=?,recur_next=?
                  WHERE id=?"
             );
-            // FIX: was 'siissssddssiisi' — recur_interval was 'i', now 's'
             $stmt->bind_param(
                 "siissssddssissi",
                 $title,$contact,$project,$status,$currency,
@@ -241,7 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logActivity('updated invoice', $title, $inv_id);
         }
 
-        // Save line items
         $del = $db->prepare("DELETE FROM invoice_items WHERE invoice_id=?");
         $del->bind_param("i",$inv_id); $del->execute();
 
@@ -265,7 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: invoices.php?view='.$inv_id); exit;
     }
 
-    // ── DELETE ───────────────────────────────────────────────────────────────
     if ($action === 'delete_invoice' && isManager()) {
         $id  = (int)$_POST['inv_id'];
         $row = $db->query("SELECT title FROM invoices WHERE id=$id")->fetch_assoc();
@@ -277,7 +257,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: invoices.php'); exit;
     }
 
-    // ── MARK SENT ────────────────────────────────────────────────────────────
     if ($action === 'mark_sent' && isManager()) {
         $id = (int)$_POST['inv_id'];
         $db->query("UPDATE invoices SET status='sent',sent_at=NOW() WHERE id=$id AND status='draft'");
@@ -315,7 +294,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ob_end_clean(); header('Location: invoices.php?view='.$id); exit;
     }
 
-    // ── RECORD PAYMENT ───────────────────────────────────────────────────────
     if ($action === 'record_payment' && isManager()) {
         $inv_id = (int)$_POST['inv_id'];
         $amount = (float)$_POST['amount'];
@@ -348,7 +326,6 @@ $tab     = $_GET['tab'] ?? 'list';
 $view_id = (int)($_GET['view'] ?? 0);
 $edit_id = (int)($_GET['edit'] ?? 0);
 
-// FIX: safe filter values — validated against whitelist, not concatenated raw
 $allowed_statuses = ['draft','sent','viewed','partial','paid','overdue','cancelled'];
 $status_f = in_array($_GET['status'] ?? '', $allowed_statuses, true) ? $_GET['status'] : '';
 $search   = trim($_GET['q'] ?? '');
@@ -357,7 +334,6 @@ $inv_settings = $db->query("SELECT * FROM invoice_settings WHERE id=1")->fetch_a
 $contacts     = $db->query("SELECT id,name,company,email,address,phone FROM contacts WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $projects     = $db->query("SELECT id,title FROM projects WHERE status NOT IN('cancelled') ORDER BY title")->fetch_all(MYSQLI_ASSOC);
 
-// FIX: build WHERE with prepared-statement style binding for list query
 $where_parts = ["1=1"];
 $bind_types  = "";
 $bind_vals   = [];
@@ -402,7 +378,6 @@ $stats = $db->query("
     FROM invoices
 ")->fetch_assoc();
 
-// Single invoice view
 $inv = null; $items = []; $payments = [];
 if ($view_id) {
     $s = $db->prepare(
@@ -425,7 +400,7 @@ if ($view_id) {
         $sp = $db->prepare(
             "SELECT ip.*, u.name AS recorded_by_name
              FROM invoice_payments ip
-             LEFT JOIN users u ON u.id=ip.recorded_by   /* FIX: LEFT JOIN so deleted users don't break */
+             LEFT JOIN users u ON u.id=ip.recorded_by
              WHERE ip.invoice_id=?
              ORDER BY ip.paid_at DESC"
         );
@@ -449,16 +424,39 @@ if ($edit_id) {
     $edit_items = $ei->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-// Auto-mark overdue
 $db->query("UPDATE invoices SET status='overdue' WHERE status='sent' AND due_date < CURDATE() AND due_date IS NOT NULL");
 
 renderLayout('Invoices','invoices');
 ?>
 
 <style>
-/* ═══════════════════════════════════════════════════════
-   INVOICES PAGE — Padak CRM
-   ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   INVOICES PAGE — Padak CRM  |  Professional Redesign
+   Font stack: Playfair Display (display) + DM Sans (body)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ── CSS design tokens (invoice-specific, layered over CRM vars) ── */
+:root {
+    --inv-navy:       #0f1b2d;
+    --inv-navy-mid:   #1a2e45;
+    --inv-slate:      #2d4a6b;
+    --inv-gold:       #c9a84c;
+    --inv-gold-light: #f0d990;
+    --inv-offwhite:   #f7f6f3;
+    --inv-rule:       #e2e0db;
+    --inv-text-dark:  #0f1b2d;
+    --inv-text-mid:   #3d5170;
+    --inv-text-soft:  #6b7f99;
+    --inv-green:      #047857;
+    --inv-red:        #b91c1c;
+    --inv-amber:      #b45309;
+    --inv-font-d:     'Playfair Display', Georgia, serif;
+    --inv-font-b:     'DM Sans', system-ui, sans-serif;
+    --inv-radius:     3px;
+    --inv-shadow:     0 4px 32px rgba(15,27,45,.10), 0 1px 4px rgba(15,27,45,.06);
+}
 
 /* ── Stats strip ── */
 .inv-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
@@ -479,28 +477,14 @@ renderLayout('Invoices','invoices');
 
 /* ── Detail layout ── */
 .inv-detail-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
-.inv-header-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px}
 
-/* ── Meta grid — FIX: was fixed 4col, now responsive ── */
-.inv-meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
-.inv-meta-box{background:var(--bg3);border-radius:8px;padding:10px 12px}
-.inv-meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-.inv-meta-val{font-size:13px;font-weight:600;color:var(--text)}
+/* ── Status badge ── */
+.inv-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 
-/* ── Items table ── */
-.items-table{width:100%;border-collapse:collapse}
-.items-table th{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:8px 12px;border-bottom:2px solid var(--border);text-align:left}
-.items-table th.r{text-align:right}
-.items-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13.5px;color:var(--text);vertical-align:top}
-.items-table td.r{text-align:right}
-.items-table tr:last-child td{border-bottom:none}
-
-/* ── Totals block ── */
-.inv-totals{display:flex;flex-direction:column;gap:4px}
-.inv-total-row{display:flex;justify-content:space-between;padding:6px 12px;font-size:13px}
-.inv-total-row.grand{background:var(--orange-bg);border-radius:var(--radius-sm);font-weight:700;font-size:15px;color:var(--orange)}
-.inv-total-row.paid-row{color:var(--green);font-weight:600}
-.inv-total-row.balance-row{color:var(--red);font-weight:700}
+/* ── Tabs ── */
+.inv-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
+.inv-tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;text-decoration:none;white-space:nowrap}
+.inv-tab:hover,.inv-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
 
 /* ── Payment record row ── */
 .pay-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:6px}
@@ -508,111 +492,604 @@ renderLayout('Invoices','invoices');
 /* ── Line item editor ── */
 .item-editor-row{display:grid;grid-template-columns:1fr 80px 110px 100px 36px;gap:6px;align-items:center;margin-bottom:6px}
 
-/* ── Status badge ── */
-.inv-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-
-/* ══════════════════════════════════════
-   PROFESSIONAL INVOICE LETTERHEAD
-   ══════════════════════════════════════ */
-.inv-letterhead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:24px;padding-bottom:24px;border-bottom:3px solid var(--orange)}
-.inv-company-logo{max-height:52px;max-width:180px;object-fit:contain;display:block;margin-bottom:10px;border-radius:4px}
-.inv-company-name{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px}
-.inv-company-detail{font-size:12px;color:var(--text3);line-height:1.8}
-
-/* ── Bill To / From block ── */
-.inv-to-from{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;padding:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)}
-.inv-party-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:8px}
-.inv-party-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
-.inv-party-detail{font-size:12px;color:var(--text3);line-height:1.7}
-
-/* ══════════════════════════════════════
-   SIGNATURE SECTION — FIX: 2 columns only
-   (removed the extra "Prepared by" block)
-   ══════════════════════════════════════ */
-.inv-sign-section{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:32px;padding-top:24px;border-top:1px solid var(--border);max-width:520px;margin-left:auto}
-.inv-sign-block{text-align:center}
-.inv-sign-img-wrap{height:64px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:10px}
-.inv-sign-img{max-height:60px;max-width:160px;object-fit:contain;display:block}
-.inv-sign-stamp{max-height:72px;max-width:72px;object-fit:contain;display:block;opacity:.88}
-.inv-sign-placeholder{width:160px;height:56px;border-bottom:1.5px dashed var(--border2)}
-.inv-sign-stamp-placeholder{width:64px;height:64px;border:2px dashed var(--border2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3);letter-spacing:.05em}
-.inv-sign-line{border-top:1.5px solid var(--border2);padding-top:7px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
-.inv-sign-name{font-size:12px;font-weight:700;color:var(--text);margin-top:3px}
-
-/* ── Bank details ── */
-.inv-bank-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-top:16px}
-.inv-bank-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
-.inv-bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.inv-bank-row{display:flex;gap:6px;font-size:12px}
-.inv-bank-lbl{color:var(--text3);min-width:90px;flex-shrink:0}
-.inv-bank-val{color:var(--text);font-weight:600}
-
 /* ── Settings page ── */
 .settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:16px}
 .settings-section-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:18px}
 .img-preview{max-height:60px;max-width:180px;object-fit:contain;border-radius:4px;margin-top:8px;display:block;border:1px solid var(--border)}
 
-/* ── Tabs ── */
-.inv-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
-.inv-tab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;text-decoration:none;white-space:nowrap}
-.inv-tab:hover,.inv-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+/* ── Meta grid ── */
+.inv-meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
 
-/* ── Notes / Terms block ── */
-.inv-note-box{padding:12px 14px;background:var(--bg3);border-radius:var(--radius-sm);margin-top:8px}
-.inv-note-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px}
-.inv-note-body{font-size:13px;color:var(--text2);line-height:1.7}
+/* ════════════════════════════════════════════════════════════
+   PROFESSIONAL INVOICE DOCUMENT — Complete Redesign
+   ════════════════════════════════════════════════════════════ */
 
-/* ── Print / PDF styles ─────────────────────────────────────────────────────
-   FIX: use .no-print class + targeted selectors to reliably hide chrome UI    */
+/* Outer document wrapper */
+.inv-document {
+    background: #fff;
+    border: 1px solid #d8d5ce;
+    border-radius: 2px;
+    box-shadow: var(--inv-shadow);
+    overflow: hidden;
+    font-family: var(--inv-font-b);
+    color: var(--inv-text-dark);
+}
+
+/* ── HEADER BAND ── */
+.inv-doc-header {
+    background: var(--inv-navy);
+    padding: 36px 44px 32px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+}
+.inv-doc-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.inv-company-logo {
+    max-height: 48px;
+    max-width: 160px;
+    object-fit: contain;
+    display: block;
+    filter: brightness(0) invert(1);
+    opacity: .92;
+}
+.inv-company-name-hdr {
+    font-family: var(--inv-font-d);
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.3px;
+    line-height: 1.1;
+}
+.inv-company-tagline-hdr {
+    font-size: 11px;
+    color: rgba(255,255,255,.55);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-top: 3px;
+}
+.inv-company-meta-hdr {
+    font-size: 11.5px;
+    color: rgba(255,255,255,.60);
+    line-height: 1.85;
+    margin-top: 2px;
+}
+.inv-doc-header-right {
+    text-align: right;
+    flex-shrink: 0;
+}
+.inv-doc-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--inv-gold);
+    margin-bottom: 6px;
+}
+.inv-doc-number {
+    font-family: var(--inv-font-d);
+    font-size: 30px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.5px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+.inv-doc-amount-label {
+    font-size: 10px;
+    color: rgba(255,255,255,.45);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.inv-doc-amount {
+    font-family: var(--inv-font-d);
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--inv-gold-light);
+    letter-spacing: -1px;
+    line-height: 1;
+}
+.inv-doc-balance {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #f87171;
+    margin-top: 6px;
+}
+.inv-doc-paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(5,150,105,.2);
+    border: 1px solid rgba(5,150,105,.4);
+    border-radius: 3px;
+    color: #6ee7b7;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 4px 12px;
+    margin-top: 8px;
+    text-transform: uppercase;
+}
+.inv-doc-overdue-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(220,38,38,.18);
+    border: 1px solid rgba(220,38,38,.35);
+    border-radius: 3px;
+    color: #fca5a5;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    padding: 3px 10px;
+    margin-top: 8px;
+    text-transform: uppercase;
+}
+
+/* ── GOLD RULE ── */
+.inv-gold-rule {
+    height: 3px;
+    background: linear-gradient(90deg, var(--inv-gold) 0%, var(--inv-gold-light) 40%, transparent 100%);
+}
+
+/* ── BODY AREA ── */
+.inv-doc-body {
+    padding: 36px 44px;
+}
+
+/* ── BILL FROM / BILL TO ── */
+.inv-parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-bottom: 32px;
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+}
+.inv-party {
+    padding: 20px 24px;
+    background: var(--inv-offwhite);
+}
+.inv-party + .inv-party {
+    border-left: 1px solid var(--inv-rule);
+    background: #fff;
+}
+.inv-party-label {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--inv-gold);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.inv-party-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--inv-gold);
+    opacity: .3;
+}
+.inv-party-name {
+    font-family: var(--inv-font-d);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--inv-text-dark);
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+.inv-party-company {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--inv-slate);
+    margin-bottom: 6px;
+}
+.inv-party-detail {
+    font-size: 11.5px;
+    color: var(--inv-text-soft);
+    line-height: 1.8;
+}
+
+/* ── META ROW ── */
+.inv-meta-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0;
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+    margin-bottom: 32px;
+}
+.inv-meta-cell {
+    padding: 14px 18px;
+    border-right: 1px solid var(--inv-rule);
+    background: #fff;
+}
+.inv-meta-cell:last-child { border-right: none; }
+.inv-meta-cell-lbl {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--inv-text-soft);
+    margin-bottom: 5px;
+}
+.inv-meta-cell-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--inv-text-dark);
+    font-family: var(--inv-font-b);
+}
+.inv-meta-cell-val.overdue-date { color: var(--inv-red); }
+
+/* ── LINE ITEMS TABLE ── */
+.inv-items-wrap {
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+.inv-items-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.inv-items-table thead tr {
+    background: var(--inv-navy);
+}
+.inv-items-table thead th {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.65);
+    padding: 12px 16px;
+    text-align: left;
+    border: none;
+}
+.inv-items-table thead th.r { text-align: right; }
+.inv-items-table tbody tr {
+    border-bottom: 1px solid var(--inv-rule);
+    transition: background .1s;
+}
+.inv-items-table tbody tr:last-child { border-bottom: none; }
+.inv-items-table tbody tr:nth-child(even) { background: var(--inv-offwhite); }
+.inv-items-table tbody td {
+    padding: 13px 16px;
+    font-size: 13px;
+    color: var(--inv-text-dark);
+    vertical-align: middle;
+}
+.inv-items-table tbody td.r { text-align: right; }
+.inv-items-table tbody td.item-no {
+    font-size: 11px;
+    color: var(--inv-text-soft);
+    width: 32px;
+}
+.inv-items-table tbody td.item-desc {
+    font-weight: 500;
+    color: var(--inv-text-dark);
+}
+.inv-items-table tbody td.item-qty,
+.inv-items-table tbody td.item-price {
+    color: var(--inv-text-mid);
+    font-size: 12.5px;
+}
+.inv-items-table tbody td.item-amount {
+    font-weight: 700;
+    color: var(--inv-text-dark);
+    font-family: var(--inv-font-d);
+    font-size: 13.5px;
+}
+
+/* ── TOTALS BLOCK ── */
+.inv-totals-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 32px;
+}
+.inv-totals-inner {
+    min-width: 320px;
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+}
+.inv-totals-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--inv-rule);
+    color: var(--inv-text-mid);
+}
+.inv-totals-row:last-child { border-bottom: none; }
+.inv-totals-row.tax-row,
+.inv-totals-row.sub-row { background: #fff; }
+.inv-totals-row.disc-row {
+    background: #fff;
+    color: var(--inv-green);
+}
+.inv-totals-row.grand-row {
+    background: var(--inv-navy);
+    border-bottom: none;
+    padding: 16px 20px;
+}
+.inv-totals-row.grand-row .tot-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.6);
+}
+.inv-totals-row.grand-row .tot-value {
+    font-family: var(--inv-font-d);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--inv-gold-light);
+}
+.inv-totals-row.paid-row {
+    background: rgba(5,150,105,.06);
+    color: var(--inv-green);
+    font-weight: 600;
+}
+.inv-totals-row.balance-row {
+    background: rgba(185,28,28,.05);
+    color: var(--inv-red);
+    font-weight: 700;
+    font-size: 14px;
+}
+.tot-label { font-weight: 500; }
+.tot-value { font-weight: 700; }
+
+/* ── BANK DETAILS ── */
+.inv-bank-section {
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+.inv-bank-header {
+    background: var(--inv-offwhite);
+    border-bottom: 1px solid var(--inv-rule);
+    padding: 10px 20px;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--inv-text-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.inv-bank-header::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 2px;
+    background: var(--inv-gold);
+}
+.inv-bank-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0;
+    padding: 0;
+    background: #fff;
+}
+.inv-bank-item {
+    padding: 14px 20px;
+    border-right: 1px solid var(--inv-rule);
+}
+.inv-bank-item:last-child { border-right: none; }
+.inv-bank-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--inv-text-soft);
+    margin-bottom: 4px;
+}
+.inv-bank-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--inv-text-dark);
+}
+
+/* ── NOTES & TERMS ── */
+.inv-notes-terms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+.inv-note-card {
+    border: 1px solid var(--inv-rule);
+    border-radius: var(--inv-radius);
+    overflow: hidden;
+}
+.inv-note-card-header {
+    background: var(--inv-offwhite);
+    border-bottom: 1px solid var(--inv-rule);
+    padding: 8px 16px;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--inv-text-soft);
+}
+.inv-note-card-body {
+    padding: 14px 16px;
+    font-size: 12.5px;
+    color: var(--inv-text-mid);
+    line-height: 1.75;
+    background: #fff;
+}
+
+/* ══════════════════════════════════════════════════════
+   SIGNATURE SECTION — Professional, commanding
+   Two columns: Authorised Signatory | Company Stamp
+   ══════════════════════════════════════════════════════ */
+.inv-sign-section {
+    border-top: 1px solid var(--inv-rule);
+    padding-top: 32px;
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+.inv-sign-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 32px 0;
+}
+.inv-sign-col + .inv-sign-col {
+    border-left: 1px solid var(--inv-rule);
+}
+.inv-sign-img-area {
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 12px;
+    width: 100%;
+}
+.inv-sign-img {
+    max-height: 72px;
+    max-width: 200px;
+    object-fit: contain;
+    display: block;
+}
+.inv-stamp-img {
+    max-height: 80px;
+    max-width: 80px;
+    object-fit: contain;
+    display: block;
+    opacity: .92;
+}
+.inv-sign-placeholder {
+    width: 200px;
+    height: 60px;
+    border-bottom: 1.5px solid #c8c4bb;
+}
+.inv-stamp-placeholder {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed #c8c4bb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    letter-spacing: .12em;
+    color: #aaa9a5;
+    text-transform: uppercase;
+}
+.inv-sign-rule {
+    width: 100%;
+    max-width: 220px;
+    border-top: 1.5px solid var(--inv-navy);
+    padding-top: 8px;
+    text-align: center;
+}
+.inv-sign-role {
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--inv-text-soft);
+    margin-bottom: 3px;
+}
+.inv-sign-entity {
+    font-family: var(--inv-font-d);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--inv-text-dark);
+}
+.inv-sign-reg {
+    font-size: 10.5px;
+    color: var(--inv-text-soft);
+    margin-top: 2px;
+}
+
+/* ── FOOTER ── */
+.inv-doc-footer {
+    background: var(--inv-navy);
+    padding: 16px 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 32px;
+}
+.inv-doc-footer-text {
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    line-height: 1.6;
+}
+.inv-doc-footer-ref {
+    font-size: 10px;
+    color: rgba(255,255,255,.3);
+    text-align: right;
+    flex-shrink: 0;
+    letter-spacing: .04em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRINT / PDF  —  Clean, professional, no chrome
+   ══════════════════════════════════════════════════════════ */
 @media print {
-    @page { size: A4; margin: 14mm 16mm; }
+    @page { size: A4; margin: 0; }
 
-    /* Hide all navigation, action bars, sidebar — FIX: comprehensive selectors */
     .no-print,
     .nav-sidebar, .sidebar, .topbar, .page-header,
     .top-actions, .modal-overlay,
     .btn, button, a.btn,
     [class*="action-bar"],
-    [class*="tab-bar"],
     .inv-tabs,
-    .inv-stat,
     .inv-stats { display: none !important; }
 
-    body   { background: #fff !important; color: #111 !important; font-size: 11pt; }
+    body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
     .inv-detail-grid { display: block !important; }
-
-    /* Sidebar column hidden in print */
     .inv-detail-grid > div:last-child { display: none !important; }
-
-    .inv-header-card {
+    .inv-document {
         box-shadow: none !important;
         border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        border-radius: 0 !important;
     }
-    .inv-letterhead { border-bottom: 3px solid #e67e22 !important; }
-    .items-table th { background: #f5f5f5 !important; color: #333 !important; }
-    .items-table td { color: #333 !important; border-bottom: 1px solid #ddd !important; }
-    .inv-total-row.grand { background: #fff8f0 !important; color: #c45a00 !important; }
-    .inv-to-from { background: #f8f8f8 !important; border: 1px solid #e0e0e0 !important; }
-    .inv-meta-box { background: #f5f5f5 !important; }
-    .inv-bank-box { background: #f5f5f5 !important; border: 1px solid #ddd !important; }
-    .inv-sign-section { page-break-inside: avoid; border-top: 1px solid #ddd !important; }
-    .inv-note-box { background: #f8f8f8 !important; }
+    .inv-doc-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .inv-doc-footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .inv-items-table thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .inv-totals-row.grand-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .inv-sign-section { page-break-inside: avoid; }
     .card { border: none !important; box-shadow: none !important; }
 }
 
-/* ── Responsive ─────────────────────────────────────────────────────────── */
-@media (max-width:960px){
-    .inv-detail-grid{grid-template-columns:1fr}
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    .inv-detail-grid { grid-template-columns: 1fr; }
 }
-@media (max-width:700px){
-    .inv-meta-grid{grid-template-columns:1fr 1fr}
-    .item-editor-row{grid-template-columns:1fr 70px 90px 80px 30px}
-    .inv-stats{grid-template-columns:1fr 1fr}
-    .inv-to-from{grid-template-columns:1fr}
-    .inv-sign-section{grid-template-columns:1fr;max-width:240px;margin-left:auto;margin-right:auto}
-    .inv-bank-grid{grid-template-columns:1fr}
+@media (max-width: 700px) {
+    .inv-doc-header { flex-direction: column; gap: 20px; padding: 24px; }
+    .inv-doc-header-right { text-align: left; }
+    .inv-doc-body { padding: 24px; }
+    .inv-parties { grid-template-columns: 1fr; }
+    .inv-party + .inv-party { border-left: none; border-top: 1px solid var(--inv-rule); }
+    .inv-notes-terms { grid-template-columns: 1fr; }
+    .inv-sign-section { grid-template-columns: 1fr; max-width: 280px; margin: 0 auto; }
+    .inv-sign-col + .inv-sign-col { border-left: none; border-top: 1px solid var(--inv-rule); padding-top: 24px; margin-top: 24px; }
+    .inv-stats { grid-template-columns: 1fr 1fr; }
+    .item-editor-row { grid-template-columns: 1fr 70px 90px 80px 30px; }
+    .inv-meta-strip { grid-template-columns: 1fr 1fr; }
+    .inv-doc-footer { flex-direction: column; text-align: center; padding: 16px 24px; }
+    .inv-doc-footer-ref { text-align: center; }
 }
 </style>
 
@@ -628,8 +1105,6 @@ $sc         = invColor($inv['status']);
 $co         = $inv_settings;
 $is_overdue = $inv['due_date'] && $inv['due_date'] < date('Y-m-d') && $inv['status'] !== 'paid';
 
-// FIX: resolve paths using absPath() so file_exists() works regardless of CWD
-// Invoice-specific image overrides global setting
 $sig_path   = !empty($inv['signature_image'])
                 ? (file_exists(absPath($inv['signature_image']))   ? $inv['signature_image']   : ($co['signature_image'] ?? ''))
                 : ($co['signature_image'] ?? '');
@@ -640,9 +1115,9 @@ $logo_path  = $co['company_logo'] ?? '';
 $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
 ?>
 
-<!-- Top action bar — hidden when printing via .no-print -->
-<div class="no-print" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-    <a href="invoices.php" style="color:var(--text3);font-size:13px">← All Invoices</a>
+<!-- Top action bar -->
+<div class="no-print" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <a href="invoices.php" style="color:var(--text3);font-size:13px;text-decoration:none">← All Invoices</a>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
         <?php if ($inv['status']==='draft' && isManager()): ?>
         <form method="POST" style="display:inline">
@@ -669,240 +1144,268 @@ $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
 <div class="inv-detail-grid">
   <!-- ─── LEFT: Invoice document ─── -->
   <div>
-    <div class="inv-header-card">
+    <div class="inv-document">
 
-      <!-- ══ COMPANY LETTERHEAD ══ -->
-      <div class="inv-letterhead">
-        <div>
+      <!-- ══ HEADER BAND ══ -->
+      <div class="inv-doc-header">
+        <div class="inv-doc-header-left">
           <?php if ($logo_path && file_exists(absPath($logo_path))): ?>
-          <img src="<?= h($logo_path) ?>" class="inv-company-logo" alt="Company Logo">
+          <img src="<?= h($logo_path) ?>" class="inv-company-logo" alt="<?= h($co['company_name'] ?? 'Company') ?> Logo">
           <?php endif; ?>
-          <div class="inv-company-name"><?= h($co['company_name'] ?? 'Padak') ?></div>
-          <?php if (!empty($co['company_tagline'])): ?>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px"><?= h($co['company_tagline']) ?></div>
-          <?php endif; ?>
-          <div class="inv-company-detail">
-            <?php if (!empty($co['company_address'])): ?><?= nl2br(h($co['company_address'])) ?><br><?php endif; ?>
-            <?php if (!empty($co['company_phone'])): ?>📞 <?= h($co['company_phone']) ?><br><?php endif; ?>
-            <?php if (!empty($co['company_email'])): ?>✉ <?= h($co['company_email']) ?><br><?php endif; ?>
-            <?php if (!empty($co['company_reg_no'])): ?>Reg: <?= h($co['company_reg_no']) ?><?php endif; ?>
-            <?php if (!empty($co['company_reg_no']) && !empty($co['company_vat'])): ?> · <?php endif; ?>
-            <?php if (!empty($co['company_vat'])): ?>VAT: <?= h($co['company_vat']) ?><?php endif; ?>
-          </div>
-        </div>
-        <!-- Invoice number block -->
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text3);margin-bottom:4px">Tax Invoice</div>
-          <div style="font-size:28px;font-weight:900;color:var(--orange);font-family:var(--font-display);letter-spacing:-.5px;margin-bottom:4px"><?= h($inv['invoice_no']) ?></div>
-          <div style="margin-bottom:10px">
-            <!-- <span class="inv-status" style="background:<?= $sc ?>18;color:<?= $sc ?>"><?= ucfirst($inv['status']) ?></span> -->
-            <?php if ($is_overdue): ?>
-            <span class="inv-status" style="background:rgba(239,68,68,.12);color:#ef4444;margin-left:4px">⚠ Overdue</span>
+          <div>
+            <div class="inv-company-name-hdr"><?= h($co['company_name'] ?? 'Padak') ?></div>
+            <?php if (!empty($co['company_tagline'])): ?>
+            <div class="inv-company-tagline-hdr"><?= h($co['company_tagline']) ?></div>
             <?php endif; ?>
           </div>
-          <div style="font-size:28px;font-weight:800;color:var(--orange);font-family:var(--font-display)"><?= $sym ?><?= number_format((float)$inv['total'],2) ?></div>
-          <?php if ($balance > 0 && $inv['status'] !== 'paid'): ?>
-          <div style="font-size:13px;color:var(--red);font-weight:600;margin-top:3px">Balance Due: <?= $sym ?><?= number_format($balance,2) ?></div>
-          <?php elseif ($inv['status'] === 'paid'): ?>
-          <div style="font-size:13px;color:var(--green);font-weight:700;margin-top:3px">✓ Paid in Full</div>
-          <?php endif; ?>
-        </div>
-      </div>
-
-      <!-- ══ BILL FROM / BILL TO ══ -->
-      <div class="inv-to-from">
-        <div>
-          <div class="inv-party-label">From</div>
-          <div class="inv-party-name"><?= h($co['company_name'] ?? 'Padak') ?></div>
-          <?php if (!empty($co['company_address'])): ?><div class="inv-party-detail"><?= nl2br(h($co['company_address'])) ?></div><?php endif; ?>
-          <?php if (!empty($co['company_email'])): ?><div class="inv-party-detail"><?= h($co['company_email']) ?></div><?php endif; ?>
-          <?php if (!empty($co['company_reg_no'])): ?><div class="inv-party-detail">Reg: <?= h($co['company_reg_no']) ?></div><?php endif; ?>
-        </div>
-        <div>
-          <div class="inv-party-label">Bill To</div>
-          <div class="inv-party-name"><?= h($inv['client_name'] ?? '—') ?></div>
-          <?php if ($inv['company']): ?><div class="inv-party-detail" style="font-weight:600"><?= h($inv['company']) ?></div><?php endif; ?>
-          <?php if ($inv['client_address']): ?><div class="inv-party-detail"><?= nl2br(h($inv['client_address'])) ?></div><?php endif; ?>
-          <?php if ($inv['client_email']): ?><div class="inv-party-detail"><?= h($inv['client_email']) ?></div><?php endif; ?>
-          <?php if ($inv['client_phone']): ?><div class="inv-party-detail"><?= h($inv['client_phone']) ?></div><?php endif; ?>
-        </div>
-      </div>
-
-      <!-- ══ META STRIP ══ -->
-      <div class="inv-meta-grid">
-        <div class="inv-meta-box">
-          <div class="inv-meta-lbl">Invoice No</div>
-          <div class="inv-meta-val"><?= h($inv['invoice_no']) ?></div>
-        </div>
-        <div class="inv-meta-box">
-          <div class="inv-meta-lbl">Issue Date</div>
-          <div class="inv-meta-val"><?= fDate($inv['issue_date']) ?></div>
-        </div>
-        <div class="inv-meta-box">
-          <div class="inv-meta-lbl">Due Date</div>
-          <div class="inv-meta-val" <?= $is_overdue ? 'style="color:var(--red)"' : '' ?>>
-            <?= $inv['due_date'] ? fDate($inv['due_date']) : 'On Receipt' ?>
+          <div class="inv-company-meta-hdr">
+            <?php if (!empty($co['company_address'])): ?><?= nl2br(h($co['company_address'])) ?><br><?php endif; ?>
+            <?php if (!empty($co['company_phone'])): ?><?= h($co['company_phone']) ?><br><?php endif; ?>
+            <?php if (!empty($co['company_email'])): ?><?= h($co['company_email']) ?><br><?php endif; ?>
+            <?php if (!empty($co['company_reg_no'])): ?>Reg. <?= h($co['company_reg_no']) ?><?php endif; ?>
+            <?php if (!empty($co['company_vat'])): ?> &nbsp;·&nbsp; VAT <?= h($co['company_vat']) ?><?php endif; ?>
           </div>
         </div>
-        <div class="inv-meta-box">
-          <div class="inv-meta-lbl">Currency</div>
-          <div class="inv-meta-val"><?= h($inv['currency'] ?? 'LKR') ?></div>
-        </div>
-        <?php if ($inv['project_title']): ?>
-        <div class="inv-meta-box">
-          <div class="inv-meta-lbl">Project</div>
-          <div class="inv-meta-val" style="font-size:12px"><?= h($inv['project_title']) ?></div>
-        </div>
-        <?php endif; ?>
-      </div>
-
-      <!-- ══ LINE ITEMS TABLE ══ -->
-      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px">
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th style="width:32px;color:var(--text3)">#</th>
-              <th>Description</th>
-              <th class="r">Qty</th>
-              <th class="r">Unit Price</th>
-              <th class="r">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-          <?php if ($items): foreach ($items as $idx => $it): ?>
-          <tr style="<?= $idx % 2 === 1 ? 'background:var(--bg3)' : '' ?>">
-            <td style="color:var(--text3);font-size:12px"><?= $idx + 1 ?></td>
-            <td><?= h($it['description']) ?></td>
-            <td class="r" style="color:var(--text2)"><?= rtrim(rtrim(number_format((float)$it['quantity'],2,'.',','),'0'),'.') ?></td>
-            <td class="r" style="color:var(--text2)"><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
-            <td class="r" style="font-weight:700"><?= $sym ?><?= number_format((float)$it['amount'],2) ?></td>
-          </tr>
-          <?php endforeach; else: ?>
-          <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">No line items</td></tr>
+        <div class="inv-doc-header-right">
+          <div class="inv-doc-label">Tax Invoice</div>
+          <div class="inv-doc-number"><?= h($inv['invoice_no']) ?></div>
+          <div class="inv-doc-amount-label">Total Amount</div>
+          <div class="inv-doc-amount"><?= $sym ?><?= number_format((float)$inv['total'],2) ?></div>
+          <?php if ($inv['status'] === 'paid'): ?>
+            <div><span class="inv-doc-paid-badge">✓ Paid in Full</span></div>
+          <?php elseif ($is_overdue): ?>
+            <div><span class="inv-doc-overdue-badge">⚠ Overdue</span></div>
+            <?php if ($balance > 0): ?>
+            <div class="inv-doc-balance">Balance Due: <?= $sym ?><?= number_format($balance,2) ?></div>
+            <?php endif; ?>
+          <?php elseif ($balance > 0): ?>
+            <div class="inv-doc-balance">Balance Due: <?= $sym ?><?= number_format($balance,2) ?></div>
           <?php endif; ?>
-          </tbody>
-        </table>
+        </div>
       </div>
 
-      <!-- ══ TOTALS ══ -->
-      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-        <div style="min-width:300px">
-          <div class="inv-totals">
-            <div class="inv-total-row">
-              <span>Subtotal</span>
-              <span><?= $sym ?><?= number_format((float)$inv['subtotal'],2) ?></span>
+      <!-- Gold rule -->
+      <div class="inv-gold-rule"></div>
+
+      <!-- ══ BODY ══ -->
+      <div class="inv-doc-body">
+
+        <!-- ── BILL FROM / BILL TO ── -->
+        <div class="inv-parties">
+          <div class="inv-party">
+            <div class="inv-party-label">From</div>
+            <div class="inv-party-name"><?= h($co['company_name'] ?? 'Padak') ?></div>
+            <?php if (!empty($co['company_address'])): ?><div class="inv-party-detail"><?= nl2br(h($co['company_address'])) ?></div><?php endif; ?>
+            <?php if (!empty($co['company_email'])): ?><div class="inv-party-detail"><?= h($co['company_email']) ?></div><?php endif; ?>
+            <?php if (!empty($co['company_phone'])): ?><div class="inv-party-detail"><?= h($co['company_phone']) ?></div><?php endif; ?>
+            <?php if (!empty($co['company_reg_no'])): ?><div class="inv-party-detail" style="margin-top:4px;font-weight:600;font-size:11px;color:var(--inv-text-mid)">Reg: <?= h($co['company_reg_no']) ?></div><?php endif; ?>
+          </div>
+          <div class="inv-party">
+            <div class="inv-party-label">Bill To</div>
+            <div class="inv-party-name"><?= h($inv['client_name'] ?? '—') ?></div>
+            <?php if ($inv['company']): ?><div class="inv-party-company"><?= h($inv['company']) ?></div><?php endif; ?>
+            <?php if ($inv['client_address']): ?><div class="inv-party-detail"><?= nl2br(h($inv['client_address'])) ?></div><?php endif; ?>
+            <?php if ($inv['client_email']): ?><div class="inv-party-detail"><?= h($inv['client_email']) ?></div><?php endif; ?>
+            <?php if ($inv['client_phone']): ?><div class="inv-party-detail"><?= h($inv['client_phone']) ?></div><?php endif; ?>
+          </div>
+        </div>
+
+        <!-- ── META STRIP ── -->
+        <div class="inv-meta-strip">
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Invoice No</div>
+            <div class="inv-meta-cell-val"><?= h($inv['invoice_no']) ?></div>
+          </div>
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Issue Date</div>
+            <div class="inv-meta-cell-val"><?= fDate($inv['issue_date']) ?></div>
+          </div>
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Due Date</div>
+            <div class="inv-meta-cell-val<?= $is_overdue ? ' overdue-date' : '' ?>">
+              <?= $inv['due_date'] ? fDate($inv['due_date']) : 'On Receipt' ?>
+            </div>
+          </div>
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Currency</div>
+            <div class="inv-meta-cell-val"><?= h($inv['currency'] ?? 'LKR') ?></div>
+          </div>
+          <?php if ($inv['project_title']): ?>
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Project</div>
+            <div class="inv-meta-cell-val" style="font-size:11.5px"><?= h($inv['project_title']) ?></div>
+          </div>
+          <?php endif; ?>
+          <div class="inv-meta-cell">
+            <div class="inv-meta-cell-lbl">Status</div>
+            <div class="inv-meta-cell-val"><span class="inv-status" style="background:<?= $sc ?>18;color:<?= $sc ?>"><?= ucfirst($inv['status']) ?></span></div>
+          </div>
+        </div>
+
+        <!-- ── LINE ITEMS TABLE ── -->
+        <div class="inv-items-wrap">
+          <table class="inv-items-table">
+            <thead>
+              <tr>
+                <th style="width:32px">#</th>
+                <th>Description</th>
+                <th class="r">Qty</th>
+                <th class="r">Unit Price</th>
+                <th class="r">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php if ($items): foreach ($items as $idx => $it): ?>
+            <tr>
+              <td class="item-no"><?= $idx + 1 ?></td>
+              <td class="item-desc"><?= h($it['description']) ?></td>
+              <td class="r item-qty"><?= rtrim(rtrim(number_format((float)$it['quantity'],2,'.',','),'0'),'.') ?></td>
+              <td class="r item-price"><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
+              <td class="r item-amount"><?= $sym ?><?= number_format((float)$it['amount'],2) ?></td>
+            </tr>
+            <?php endforeach; else: ?>
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--inv-text-soft);font-style:italic">No line items</td></tr>
+            <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── TOTALS ── -->
+        <div class="inv-totals-wrap">
+          <div class="inv-totals-inner">
+            <div class="inv-totals-row sub-row">
+              <span class="tot-label">Subtotal</span>
+              <span class="tot-value"><?= $sym ?><?= number_format((float)$inv['subtotal'],2) ?></span>
             </div>
             <?php if ((float)$inv['tax_rate'] > 0): ?>
-            <div class="inv-total-row">
-              <span>Tax (<?= h($inv['tax_rate']) ?>%)</span>
-              <span><?= $sym ?><?= number_format((float)$inv['tax_amount'],2) ?></span>
+            <div class="inv-totals-row tax-row">
+              <span class="tot-label">Tax (<?= h($inv['tax_rate']) ?>%)</span>
+              <span class="tot-value"><?= $sym ?><?= number_format((float)$inv['tax_amount'],2) ?></span>
             </div>
             <?php endif; ?>
             <?php if ((float)$inv['discount'] > 0): ?>
-            <div class="inv-total-row" style="color:var(--green)">
-              <span>Discount</span>
-              <span>−<?= $sym ?><?= number_format((float)$inv['discount'],2) ?></span>
+            <div class="inv-totals-row disc-row">
+              <span class="tot-label">Discount</span>
+              <span class="tot-value">−<?= $sym ?><?= number_format((float)$inv['discount'],2) ?></span>
             </div>
             <?php endif; ?>
-            <div class="inv-total-row grand">
-              <span>Total</span>
-              <span><?= $sym ?><?= number_format((float)$inv['total'],2) ?></span>
+            <div class="inv-totals-row grand-row">
+              <span class="tot-label">Total Due</span>
+              <span class="tot-value"><?= $sym ?><?= number_format((float)$inv['total'],2) ?></span>
             </div>
             <?php if ((float)$inv['amount_paid'] > 0): ?>
-            <div class="inv-total-row paid-row">
-              <span>Amount Paid</span>
-              <span><?= $sym ?><?= number_format((float)$inv['amount_paid'],2) ?></span>
+            <div class="inv-totals-row paid-row">
+              <span class="tot-label">Amount Paid</span>
+              <span class="tot-value"><?= $sym ?><?= number_format((float)$inv['amount_paid'],2) ?></span>
             </div>
             <?php if ($inv['status'] !== 'paid'): ?>
-            <div class="inv-total-row balance-row">
-              <span>Balance Due</span>
-              <span><?= $sym ?><?= number_format($balance,2) ?></span>
+            <div class="inv-totals-row balance-row">
+              <span class="tot-label">Balance Due</span>
+              <span class="tot-value"><?= $sym ?><?= number_format($balance,2) ?></span>
             </div>
             <?php endif; ?>
             <?php endif; ?>
           </div>
         </div>
-      </div>
 
-      <!-- ══ BANK DETAILS ══ -->
-      <?php if (!empty($co['bank_name']) || !empty($co['bank_account'])): ?>
-      <div class="inv-bank-box">
-        <div class="inv-bank-title">💳 Payment / Bank Details</div>
-        <div class="inv-bank-grid">
-          <?php foreach ([
-            ['Bank Name',   $co['bank_name']    ?? ''],
-            ['Account No',  $co['bank_account'] ?? ''],
-            ['Branch',      $co['bank_branch']  ?? ''],
-            ['SWIFT / BIC', $co['bank_swift']   ?? ''],
-          ] as [$lbl,$val]): if (!$val) continue; ?>
-          <div class="inv-bank-row">
-            <span class="inv-bank-lbl"><?= $lbl ?></span>
-            <span class="inv-bank-val"><?= h($val) ?></span>
-          </div>
-          <?php endforeach; ?>
-        </div>
-      </div>
-      <?php endif; ?>
-
-      <!-- ══ NOTES & TERMS ══ -->
-      <?php if ($inv['notes']): ?>
-      <div class="inv-note-box" style="margin-top:16px">
-        <div class="inv-note-label">Notes</div>
-        <div class="inv-note-body"><?= nl2br(h($inv['notes'])) ?></div>
-      </div>
-      <?php endif; ?>
-      <?php if ($inv['terms']): ?>
-      <div class="inv-note-box" style="margin-top:8px">
-        <div class="inv-note-label">Terms &amp; Conditions</div>
-        <div class="inv-note-body" style="color:var(--text3);font-size:12.5px"><?= nl2br(h($inv['terms'])) ?></div>
-      </div>
-      <?php endif; ?>
-
-      <!-- ══ SIGNATURE & STAMP — FIX: 2-column only, removed "Prepared by" block ══ -->
-      <div class="inv-sign-section">
-        <!-- Authorised Signatory -->
-        <div class="inv-sign-block">
-          <div class="inv-sign-img-wrap">
-            <?php if ($sig_path && file_exists(absPath($sig_path))): ?>
-            <img src="<?= h($sig_path) ?>" class="inv-sign-img" alt="Authorised Signature">
-            <?php else: ?>
-            <div class="inv-sign-placeholder"></div>
-            <?php endif; ?>
-          </div>
-          <div class="inv-sign-line">Authorised Signatory</div>
-          <div class="inv-sign-name"><?= h($co['company_name'] ?? 'Padak') ?></div>
-        </div>
-        <!-- Company Stamp -->
-        <div class="inv-sign-block">
-          <div class="inv-sign-img-wrap">
-            <?php if ($stamp_path && file_exists(absPath($stamp_path))): ?>
-            <img src="<?= h($stamp_path) ?>" class="inv-sign-stamp" alt="Company Stamp">
-            <?php else: ?>
-            <div class="inv-sign-stamp-placeholder">STAMP</div>
-            <?php endif; ?>
-          </div>
-          <div class="inv-sign-line">Company Stamp</div>
-          <div class="inv-sign-name">
-            <?php echo !empty($co['company_reg_no']) ? 'Reg: '.h($co['company_reg_no']) : h($co['company_name'] ?? '') ?>
+        <!-- ── BANK DETAILS ── -->
+        <?php if (!empty($co['bank_name']) || !empty($co['bank_account'])): ?>
+        <div class="inv-bank-section">
+          <div class="inv-bank-header">Payment &amp; Bank Details</div>
+          <div class="inv-bank-grid">
+            <?php foreach ([
+              ['Bank Name',   $co['bank_name']    ?? ''],
+              ['Account No',  $co['bank_account'] ?? ''],
+              ['Branch',      $co['bank_branch']  ?? ''],
+              ['SWIFT / BIC', $co['bank_swift']   ?? ''],
+            ] as [$lbl,$val]): if (!$val) continue; ?>
+            <div class="inv-bank-item">
+              <div class="inv-bank-lbl"><?= $lbl ?></div>
+              <div class="inv-bank-val"><?= h($val) ?></div>
+            </div>
+            <?php endforeach; ?>
           </div>
         </div>
+        <?php endif; ?>
+
+        <!-- ── NOTES & TERMS ── -->
+        <?php if ($inv['notes'] || $inv['terms']): ?>
+        <div class="inv-notes-terms">
+          <?php if ($inv['notes']): ?>
+          <div class="inv-note-card">
+            <div class="inv-note-card-header">Notes</div>
+            <div class="inv-note-card-body"><?= nl2br(h($inv['notes'])) ?></div>
+          </div>
+          <?php endif; ?>
+          <?php if ($inv['terms']): ?>
+          <div class="inv-note-card">
+            <div class="inv-note-card-header">Terms &amp; Conditions</div>
+            <div class="inv-note-card-body" style="font-size:11.5px"><?= nl2br(h($inv['terms'])) ?></div>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- ══ SIGNATURE & STAMP ══ -->
+        <div class="inv-sign-section">
+          <!-- Authorised Signatory -->
+          <div class="inv-sign-col">
+            <div class="inv-sign-img-area">
+              <?php if ($sig_path && file_exists(absPath($sig_path))): ?>
+              <img src="<?= h($sig_path) ?>" class="inv-sign-img" alt="Authorised Signature">
+              <?php else: ?>
+              <div class="inv-sign-placeholder"></div>
+              <?php endif; ?>
+            </div>
+            <div class="inv-sign-rule">
+              <div class="inv-sign-role">Authorised Signatory</div>
+              <div class="inv-sign-entity"><?= h($co['company_name'] ?? 'Padak') ?></div>
+              <?php if (!empty($co['company_reg_no'])): ?>
+              <div class="inv-sign-reg">Reg: <?= h($co['company_reg_no']) ?></div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <!-- Company Stamp -->
+          <div class="inv-sign-col">
+            <div class="inv-sign-img-area">
+              <?php if ($stamp_path && file_exists(absPath($stamp_path))): ?>
+              <img src="<?= h($stamp_path) ?>" class="inv-stamp-img" alt="Company Stamp">
+              <?php else: ?>
+              <div class="inv-stamp-placeholder">Stamp</div>
+              <?php endif; ?>
+            </div>
+            <div class="inv-sign-rule">
+              <div class="inv-sign-role">Company Stamp</div>
+              <div class="inv-sign-entity"><?= h($co['company_name'] ?? 'Padak') ?></div>
+              <?php if (!empty($co['company_reg_no'])): ?>
+              <div class="inv-sign-reg">Reg: <?= h($co['company_reg_no']) ?></div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.inv-doc-body -->
+
+      <!-- ══ DOCUMENT FOOTER BAND ══ -->
+      <div class="inv-doc-footer">
+        <div class="inv-doc-footer-text">
+          <?php if (!empty($co['invoice_footer'])): ?>
+          <?= h($co['invoice_footer']) ?>
+          <?php else: ?>
+          Thank you for your business. Please make payment by the due date.
+          <?php endif; ?>
+        </div>
+        <div class="inv-doc-footer-ref">
+          <?= h($inv['invoice_no']) ?> &nbsp;·&nbsp; <?= date('Y') ?><br>
+          <span style="font-size:9px;opacity:.6">Computer generated document</span>
+        </div>
       </div>
 
-      <!-- ══ INVOICE FOOTER ══ -->
-      <?php if (!empty($co['invoice_footer'])): ?>
-      <div style="margin-top:20px;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);text-align:center;font-size:12px;color:var(--text3)">
-        <?= h($co['invoice_footer']) ?>
-      </div>
-      <?php endif; ?>
-      <div style="margin-top:10px;text-align:center;font-size:11px;color:var(--text3)">
-        This is a computer-generated invoice. · <?= h($inv['invoice_no']) ?> · <?= date('Y') ?>
-      </div>
+    </div><!-- /.inv-document -->
 
-    </div><!-- /.inv-header-card -->
-
-    <!-- Payment history below the invoice card -->
+    <!-- Payment history (below the document) -->
     <?php if ($payments): ?>
-    <div class="card no-print">
+    <div class="card no-print" style="margin-top:16px">
       <div class="card-header"><div class="card-title">💳 Payment History</div></div>
       <?php
       $pay_icons = ['bank_transfer'=>'🏦','cash'=>'💵','card'=>'💳','cheque'=>'📄','online'=>'🌐','other'=>'💰'];
@@ -916,7 +1419,7 @@ $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
           <div style="font-size:11.5px;color:var(--text3)">
             <?= h(ucfirst(str_replace('_',' ',$py['method']))) ?>
             <?= $py['reference'] ? ' · Ref: '.h($py['reference']) : '' ?>
-            · Recorded by <?= h($py['recorded_by_name'] ?? 'System') /* FIX: fallback for LEFT JOIN null */ ?>
+            · Recorded by <?= h($py['recorded_by_name'] ?? 'System') ?>
           </div>
         </div>
         <div style="font-size:12px;color:var(--text3)"><?= fDate($py['paid_at']) ?></div>
@@ -926,7 +1429,7 @@ $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
     <?php endif; ?>
   </div><!-- /.left col -->
 
-  <!-- ─── RIGHT: Sidebar info (hidden in print) ─── -->
+  <!-- ─── RIGHT: Sidebar info ─── -->
   <div class="no-print">
     <div class="card" style="margin-bottom:14px">
       <div class="card-title" style="margin-bottom:12px">Invoice Info</div>
@@ -962,7 +1465,7 @@ $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
       <a href="invoices.php?tab=settings" class="btn btn-ghost btn-sm" style="text-decoration:none">Open Settings →</a>
     </div>
     <?php endif; ?>
-  </div><!-- /.right col -->
+  </div>
 </div><!-- /.inv-detail-grid -->
 
 <!-- PAYMENT MODAL -->
@@ -1014,7 +1517,7 @@ $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
 
 
 <?php /* ═════════════════════════════════════════════════════════════════
-       CREATE / EDIT FORM
+       CREATE / EDIT FORM  — unchanged
        ═════════════════════════════════════════════════════════════════ */
 elseif ($edit_inv || isset($_GET['new'])): ?>
 
@@ -1029,7 +1532,6 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
   <input type="hidden" name="inv_id"  value="<?= $edit_id ?>">
 
   <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start">
-    <!-- Left: main invoice fields -->
     <div>
       <div class="card" style="margin-bottom:14px">
         <div class="card-header"><div class="card-title"><?= $edit_id ? 'Edit Invoice' : 'New Invoice' ?></div></div>
@@ -1094,7 +1596,6 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
         </div>
       </div>
 
-      <!-- Line items -->
       <div class="card" style="margin-bottom:14px">
         <div class="card-header"><div class="card-title">Line Items</div></div>
         <div style="display:grid;grid-template-columns:1fr 80px 110px 100px 36px;gap:6px;margin-bottom:8px;padding:0 4px">
@@ -1118,7 +1619,6 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
         <button type="button" class="btn btn-ghost btn-sm" onclick="addRow()" style="margin-top:8px">＋ Add Item</button>
       </div>
 
-      <!-- Notes, Terms, Signature override -->
       <div class="card">
         <div class="form-row">
           <div class="form-group">
@@ -1130,7 +1630,6 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
             <textarea name="terms" class="form-control" style="min-height:70px" placeholder="Payment within 30 days…"><?= h($edit_inv['terms'] ?? '') ?></textarea>
           </div>
         </div>
-        <!-- Per-invoice signature/stamp override -->
         <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-top:8px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:10px">Override Signature / Stamp for this Invoice</div>
           <div class="form-row">
@@ -1165,9 +1664,8 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
           </div>
         </div>
       </div>
-    </div><!-- /left -->
+    </div>
 
-    <!-- Right sidebar: totals + recurring -->
     <div>
       <div class="card" style="margin-bottom:14px">
         <div class="card-title" style="margin-bottom:14px">Totals Preview</div>
@@ -1228,13 +1726,13 @@ elseif ($edit_inv || isset($_GET['new'])): ?>
         </button>
         <a href="invoices.php<?= $edit_id ? "?view=$edit_id" : '' ?>" class="btn btn-ghost">Cancel</a>
       </div>
-    </div><!-- /right -->
+    </div>
   </div>
 </form>
 
 
 <?php /* ═════════════════════════════════════════════════════════════════
-       INVOICE SETTINGS
+       INVOICE SETTINGS  — unchanged
        ═════════════════════════════════════════════════════════════════ */
 elseif ($tab === 'settings' && isAdmin()): ?>
 
@@ -1318,7 +1816,6 @@ elseif ($tab === 'settings' && isAdmin()): ?>
     </div>
   </div>
 
-  <!-- FIX: Settings only shows 2 signature blocks matching the invoice view -->
   <div class="settings-section">
     <div class="settings-section-title">Signature &amp; Stamp <span style="font-weight:400;text-transform:none;font-size:11px;letter-spacing:0">(Global — applied to all invoices; can be overridden per invoice)</span></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;font-size:12.5px;color:var(--text2)">
@@ -1365,7 +1862,7 @@ elseif ($tab === 'settings' && isAdmin()): ?>
 
 
 <?php /* ═════════════════════════════════════════════════════════════════
-       INVOICE LIST
+       INVOICE LIST  — unchanged
        ═════════════════════════════════════════════════════════════════ */
 else: ?>
 
@@ -1489,7 +1986,6 @@ function addRow() {
       + '<input type="text"   name="item_amount[]" class="form-control" readonly value="" style="text-align:right;background:var(--bg4)">'
       + '<button type="button" class="btn btn-danger btn-sm btn-icon" onclick="removeRow(this)" style="padding:6px">✕</button>';
     c.appendChild(div);
-    // FIX: auto-focus the description field of the new row
     div.querySelector('[name="item_desc[]"]').focus();
 }
 function removeRow(btn) {

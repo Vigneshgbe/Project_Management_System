@@ -3,6 +3,15 @@
  * client_portal.php — Padak CRM Client Portal
  * Separate session namespace: portal_*
  * No dependency on CRM user session
+ *
+ * FIXES & UPGRADES (2025):
+ *  - Full professional invoice detail viewer with line items, subtotals, tax, discount
+ *  - Signature & stamp image display on invoice (set by admin in invoices.php)
+ *  - SQL injection hardening on file-serve endpoints
+ *  - Missing UPLOAD_DOC_DIR constant guard
+ *  - Invoice list now navigates to portal invoice detail view (?page=invoice_detail&id=)
+ *  - Professional invoice print/download layout
+ *  - All existing functionalities, features, and design theme preserved intact
  */
 require_once 'config.php';
 $db = getCRMDB();
@@ -36,6 +45,11 @@ portalSession();
 define('PORTAL_UPLOAD_DIR', __DIR__ . '/uploads/portal/');
 if (!is_dir(PORTAL_UPLOAD_DIR)) mkdir(PORTAL_UPLOAD_DIR, 0755, true);
 
+// ── UPLOAD_DOC_DIR guard (defined in config.php normally; fallback here) ──
+if (!defined('UPLOAD_DOC_DIR')) {
+    define('UPLOAD_DOC_DIR', __DIR__ . '/uploads/documents/');
+}
+
 // ── HELPERS ──
 function ph(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 function pDate(?string $d, string $fmt='M j, Y'): string {
@@ -46,7 +60,7 @@ function invSym(string $c): string {
 }
 
 // ══════════════════════════════════════════
-// POST HANDLERS (all unchanged)
+// POST HANDLERS
 // ══════════════════════════════════════════
 ob_start();
 
@@ -66,7 +80,9 @@ if ($_POST['action'] ?? '' === 'login') {
             $_SESSION['portal_name']        = $row['name'];
             $_SESSION['portal_email']       = $row['email'];
             $_SESSION['portal_company']     = $row['company'];
-            $db->query("UPDATE client_portal SET last_login=NOW() WHERE id={$row['id']}");
+            $stmt2 = $db->prepare("UPDATE client_portal SET last_login=NOW() WHERE id=?");
+            $stmt2->bind_param("i",$row['id']);
+            $stmt2->execute();
             ob_end_clean();
             header('Location: client_portal.php?page=dashboard'); exit;
         }
@@ -118,8 +134,8 @@ if (($_POST['action'] ?? '') === 'upload_doc') {
                 $oname  = basename($f['name']);
                 $fsize  = (int)$f['size'];
                 $ftype  = $f['type'];
-                $admin  = $db->query("SELECT id FROM users WHERE role='admin' LIMIT 1")->fetch_assoc();
-                $admin_id = $admin ? (int)$admin['id'] : 1;
+                $admin_row = $db->query("SELECT id FROM users WHERE role='admin' LIMIT 1")->fetch_assoc();
+                $admin_id  = $admin_row ? (int)$admin_row['id'] : 1;
                 $cat    = 'Client Upload';
                 $access = 'manager';
                 $stmt2  = $db->prepare("INSERT INTO documents (title,filename,original_name,file_size,file_type,contact_id,category,access,uploaded_by) VALUES (?,?,?,?,?,?,?,?,?)");
@@ -135,7 +151,7 @@ if (($_POST['action'] ?? '') === 'upload_doc') {
 ob_end_clean();
 
 // ══════════════════════════════════════════
-// ROUTING (all unchanged)
+// ROUTING
 // ══════════════════════════════════════════
 $client = portalClient();
 $page   = $_GET['page'] ?? ($client ? 'dashboard' : 'login');
@@ -146,6 +162,9 @@ $invoices  = [];
 $messages  = [];
 $docs      = [];
 $proj_det  = null;
+$inv_det   = null;   // NEW: single invoice detail for portal
+$inv_items    = [];  // NEW: line items for portal invoice view
+$inv_payments = [];  // NEW: payment records for portal invoice view
 
 if ($client) {
     $cid = $client['contact_id'];
@@ -163,7 +182,7 @@ if ($client) {
     $invoices = $db->query("
         SELECT i.*, COALESCE(i.total-i.amount_paid,0) AS balance_due
         FROM invoices i
-        WHERE i.contact_id=$cid
+        WHERE i.contact_id=$cid AND i.status != 'draft'
         ORDER BY i.issue_date DESC
     ")->fetch_all(MYSQLI_ASSOC);
 
@@ -199,38 +218,346 @@ if ($client) {
         }
     }
 
+    // ── NEW: Invoice detail view for client portal ──
+    if ($page === 'invoice_detail' && isset($_GET['id'])) {
+        $inv_id_req = (int)$_GET['id'];
+        // Use prepared statement — security fix
+        $stmt_inv = $db->prepare("
+            SELECT i.*, c.name AS client_name, c.company, c.email AS client_email,
+                   c.address, c.phone, p.title AS project_title
+            FROM invoices i
+            LEFT JOIN contacts c ON c.id = i.contact_id
+            LEFT JOIN projects p ON p.id = i.project_id
+            WHERE i.id = ? AND i.contact_id = ? AND i.status != 'draft'
+            LIMIT 1
+        ");
+        $stmt_inv->bind_param("ii", $inv_id_req, $cid);
+        $stmt_inv->execute();
+        $inv_det = $stmt_inv->get_result()->fetch_assoc();
+        if ($inv_det) {
+            $inv_items = $db->query("
+                SELECT * FROM invoice_items WHERE invoice_id=$inv_id_req ORDER BY sort_order, id
+            ")->fetch_all(MYSQLI_ASSOC);
+            $inv_payments = $db->query("
+                SELECT ip.*, u.name AS recorded_by_name
+                FROM invoice_payments ip
+                JOIN users u ON u.id = ip.recorded_by
+                WHERE ip.invoice_id = $inv_id_req
+                ORDER BY ip.paid_at DESC
+            ")->fetch_all(MYSQLI_ASSOC);
+            // Mark invoice as viewed if not already
+            if ($inv_det['status'] === 'sent') {
+                $db->query("UPDATE invoices SET status='viewed', viewed_at=NOW() WHERE id=$inv_id_req");
+                $inv_det['status'] = 'viewed';
+            }
+        }
+    }
+
     $unread = (int)$db->query("SELECT COUNT(*) AS c FROM client_messages WHERE contact_id=$cid AND sender_type='staff' AND is_read=0")->fetch_assoc()['c'];
 }
 
-// ── FILE SERVE (unchanged) ──
+// ── FILE SERVE — hardened with prepared statements ──
 if (isset($_GET['view_doc']) && $client) {
+    $cid = $client['contact_id'];
     $did = (int)$_GET['view_doc'];
-    $doc = $db->query("SELECT * FROM documents WHERE id=$did AND (contact_id=$cid OR project_id IN (SELECT id FROM projects WHERE contact_id=$cid))")->fetch_assoc();
+    $stmt_d = $db->prepare("SELECT * FROM documents WHERE id=? AND (contact_id=? OR project_id IN (SELECT id FROM projects WHERE contact_id=?))");
+    $stmt_d->bind_param("iii",$did,$cid,$cid);
+    $stmt_d->execute();
+    $doc = $stmt_d->get_result()->fetch_assoc();
     if ($doc) {
-        $path = UPLOAD_DOC_DIR . $doc['filename'];
+        $path = UPLOAD_DOC_DIR . basename($doc['filename']);
         if (file_exists($path) && strtolower(pathinfo($doc['original_name'],PATHINFO_EXTENSION)) === 'pdf') {
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="'.addslashes($doc['original_name']).'"');
+            header('Content-Disposition: inline; filename="'.addslashes(basename($doc['original_name'])).'"');
             readfile($path); exit;
         }
     }
     die('Not found.');
 }
 if (isset($_GET['dl_doc']) && $client) {
+    $cid = $client['contact_id'];
     $did = (int)$_GET['dl_doc'];
-    $doc = $db->query("SELECT * FROM documents WHERE id=$did AND (contact_id=$cid OR project_id IN (SELECT id FROM projects WHERE contact_id=$cid))")->fetch_assoc();
+    $stmt_d = $db->prepare("SELECT * FROM documents WHERE id=? AND (contact_id=? OR project_id IN (SELECT id FROM projects WHERE contact_id=?))");
+    $stmt_d->bind_param("iii",$did,$cid,$cid);
+    $stmt_d->execute();
+    $doc = $stmt_d->get_result()->fetch_assoc();
     if ($doc) {
         $try = [PORTAL_UPLOAD_DIR, UPLOAD_DOC_DIR];
         foreach ($try as $dir) {
-            if (file_exists($dir.$doc['filename'])) {
+            $safe = $dir . basename($doc['filename']);
+            if (file_exists($safe)) {
                 header('Content-Type: application/octet-stream');
-                header('Content-Disposition: attachment; filename="'.addslashes($doc['original_name']).'"');
-                header('Content-Length: '.filesize($dir.$doc['filename']));
-                readfile($dir.$doc['filename']); exit;
+                header('Content-Disposition: attachment; filename="'.addslashes(basename($doc['original_name'])).'"');
+                header('Content-Length: '.filesize($safe));
+                readfile($safe); exit;
             }
         }
     }
     die('File not found.');
+}
+
+// ── NEW: Invoice PDF print endpoint — serves printable invoice page ──
+if (isset($_GET['print_invoice']) && $client) {
+    $cid = $client['contact_id'];
+    $inv_id_p = (int)$_GET['print_invoice'];
+    $stmt_pi = $db->prepare("SELECT i.*,c.name AS client_name,c.company,c.email AS client_email,c.address,c.phone,p.title AS project_title FROM invoices i LEFT JOIN contacts c ON c.id=i.contact_id LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=? AND i.contact_id=? AND i.status!='draft' LIMIT 1");
+    $stmt_pi->bind_param("ii",$inv_id_p,$cid);
+    $stmt_pi->execute();
+    $pi = $stmt_pi->get_result()->fetch_assoc();
+    if ($pi) {
+        $pi_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id=$inv_id_p ORDER BY sort_order,id")->fetch_all(MYSQLI_ASSOC);
+        $pi_pays  = $db->query("SELECT * FROM invoice_payments WHERE invoice_id=$inv_id_p ORDER BY paid_at DESC")->fetch_all(MYSQLI_ASSOC);
+        // Fetch company settings for letterhead
+        $co = $db->query("SELECT * FROM company_settings LIMIT 1")->fetch_assoc() ?? [];
+        // Fetch signature/stamp (from invoices table extended columns — gracefully skip if columns absent)
+        $sig_path = $pi['signature_image'] ?? null;
+        $stm_path = $pi['stamp_image'] ?? null;
+        render_printable_invoice($pi, $pi_items, $pi_pays, $co, $sig_path, $stm_path);
+        exit;
+    }
+    die('Invoice not found.');
+}
+
+// ══════════════════════════════════════════
+// PRINTABLE INVOICE RENDERER (standalone page)
+// ══════════════════════════════════════════
+function render_printable_invoice(array $inv, array $items, array $payments, array $co, ?string $sig, ?string $stm): void {
+    $sym = match($inv['currency'] ?? 'LKR') { 'USD'=>'$','EUR'=>'€','GBP'=>'£','INR'=>'₹', default=>'Rs. ' };
+    $sc  = match($inv['status'] ?? '') {
+        'paid'=>'#10b981','partial'=>'#f59e0b','overdue'=>'#ef4444',
+        'sent'=>'#6366f1','viewed'=>'#8b5cf6', default=>'#94a3b8'
+    };
+    ?><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice <?= ph($inv['invoice_no']) ?></title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+@page{size:A4;margin:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px;line-height:1.5}
+.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 16mm 14mm;background:#fff;position:relative}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #f97316}
+.inv-company-name{font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.5px;margin-bottom:4px}
+.inv-company-detail{font-size:12px;color:#555;line-height:1.7}
+.inv-doc-block{text-align:right}
+.inv-doc-label{font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.inv-doc-no{font-size:22px;font-weight:800;color:#1a1a2e;letter-spacing:-.3px;margin-bottom:8px}
+.inv-status-badge{display:inline-block;padding:4px 14px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:<?= $sc ?>22;color:<?= $sc ?>;border:1.5px solid <?= $sc ?>55}
+.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+.inv-party-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px}
+.inv-party-name{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px}
+.inv-party-detail{font-size:12px;color:#555;line-height:1.7}
+.inv-dates{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:14px 16px}
+.inv-date-box{}
+.inv-date-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.inv-date-val{font-size:13px;font-weight:700;color:#1a1a2e}
+table.items{width:100%;border-collapse:collapse;margin-bottom:0}
+table.items thead tr{background:#1a1a2e;color:#fff}
+table.items thead th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left}
+table.items thead th:nth-child(2),table.items thead th:nth-child(3),table.items thead th:nth-child(4){text-align:right}
+table.items tbody tr{border-bottom:1px solid #f0f0f0}
+table.items tbody tr:nth-child(even){background:#fafafa}
+table.items tbody td{padding:11px 14px;font-size:13px;color:#333;vertical-align:top}
+table.items tbody td:nth-child(2),table.items tbody td:nth-child(3),table.items tbody td:nth-child(4){text-align:right}
+table.items tfoot tr{background:#fff3ea}
+table.items tfoot td{padding:8px 14px;font-size:13px;font-weight:600}
+table.items tfoot td:last-child{text-align:right}
+table.items tfoot tr.grand td{font-size:15px;font-weight:800;color:#f97316;padding:12px 14px;border-top:2px solid #f97316}
+table.items tfoot tr.paid-row td{color:#10b981}
+table.items tfoot tr.due-row td{color:#ef4444;font-size:14px}
+.inv-bottom{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.inv-notes-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.inv-notes-body{font-size:12px;color:#555;line-height:1.7;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:12px}
+.inv-sign-area{display:flex;gap:20px;justify-content:flex-end;margin-top:40px;align-items:flex-end}
+.inv-sign-block{text-align:center;min-width:130px}
+.inv-sign-img{height:64px;object-fit:contain;display:block;margin:0 auto 6px}
+.inv-sign-placeholder{height:64px;border-bottom:2px solid #ccc;margin-bottom:6px;width:130px}
+.inv-sign-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.inv-stamp-img{height:80px;width:80px;object-fit:contain;opacity:.85}
+.inv-footer{margin-top:28px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#aaa;line-height:1.7}
+.payments-section{margin-top:20px}
+.payments-title{font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.pay-row-print{display:flex;justify-content:space-between;padding:7px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;margin-bottom:5px;font-size:12px}
+.pay-amount{font-weight:700;color:#10b981}
+@media print{
+  .no-print{display:none!important}
+  body{margin:0}
+  .page{padding:12mm 14mm;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Print bar (hidden when printing) -->
+  <div class="no-print" style="background:#1a1a2e;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin:-18mm -16mm 18mm;position:relative;z-index:10">
+    <div style="font-size:13px;font-weight:600">Invoice <?= ph($inv['invoice_no']) ?> — Printable View</div>
+    <div style="display:flex;gap:10px">
+      <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print / Save PDF</button>
+      <a href="client_portal.php?page=invoice_detail&id=<?= $inv['id'] ?>" style="background:#333;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none">← Back</a>
+    </div>
+  </div>
+
+  <!-- LETTERHEAD -->
+  <div class="inv-header">
+    <div>
+      <?php if (!empty($co['logo'])): ?>
+      <img src="<?= ph($co['logo']) ?>" alt="Logo" style="height:48px;object-fit:contain;margin-bottom:10px;display:block">
+      <?php endif; ?>
+      <div class="inv-company-name"><?= ph($co['company_name'] ?? 'Padak') ?></div>
+      <div class="inv-company-detail">
+        <?php if ($co['address'] ?? ''): ?><?= nl2br(ph($co['address'])) ?><br><?php endif; ?>
+        <?php if ($co['phone'] ?? ''): ?>📞 <?= ph($co['phone']) ?><br><?php endif; ?>
+        <?php if ($co['email'] ?? ''): ?>✉ <?= ph($co['email']) ?><br><?php endif; ?>
+        <?php if ($co['website'] ?? ''): ?>🌐 <?= ph($co['website']) ?><?php endif; ?>
+      </div>
+    </div>
+    <div class="inv-doc-block">
+      <div class="inv-doc-label">Tax Invoice</div>
+      <div class="inv-doc-no"><?= ph($inv['invoice_no']) ?></div>
+      <div><span class="inv-status-badge"><?= ucfirst($inv['status']) ?></span></div>
+      <?php if ($co['gst_no'] ?? $co['tax_no'] ?? ''): ?>
+      <div style="font-size:11px;color:#999;margin-top:8px">GST/Tax No: <?= ph($co['gst_no'] ?? $co['tax_no'] ?? '') ?></div>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <!-- BILL TO / BILL FROM / DATES -->
+  <div class="inv-parties">
+    <div>
+      <div class="inv-party-label">Bill To</div>
+      <div class="inv-party-name"><?= ph($inv['client_name'] ?? '—') ?></div>
+      <div class="inv-party-detail">
+        <?php if ($inv['company'] ?? ''): ?><?= ph($inv['company']) ?><br><?php endif; ?>
+        <?php if ($inv['client_email'] ?? ''): ?><?= ph($inv['client_email']) ?><br><?php endif; ?>
+        <?php if ($inv['phone'] ?? ''): ?><?= ph($inv['phone']) ?><br><?php endif; ?>
+        <?php if ($inv['address'] ?? ''): ?><?= nl2br(ph($inv['address'])) ?><?php endif; ?>
+      </div>
+    </div>
+    <div>
+      <?php if ($inv['project_title'] ?? ''): ?>
+      <div class="inv-party-label">Project Reference</div>
+      <div class="inv-party-name" style="font-size:13px"><?= ph($inv['project_title']) ?></div>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="inv-dates">
+    <div class="inv-date-box">
+      <div class="inv-date-label">Issue Date</div>
+      <div class="inv-date-val"><?= pDate($inv['issue_date']) ?></div>
+    </div>
+    <div class="inv-date-box">
+      <div class="inv-date-label">Due Date</div>
+      <div class="inv-date-val" style="<?= ($inv['due_date']&&$inv['due_date']<date('Y-m-d')&&$inv['status']!='paid')?'color:#ef4444':'' ?>"><?= pDate($inv['due_date']) ?></div>
+    </div>
+    <div class="inv-date-box">
+      <div class="inv-date-label">Currency</div>
+      <div class="inv-date-val"><?= ph($inv['currency'] ?? 'LKR') ?></div>
+    </div>
+  </div>
+
+  <!-- LINE ITEMS TABLE -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($items): foreach ($items as $i => $it): ?>
+      <tr>
+        <td style="color:#aaa;font-size:12px"><?= $i+1 ?></td>
+        <td><strong><?= ph($it['description']) ?></strong></td>
+        <td><?= rtrim(rtrim(number_format((float)$it['quantity'],2),'0'),'.') ?></td>
+        <td><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
+        <td><strong><?= $sym ?><?= number_format((float)$it['amount'],2) ?></strong></td>
+      </tr>
+      <?php endforeach; else: ?>
+      <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">No line items</td></tr>
+      <?php endif; ?>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="4">Subtotal</td><td><?= $sym ?><?= number_format((float)$inv['subtotal'],2) ?></td></tr>
+      <?php if ((float)($inv['tax_rate']??0) > 0): ?>
+      <tr><td colspan="4">Tax (<?= ph($inv['tax_rate']) ?>%)</td><td><?= $sym ?><?= number_format((float)$inv['tax_amount'],2) ?></td></tr>
+      <?php endif; ?>
+      <?php if ((float)($inv['discount']??0) > 0): ?>
+      <tr style="color:#10b981"><td colspan="4">Discount</td><td>−<?= $sym ?><?= number_format((float)$inv['discount'],2) ?></td></tr>
+      <?php endif; ?>
+      <tr class="grand"><td colspan="4">Total Due</td><td><?= $sym ?><?= number_format((float)$inv['total'],2) ?></td></tr>
+      <?php if ((float)($inv['amount_paid']??0) > 0): ?>
+      <tr class="paid-row"><td colspan="4">Amount Paid</td><td><?= $sym ?><?= number_format((float)$inv['amount_paid'],2) ?></td></tr>
+      <?php if ($inv['status'] !== 'paid'): ?>
+      <tr class="due-row"><td colspan="4"><strong>Balance Due</strong></td><td><strong><?= $sym ?><?= number_format(max(0,(float)$inv['total']-(float)$inv['amount_paid']),2) ?></strong></td></tr>
+      <?php endif; ?>
+      <?php endif; ?>
+    </tfoot>
+  </table>
+
+  <!-- PAYMENT HISTORY (if any) -->
+  <?php if ($payments): ?>
+  <div class="payments-section">
+    <div class="payments-title">Payment History</div>
+    <?php foreach ($payments as $py): ?>
+    <div class="pay-row-print">
+      <span><?= pDate($py['paid_at']) ?> · <?= ph(ucfirst(str_replace('_',' ',$py['method']))) ?><?= $py['reference'] ? ' · Ref: '.ph($py['reference']) : '' ?></span>
+      <span class="pay-amount"><?= $sym ?><?= number_format((float)$py['amount'],2) ?></span>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
+  <!-- NOTES & TERMS -->
+  <div class="inv-bottom">
+    <div>
+      <?php if ($inv['notes'] ?? ''): ?>
+      <div class="inv-notes-label">Notes</div>
+      <div class="inv-notes-body"><?= nl2br(ph($inv['notes'])) ?></div>
+      <?php endif; ?>
+      <?php if ($inv['terms'] ?? ''): ?>
+      <div class="inv-notes-label" style="margin-top:12px">Terms & Conditions</div>
+      <div class="inv-notes-body" style="color:#777"><?= nl2br(ph($inv['terms'])) ?></div>
+      <?php endif; ?>
+    </div>
+    <div></div>
+  </div>
+
+  <!-- SIGNATURE & STAMP -->
+  <div class="inv-sign-area">
+    <?php if ($stm): ?>
+    <div class="inv-sign-block">
+      <img src="<?= ph($stm) ?>" alt="Stamp" class="inv-stamp-img">
+      <div class="inv-sign-label">Official Stamp</div>
+    </div>
+    <?php endif; ?>
+    <div class="inv-sign-block">
+      <?php if ($sig): ?>
+      <img src="<?= ph($sig) ?>" alt="Signature" class="inv-sign-img">
+      <?php else: ?>
+      <div class="inv-sign-placeholder"></div>
+      <?php endif; ?>
+      <div class="inv-sign-label">Authorised Signature</div>
+      <div style="font-size:12px;color:#333;margin-top:3px;font-weight:600"><?= ph($co['company_name'] ?? 'Padak') ?></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="inv-footer">
+    <?php if ($co['footer_note'] ?? ''): ?>
+    <?= ph($co['footer_note']) ?><br>
+    <?php else: ?>
+    Thank you for your business. Please make payment by the due date.<br>
+    <?php endif; ?>
+    Generated by Padak CRM · <?= ph($inv['invoice_no']) ?> · <?= date('M j, Y') ?>
+  </div>
+</div>
+</body>
+</html><?php
 }
 ?>
 <!DOCTYPE html>
@@ -313,8 +640,6 @@ button,input,select,textarea{font-family:var(--font)}
 .portal-brand-name{font-family:var(--font-d);font-size:16px;font-weight:800;line-height:1.1;letter-spacing:-.2px}
 .portal-brand-name span{color:var(--orange)}
 .portal-brand-sub{font-size:10.5px;color:var(--text3);margin-top:1px}
-
-/* Navigation */
 .portal-nav{flex:1;padding:12px 10px;overflow-y:auto}
 .pnav-section{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 10px 4px;margin-top:6px}
 .pnav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:background .12s,color .12s;white-space:nowrap;position:relative}
@@ -323,8 +648,6 @@ button,input,select,textarea{font-family:var(--font)}
 .pnav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--orange);border-radius:0 3px 3px 0}
 .pnav-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
 .pnav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
-
-/* User + Controls */
 .portal-user{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0}
 .portal-user-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .portal-user-avatar{width:34px;height:34px;border-radius:50%;background:var(--orange-bg);border:2px solid var(--orange-border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--orange);flex-shrink:0}
@@ -335,8 +658,6 @@ button,input,select,textarea{font-family:var(--font)}
 .portal-signout:hover{color:var(--red)}
 .portal-theme-btn{width:30px;height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--text2);transition:all .15s;flex-shrink:0}
 .portal-theme-btn:hover{background:var(--bg4);color:var(--orange)}
-
-/* ── MAIN ── */
 .portal-main{flex:1;margin-left:var(--sidebar);min-height:100vh;display:flex;flex-direction:column}
 .portal-topbar{height:58px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;padding:0 32px;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:40;backdrop-filter:blur(8px)}
 .portal-breadcrumb{font-size:12.5px;color:var(--text3);display:flex;align-items:center;gap:6px;flex:1}
@@ -355,7 +676,6 @@ button,input,select,textarea{font-family:var(--font)}
 .pstat-icon{position:absolute;top:14px;right:16px;font-size:22px;opacity:.35}
 .pstat-val{font-size:26px;font-weight:800;font-family:var(--font-d);color:var(--text);margin-bottom:3px;letter-spacing:-.5px}
 .pstat-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
-.pstat-trend{font-size:11px;margin-top:6px;font-weight:600}
 
 /* ── CARD ── */
 .pcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px}
@@ -376,13 +696,56 @@ button,input,select,textarea{font-family:var(--font)}
 /* ── STATUS BADGE ── */
 .sbadge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
 
-/* ── INVOICE ROW ── */
-.inv-row{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;transition:border-color .15s}
-.inv-row:hover{border-color:var(--border2)}
+/* ── INVOICE LIST ROW ── */
+.inv-row{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+.inv-row:hover{border-color:var(--orange-border);box-shadow:0 2px 10px rgba(249,115,22,.1)}
 .inv-num{font-size:13px;font-weight:800;color:var(--text);font-family:var(--font-d)}
 .inv-title{font-size:12px;color:var(--text2);margin-top:1px}
 .inv-dates{font-size:11.5px;color:var(--text3)}
 .inv-amount{font-size:16px;font-weight:800;color:var(--text);font-family:var(--font-d);text-align:right;min-width:100px}
+
+/* ── NEW: INVOICE DETAIL (portal) ── */
+.inv-detail-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:16px}
+.inv-detail-head{padding:28px 28px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%)}
+.inv-detail-title{font-family:var(--font-d);font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-.3px}
+.inv-detail-no{font-size:12px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.inv-meta-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:18px 28px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.inv-meta-cell{padding:0}
+.inv-meta-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.inv-meta-val{font-size:13px;font-weight:700;color:var(--text)}
+.inv-body{padding:24px 28px}
+
+/* Invoice items table (portal) */
+.portal-items-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.portal-items-table thead tr{background:var(--bg4)}
+.portal-items-table thead th{padding:10px 14px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:2px solid var(--border)}
+.portal-items-table thead th.r{text-align:right}
+.portal-items-table tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+.portal-items-table tbody tr:hover{background:var(--bg3)}
+.portal-items-table tbody tr:last-child{border-bottom:none}
+.portal-items-table tbody td{padding:12px 14px;font-size:13.5px;color:var(--text);vertical-align:top}
+.portal-items-table tbody td.r{text-align:right}
+.portal-items-table tbody td.num{color:var(--text3);font-size:12px;width:32px}
+
+/* Invoice totals block */
+.inv-totals-wrap{display:flex;justify-content:flex-end;margin-top:4px}
+.inv-totals-inner{min-width:300px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.inv-total-row{display:flex;justify-content:space-between;padding:9px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+.inv-total-row:last-child{border-bottom:none}
+.inv-total-row.grand{background:var(--orange-bg);font-size:15px;font-weight:800;color:var(--orange);border-top:2px solid var(--orange-border)}
+.inv-total-row.paid-row{color:var(--green);font-weight:700}
+.inv-total-row.balance-row{color:var(--red);font-weight:800;font-size:14px}
+.inv-total-label{color:var(--text2)}
+.inv-total-val{font-weight:700}
+
+/* Payment history (portal) */
+.pay-hist-row{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:7px}
+.pay-hist-icon{width:34px;height:34px;border-radius:8px;background:var(--green-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pay-hist-amount{font-size:14px;font-weight:800;color:var(--green)}
+.pay-hist-meta{font-size:11.5px;color:var(--text3)}
+
+/* Invoice action bar */
+.inv-action-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
 
 /* ── TASK ROW ── */
 .task-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg4);border-radius:var(--radius-sm);margin-bottom:6px;transition:background .12s}
@@ -468,6 +831,10 @@ button,input,select,textarea{font-family:var(--font)}
   .msg-bubble{max-width:88%}
   .inv-row{flex-wrap:wrap}
   .upload-grid{grid-template-columns:1fr!important}
+  .inv-meta-strip{grid-template-columns:1fr 1fr}
+  .portal-items-table thead th.hide-sm,.portal-items-table tbody td.hide-sm{display:none}
+  .inv-totals-inner{min-width:100%;width:100%}
+  .inv-totals-wrap{display:block}
 }
 @media(max-width:400px){
   .pstats{grid-template-columns:1fr}
@@ -547,7 +914,7 @@ button,input,select,textarea{font-family:var(--font)}
       <?php endforeach; ?>
 
       <div class="pnav-section" style="margin-top:8px">Billing</div>
-      <a href="client_portal.php?page=invoices" class="pnav-item<?= $page==='invoices'?' active':'' ?>" onclick="if(window.innerWidth<769)portalToggleSidebar()">
+      <a href="client_portal.php?page=invoices" class="pnav-item<?= in_array($page,['invoices','invoice_detail'])?' active':'' ?>" onclick="if(window.innerWidth<769)portalToggleSidebar()">
         <span class="pnav-icon">🧾</span>Invoices
       </a>
 
@@ -581,12 +948,25 @@ button,input,select,textarea{font-family:var(--font)}
     <div class="portal-topbar">
       <div class="portal-breadcrumb">
         <?php
-        $titles = ['dashboard'=>'Dashboard','projects'=>'My Projects','project'=>'Project Detail',
-                   'invoices'=>'Invoices','documents'=>'Documents','messages'=>'Messages'];
+        $titles = [
+          'dashboard'      => 'Dashboard',
+          'projects'       => 'My Projects',
+          'project'        => 'Project Detail',
+          'invoices'       => 'Invoices',
+          'invoice_detail' => 'Invoice Detail',
+          'documents'      => 'Documents',
+          'messages'       => 'Messages',
+        ];
         echo '<a href="client_portal.php?page=dashboard" style="color:var(--text3)">Portal</a>';
         echo ' <span style="color:var(--border2)">/</span> ';
-        echo '<span>'.($titles[$page] ?? ucfirst($page)).'</span>';
-        if ($page==='project' && $proj_det) echo ' <span style="color:var(--border2)">/</span> <span>'.ph($proj_det['title']).'</span>';
+        if ($page === 'invoice_detail') {
+            echo '<a href="client_portal.php?page=invoices" style="color:var(--text3)">Invoices</a>';
+            echo ' <span style="color:var(--border2)">/</span> ';
+            echo '<span>'.($inv_det ? ph($inv_det['invoice_no']) : 'Detail').'</span>';
+        } else {
+            echo '<span>'.($titles[$page] ?? ucfirst($page)).'</span>';
+            if ($page==='project' && $proj_det) echo ' <span style="color:var(--border2)">/</span> <span>'.ph($proj_det['title']).'</span>';
+        }
         ?>
       </div>
       <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text3)">
@@ -598,7 +978,7 @@ button,input,select,textarea{font-family:var(--font)}
     <div class="portal-content">
     <?php
 
-    // ── Helper functions (inside authenticated block) ──
+    // ── Helper functions ──
     function projColor(string $s): array {
         return match($s) {
             'active'    => ['#10b981','rgba(16,185,129,.12)'],
@@ -635,7 +1015,9 @@ button,input,select,textarea{font-family:var(--font)}
         };
     }
 
-    // ══════════ DASHBOARD ══════════
+    // ══════════════════════════════════════
+    // ══ DASHBOARD
+    // ══════════════════════════════════════
     if ($page === 'dashboard'):
         $active_proj = array_filter($projects, fn($p) => $p['status'] === 'active');
         $open_inv    = array_filter($invoices, fn($i) => !in_array($i['status'], ['paid','cancelled']));
@@ -653,7 +1035,12 @@ button,input,select,textarea{font-family:var(--font)}
       <div class="pstat"><span class="pstat-icon">📁</span><div class="pstat-val"><?= count($projects) ?></div><div class="pstat-lbl">Total Projects</div></div>
       <div class="pstat"><span class="pstat-icon">⚡</span><div class="pstat-val"><?= count($active_proj) ?></div><div class="pstat-lbl">Active Now</div></div>
       <div class="pstat"><span class="pstat-icon">🧾</span><div class="pstat-val"><?= count($open_inv) ?></div><div class="pstat-lbl">Open Invoices</div></div>
-      <div class="pstat"><span class="pstat-icon">💰</span><div class="pstat-val" style="color:<?= $total_due > 0 ? 'var(--red)' : 'var(--green)' ?>;font-size:<?= strlen('Rs.'.number_format($total_due,0))>10?'18px':'26px' ?>">Rs.&nbsp;<?= number_format($total_due, 0) ?></div><div class="pstat-lbl">Balance Due</div></div>
+      <div class="pstat"><span class="pstat-icon">💰</span>
+        <div class="pstat-val" style="color:<?= $total_due > 0 ? 'var(--red)' : 'var(--green)' ?>;font-size:<?= strlen(number_format($total_due,0))>9?'18px':'26px' ?>">
+          Rs.&nbsp;<?= number_format($total_due, 0) ?>
+        </div>
+        <div class="pstat-lbl">Balance Due</div>
+      </div>
     </div>
 
     <?php if ($projects): ?>
@@ -665,8 +1052,7 @@ button,input,select,textarea{font-family:var(--font)}
         <?php endif; ?>
       </div>
       <?php foreach (array_slice($projects, 0, 3) as $p):
-        [$pc, $pbg] = projColor($p['status']);
-        $pct = (int)$p['progress'];
+        [$pc, $pbg] = projColor($p['status']); $pct = (int)$p['progress'];
       ?>
       <div class="proj-card" onclick="location.href='client_portal.php?page=project&id=<?= $p['id'] ?>'">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
@@ -694,9 +1080,8 @@ button,input,select,textarea{font-family:var(--font)}
       </div>
       <?php foreach (array_slice($invoices, 0, 3) as $inv):
         $ic = invColor($inv['status']);
-        if ($inv['status'] === 'draft') continue;
       ?>
-      <div class="inv-row">
+      <div class="inv-row" onclick="location.href='client_portal.php?page=invoice_detail&id=<?= $inv['id'] ?>'">
         <div style="flex:1;min-width:0">
           <div class="inv-num"><?= ph($inv['invoice_no']) ?></div>
           <div class="inv-title"><?= ph($inv['title']) ?></div>
@@ -720,7 +1105,10 @@ button,input,select,textarea{font-family:var(--font)}
     <?php endif; ?>
 
 
-    <?php // ══════════ PROJECTS LIST ══════════
+    <?php
+    // ══════════════════════════════════════
+    // ══ PROJECTS LIST
+    // ══════════════════════════════════════
     elseif ($page === 'projects'): ?>
     <div class="page-hd">
       <div class="page-hd-title">My Projects</div>
@@ -750,7 +1138,10 @@ button,input,select,textarea{font-family:var(--font)}
     <?php endif; ?>
 
 
-    <?php // ══════════ PROJECT DETAIL ══════════
+    <?php
+    // ══════════════════════════════════════
+    // ══ PROJECT DETAIL
+    // ══════════════════════════════════════
     elseif ($page === 'project' && $proj_det):
       [$pc, $pbg] = projColor($proj_det['status']); $pct = (int)$proj_det['progress'];
       $done_t = array_reduce($proj_det['tasks'] ?? [], fn($c, $t) => $c + ($t['status'] === 'done' ? 1 : 0), 0);
@@ -772,7 +1163,6 @@ button,input,select,textarea{font-family:var(--font)}
           <div class="pcard-hd"><div class="pcard-title">Progress — <?= $pct ?>%</div><span style="font-size:12px;color:var(--text3)"><?= $done_t ?>/<?= count($proj_det['tasks'] ?? []) ?> tasks</span></div>
           <div class="proj-progress-wrap" style="height:8px"><div class="proj-progress-fill" style="width:<?= $pct ?>%"></div></div>
         </div>
-
         <?php if ($proj_det['tasks']): ?>
         <div class="pcard">
           <div class="pcard-hd"><div class="pcard-title">Task Overview</div></div>
@@ -790,7 +1180,6 @@ button,input,select,textarea{font-family:var(--font)}
         </div>
         <?php endif; ?>
       </div>
-
       <div>
         <div class="pcard">
           <div class="pcard-hd"><div class="pcard-title">Details</div></div>
@@ -803,7 +1192,6 @@ button,input,select,textarea{font-family:var(--font)}
           <div class="detail-row"><span class="detail-lbl"><?= $l ?></span><span class="detail-val"><?= $v ?></span></div>
           <?php endforeach; ?>
         </div>
-
         <div class="pcard" style="margin-top:0">
           <div class="pcard-hd"><div class="pcard-title">Quick Actions</div></div>
           <a href="client_portal.php?page=messages" class="pbtn pbtn-ghost" style="width:100%;justify-content:center;margin-bottom:8px">💬 Send Message</a>
@@ -813,32 +1201,37 @@ button,input,select,textarea{font-family:var(--font)}
     </div>
 
 
-    <?php // ══════════ INVOICES ══════════
+    <?php
+    // ══════════════════════════════════════
+    // ══ INVOICES LIST
+    // ══════════════════════════════════════
     elseif ($page === 'invoices'):
       $total_paid = array_sum(array_column(array_filter($invoices, fn($i) => $i['status'] === 'paid'), 'total'));
       $total_due  = array_sum(array_column($invoices, 'balance_due'));
     ?>
     <div class="page-hd">
       <div class="page-hd-title">Invoices</div>
-      <div class="page-hd-sub">Your billing history from Padak</div>
+      <div class="page-hd-sub">Your billing history from Padak — click any invoice to view full details</div>
     </div>
 
     <div class="pstats">
       <div class="pstat"><span class="pstat-icon">🧾</span><div class="pstat-val"><?= count($invoices) ?></div><div class="pstat-lbl">Total Invoices</div></div>
-      <div class="pstat"><span class="pstat-icon">✅</span><div class="pstat-val" style="color:var(--green)">Rs.&nbsp;<?= number_format($total_paid, 0) ?></div><div class="pstat-lbl">Total Paid</div></div>
-      <div class="pstat"><span class="pstat-icon">⏳</span><div class="pstat-val" style="color:<?= $total_due > 0 ? 'var(--red)' : 'var(--green)' ?>">Rs.&nbsp;<?= number_format($total_due, 0) ?></div><div class="pstat-lbl">Balance Due</div></div>
+      <div class="pstat"><span class="pstat-icon">✅</span><div class="pstat-val" style="color:var(--green);font-size:<?= strlen(number_format($total_paid,0))>9?'16px':'26px' ?>">Rs.&nbsp;<?= number_format($total_paid, 0) ?></div><div class="pstat-lbl">Total Paid</div></div>
+      <div class="pstat"><span class="pstat-icon">⏳</span><div class="pstat-val" style="color:<?= $total_due > 0 ? 'var(--red)' : 'var(--green)' ?>;font-size:<?= strlen(number_format($total_due,0))>9?'16px':'26px' ?>">Rs.&nbsp;<?= number_format($total_due, 0) ?></div><div class="pstat-lbl">Balance Due</div></div>
     </div>
 
     <?php if (!$invoices): ?>
     <div class="pcard"><div class="pempty"><div class="pempty-icon">🧾</div><div class="pempty-title">No invoices yet</div><div class="pempty-desc">Invoices from Padak will appear here.</div></div></div>
     <?php else: ?>
     <div class="pcard">
-      <div class="pcard-hd"><div class="pcard-title">All Invoices</div></div>
+      <div class="pcard-hd">
+        <div class="pcard-title"><?= count($invoices) ?> Invoice<?= count($invoices) != 1 ? 's' : '' ?></div>
+        <div style="font-size:11.5px;color:var(--text3)">Click any invoice to view full breakdown</div>
+      </div>
       <?php foreach ($invoices as $inv):
         $ic = invColor($inv['status']);
-        if ($inv['status'] === 'draft') continue;
       ?>
-      <div class="inv-row">
+      <div class="inv-row" onclick="location.href='client_portal.php?page=invoice_detail&id=<?= $inv['id'] ?>'">
         <div style="flex:1;min-width:0">
           <div class="inv-num"><?= ph($inv['invoice_no']) ?></div>
           <div class="inv-title"><?= ph($inv['title']) ?></div>
@@ -850,13 +1243,269 @@ button,input,select,textarea{font-family:var(--font)}
           <?php if ($inv['amount_paid'] > 0): ?><div style="font-size:11.5px;color:var(--green)">Paid: <?= invSym($inv['currency']) ?><?= number_format($inv['amount_paid'], 2) ?></div><?php endif; ?>
           <?php if ($inv['balance_due'] > 0): ?><div style="font-size:11.5px;color:var(--red);font-weight:700">Due: <?= invSym($inv['currency']) ?><?= number_format($inv['balance_due'], 2) ?></div><?php endif; ?>
         </div>
+        <div style="color:var(--text3);font-size:18px;flex-shrink:0;padding-left:4px">›</div>
       </div>
       <?php endforeach; ?>
     </div>
     <?php endif; ?>
 
 
-    <?php // ══════════ DOCUMENTS ══════════
+    <?php
+    // ══════════════════════════════════════
+    // ══ INVOICE DETAIL — Full professional view (NEW)
+    // ══════════════════════════════════════
+    elseif ($page === 'invoice_detail'):
+      if (!$inv_det): ?>
+    <div class="pcard"><div class="pempty"><div class="pempty-icon">🧾</div><div class="pempty-title">Invoice not found</div><div class="pempty-desc">This invoice doesn't exist or you don't have access to it.</div></div></div>
+    <?php else:
+        $sym        = invSym($inv_det['currency'] ?? 'LKR');
+        $ic         = invColor($inv_det['status']);
+        $balance    = max(0, (float)$inv_det['total'] - (float)$inv_det['amount_paid']);
+        $is_overdue = $inv_det['due_date'] && $inv_det['due_date'] < date('Y-m-d') && $inv_det['status'] !== 'paid';
+        // Gracefully get sig/stamp (columns may or may not exist)
+        $sig_img = $inv_det['signature_image'] ?? null;
+        $stm_img = $inv_det['stamp_image'] ?? null;
+    ?>
+
+    <!-- Back + Action Bar -->
+    <div class="inv-action-bar">
+      <a href="client_portal.php?page=invoices" class="pbtn pbtn-ghost pbtn-sm">← All Invoices</a>
+      <a href="client_portal.php?print_invoice=<?= $inv_det['id'] ?>" target="_blank" class="pbtn pbtn-ghost pbtn-sm">🖨 Print / Save PDF</a>
+      <a href="client_portal.php?page=messages" class="pbtn pbtn-ghost pbtn-sm">💬 Ask a Question</a>
+    </div>
+
+    <!-- ═══ INVOICE DETAIL CARD ═══ -->
+    <div class="inv-detail-wrap">
+
+      <!-- Header -->
+      <div class="inv-detail-head">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+          <div>
+            <div class="inv-detail-no">TAX INVOICE · <?= ph($inv_det['invoice_no']) ?></div>
+            <div class="inv-detail-title"><?= ph($inv_det['title']) ?></div>
+            <div style="margin-top:10px">
+              <span class="sbadge" style="background:<?= $ic ?>22;color:<?= $ic ?>;font-size:12px;padding:4px 14px"><?= ucfirst($inv_det['status']) ?></span>
+              <?php if ($is_overdue): ?>
+              <span class="sbadge" style="background:var(--red-bg);color:var(--red);font-size:11px;padding:3px 10px;margin-left:6px">⚠ Overdue</span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Total Amount</div>
+            <div style="font-size:32px;font-weight:800;font-family:var(--font-d);color:var(--orange);letter-spacing:-.5px"><?= $sym ?><?= number_format((float)$inv_det['total'], 2) ?></div>
+            <?php if ($balance > 0 && $inv_det['status'] !== 'paid'): ?>
+            <div style="font-size:13px;font-weight:700;color:var(--red);margin-top:4px">Balance Due: <?= $sym ?><?= number_format($balance, 2) ?></div>
+            <?php elseif ($inv_det['status'] === 'paid'): ?>
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-top:4px">✓ Paid in Full</div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Strip -->
+      <div class="inv-meta-strip">
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">Bill To</div>
+          <div class="inv-meta-val"><?= ph($inv_det['client_name'] ?? '—') ?></div>
+          <?php if ($inv_det['company'] ?? ''): ?><div style="font-size:11px;color:var(--text3)"><?= ph($inv_det['company']) ?></div><?php endif; ?>
+        </div>
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">Issue Date</div>
+          <div class="inv-meta-val"><?= pDate($inv_det['issue_date']) ?></div>
+        </div>
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">Due Date</div>
+          <div class="inv-meta-val" style="<?= $is_overdue ? 'color:var(--red)' : '' ?>"><?= pDate($inv_det['due_date']) ?></div>
+        </div>
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">Currency</div>
+          <div class="inv-meta-val"><?= ph($inv_det['currency'] ?? 'LKR') ?></div>
+        </div>
+        <?php if ($inv_det['project_title'] ?? ''): ?>
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">Project</div>
+          <div class="inv-meta-val" style="font-size:12px"><?= ph($inv_det['project_title']) ?></div>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Invoice Body -->
+      <div class="inv-body">
+
+        <!-- Line Items Table -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Services / Items</div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
+            <table class="portal-items-table">
+              <thead>
+                <tr>
+                  <th style="width:36px">#</th>
+                  <th>Description</th>
+                  <th class="r hide-sm">Qty</th>
+                  <th class="r hide-sm">Unit Price</th>
+                  <th class="r">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+              <?php if ($inv_items): foreach ($inv_items as $idx => $it): ?>
+              <tr>
+                <td class="num"><?= $idx + 1 ?></td>
+                <td>
+                  <div style="font-weight:700;color:var(--text)"><?= ph($it['description']) ?></div>
+                  <!-- Show qty × price on mobile inline -->
+                  <div class="hide-sm" style="display:none"></div>
+                  <div style="font-size:11.5px;color:var(--text3);margin-top:2px;display:none" class="mob-item-detail">
+                    <?= rtrim(rtrim(number_format((float)$it['quantity'],2),'0'),'.') ?> × <?= $sym ?><?= number_format((float)$it['unit_price'],2) ?>
+                  </div>
+                </td>
+                <td class="r hide-sm" style="color:var(--text2)"><?= rtrim(rtrim(number_format((float)$it['quantity'],2),'0'),'.') ?></td>
+                <td class="r hide-sm" style="color:var(--text2)"><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
+                <td class="r" style="font-weight:700;color:var(--text)"><?= $sym ?><?= number_format((float)$it['amount'],2) ?></td>
+              </tr>
+              <?php endforeach; else: ?>
+              <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text3)">No line items found</td></tr>
+              <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="inv-totals-wrap">
+          <div class="inv-totals-inner">
+            <div class="inv-total-row">
+              <span class="inv-total-label">Subtotal</span>
+              <span class="inv-total-val"><?= $sym ?><?= number_format((float)$inv_det['subtotal'],2) ?></span>
+            </div>
+            <?php if ((float)($inv_det['tax_rate']??0) > 0): ?>
+            <div class="inv-total-row">
+              <span class="inv-total-label">Tax (<?= ph($inv_det['tax_rate']) ?>%)</span>
+              <span class="inv-total-val"><?= $sym ?><?= number_format((float)$inv_det['tax_amount'],2) ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ((float)($inv_det['discount']??0) > 0): ?>
+            <div class="inv-total-row" style="color:var(--green)">
+              <span>Discount</span>
+              <span>−<?= $sym ?><?= number_format((float)$inv_det['discount'],2) ?></span>
+            </div>
+            <?php endif; ?>
+            <div class="inv-total-row grand">
+              <span>Total</span>
+              <span><?= $sym ?><?= number_format((float)$inv_det['total'],2) ?></span>
+            </div>
+            <?php if ((float)($inv_det['amount_paid']??0) > 0): ?>
+            <div class="inv-total-row paid-row">
+              <span>Amount Paid</span>
+              <span><?= $sym ?><?= number_format((float)$inv_det['amount_paid'],2) ?></span>
+            </div>
+            <?php if ($inv_det['status'] !== 'paid'): ?>
+            <div class="inv-total-row balance-row">
+              <span>Balance Due</span>
+              <span><?= $sym ?><?= number_format($balance,2) ?></span>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+          </div>
+        </div>
+
+        <!-- Notes & Terms -->
+        <?php if ($inv_det['notes'] || $inv_det['terms']): ?>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px" class="upload-grid">
+          <?php if ($inv_det['notes']): ?>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Notes</div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;color:var(--text2);line-height:1.7"><?= nl2br(ph($inv_det['notes'])) ?></div>
+          </div>
+          <?php endif; ?>
+          <?php if ($inv_det['terms']): ?>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Terms & Conditions</div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--text3);line-height:1.7"><?= nl2br(ph($inv_det['terms'])) ?></div>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Signature & Stamp Block -->
+        <?php if ($sig_img || $stm_img): ?>
+        <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;align-items:flex-end;gap:24px;flex-wrap:wrap">
+          <?php if ($stm_img): ?>
+          <div style="text-align:center">
+            <img src="<?= ph($stm_img) ?>" alt="Official Stamp" style="height:80px;width:80px;object-fit:contain;opacity:.85;display:block;margin:0 auto 6px">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Official Stamp</div>
+          </div>
+          <?php endif; ?>
+          <?php if ($sig_img): ?>
+          <div style="text-align:center">
+            <img src="<?= ph($sig_img) ?>" alt="Authorised Signature" style="height:56px;max-width:160px;object-fit:contain;display:block;margin:0 auto 6px">
+            <div style="border-top:1.5px solid var(--border2);padding-top:6px;margin-top:2px">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Authorised Signature</div>
+            </div>
+          </div>
+          <?php else: ?>
+          <div style="text-align:center">
+            <div style="width:160px;height:56px;border-bottom:1.5px solid var(--border2);margin-bottom:6px"></div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Authorised Signature</div>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php else: ?>
+        <!-- Always show signature line even without image — professional standard -->
+        <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+          <div style="text-align:center">
+            <div style="width:160px;height:48px;border-bottom:1.5px solid var(--border2);margin-bottom:6px"></div>
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">Authorised Signature</div>
+          </div>
+        </div>
+        <?php endif; ?>
+
+      </div><!-- end inv-body -->
+    </div><!-- end inv-detail-wrap -->
+
+    <!-- Payment History -->
+    <?php if ($inv_payments): ?>
+    <div class="pcard">
+      <div class="pcard-hd"><div class="pcard-title">Payment History</div></div>
+      <?php
+      $pay_icons = ['bank_transfer'=>'🏦','cash'=>'💵','card'=>'💳','cheque'=>'📄','online'=>'🌐','other'=>'💰'];
+      foreach ($inv_payments as $py):
+        $pico = $pay_icons[$py['method']] ?? '💰';
+      ?>
+      <div class="pay-hist-row">
+        <div class="pay-hist-icon"><?= $pico ?></div>
+        <div style="flex:1;min-width:0">
+          <div class="pay-hist-amount"><?= $sym ?><?= number_format((float)$py['amount'], 2) ?></div>
+          <div class="pay-hist-meta">
+            <?= ph(ucfirst(str_replace('_',' ',$py['method']))) ?>
+            <?= $py['reference'] ? ' · Ref: '.ph($py['reference']) : '' ?>
+            · Recorded by <?= ph($py['recorded_by_name'] ?? 'Padak') ?>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);flex-shrink:0"><?= pDate($py['paid_at']) ?></div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Quick actions -->
+    <div class="palert palert-orange" style="margin-top:4px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">❓</span>
+        <div>
+          <div style="font-weight:700">Have a question about this invoice?</div>
+          <div style="font-size:12px;opacity:.8">Reach out to the Padak team directly</div>
+        </div>
+      </div>
+      <a href="client_portal.php?page=messages" class="pbtn pbtn-primary pbtn-sm">💬 Send Message</a>
+    </div>
+
+    <?php endif; // end $inv_det check ?>
+
+
+    <?php
+    // ══════════════════════════════════════
+    // ══ DOCUMENTS
+    // ══════════════════════════════════════
     elseif ($page === 'documents'): ?>
     <div class="page-hd" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
@@ -924,7 +1573,10 @@ button,input,select,textarea{font-family:var(--font)}
     <?php endif; ?>
 
 
-    <?php // ══════════ MESSAGES ══════════
+    <?php
+    // ══════════════════════════════════════
+    // ══ MESSAGES
+    // ══════════════════════════════════════
     elseif ($page === 'messages'): ?>
     <div class="page-hd">
       <div class="page-hd-title">Messages</div>
@@ -989,6 +1641,14 @@ button,input,select,textarea{font-family:var(--font)}
     </div><!-- end portal-content -->
   </main>
 </div><!-- end portal-wrap -->
+
+<!-- mobile: show qty×price in items table -->
+<style>
+@media(max-width:768px){
+  .mob-item-detail{display:block!important}
+}
+</style>
+
 <?php endif; // end login vs authenticated ?>
 
 <script>
@@ -1007,7 +1667,6 @@ function updateThemeIcons(theme) {
         if (el) el.textContent = icon;
     });
 }
-// Set correct icon on load
 (function(){
     var t = localStorage.getItem('padak_portal_theme') || 'dark';
     updateThemeIcons(t);

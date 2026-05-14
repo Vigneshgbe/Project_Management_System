@@ -12,6 +12,22 @@
  *  - Invoice list now navigates to portal invoice detail view (?page=invoice_detail&id=)
  *  - Professional invoice print/download layout
  *  - All existing functionalities, features, and design theme preserved intact
+ *
+ * INVOICE DISPLAY FIXES (2026):
+ *  - print_invoice: corrected table from company_settings → invoice_settings (matches invoices.php)
+ *  - print_invoice: letterhead now uses invoice_settings fields (company_name, company_address,
+ *    company_phone, company_email, company_reg_no, company_vat, company_logo, invoice_footer)
+ *    instead of nonexistent company_settings columns
+ *  - print_invoice: added full bank details section (bank_name, bank_account, bank_branch,
+ *    bank_swift) — was entirely missing
+ *  - print_invoice: sig/stamp now resolved with same fallback chain as invoices.php:
+ *    per-invoice image → global invoice_settings image → placeholder
+ *  - portal invoice_detail: sig/stamp now uses same fallback chain (per-invoice → global)
+ *  - portal invoice_detail: added "From" (company) block to meta strip
+ *  - portal invoice_detail: added bank details panel matching invoices.php style
+ *  - inv_payments query: changed JOIN → LEFT JOIN on users so payments still show
+ *    when the recording user has been deleted
+ *  - absPath() helper added to portal scope for file_exists() checks on relative paths
  */
 require_once 'config.php';
 $db = getCRMDB();
@@ -57,6 +73,30 @@ function pDate(?string $d, string $fmt='M j, Y'): string {
 }
 function invSym(string $c): string {
     return match($c) { 'USD'=>'$','EUR'=>'€','GBP'=>'£','INR'=>'₹', default=>'Rs. ' };
+}
+
+/**
+ * Resolve a relative upload path to an absolute path for file_exists() checks.
+ * Mirrors the absPath() function in invoices.php.
+ */
+function portalAbsPath(?string $rel): string {
+    return $rel ? __DIR__ . '/' . ltrim($rel, '/') : '';
+}
+
+/**
+ * Resolve signature/stamp path using the same two-tier fallback as invoices.php:
+ *   1. Per-invoice image (if the column is set and the file exists on disk)
+ *   2. Global invoice_settings image (if set and file exists on disk)
+ *   3. Empty string (caller renders placeholder)
+ */
+function portalResolveSigOrStamp(?string $perInvoice, ?string $global): string {
+    if ($perInvoice && file_exists(portalAbsPath($perInvoice))) {
+        return $perInvoice;
+    }
+    if ($global && file_exists(portalAbsPath($global))) {
+        return $global;
+    }
+    return '';
 }
 
 // ══════════════════════════════════════════
@@ -162,9 +202,16 @@ $invoices  = [];
 $messages  = [];
 $docs      = [];
 $proj_det  = null;
-$inv_det   = null;   // NEW: single invoice detail for portal
-$inv_items    = [];  // NEW: line items for portal invoice view
-$inv_payments = [];  // NEW: payment records for portal invoice view
+$inv_det   = null;
+$inv_items    = [];
+$inv_payments = [];
+
+// ── Load invoice_settings once — used for letterhead / sig / stamp fallback ──
+// (same source of truth as invoices.php)
+$inv_settings = [];
+if ($client) {
+    $inv_settings = $db->query("SELECT * FROM invoice_settings WHERE id=1")->fetch_assoc() ?? [];
+}
 
 if ($client) {
     $cid = $client['contact_id'];
@@ -218,10 +265,9 @@ if ($client) {
         }
     }
 
-    // ── NEW: Invoice detail view for client portal ──
+    // ── Invoice detail view for client portal ──
     if ($page === 'invoice_detail' && isset($_GET['id'])) {
         $inv_id_req = (int)$_GET['id'];
-        // Use prepared statement — security fix
         $stmt_inv = $db->prepare("
             SELECT i.*, c.name AS client_name, c.company, c.email AS client_email,
                    c.address, c.phone, p.title AS project_title
@@ -238,14 +284,16 @@ if ($client) {
             $inv_items = $db->query("
                 SELECT * FROM invoice_items WHERE invoice_id=$inv_id_req ORDER BY sort_order, id
             ")->fetch_all(MYSQLI_ASSOC);
+
+            // FIX: LEFT JOIN instead of JOIN so payments still show when recorded_by user is deleted
             $inv_payments = $db->query("
                 SELECT ip.*, u.name AS recorded_by_name
                 FROM invoice_payments ip
-                JOIN users u ON u.id = ip.recorded_by
+                LEFT JOIN users u ON u.id = ip.recorded_by
                 WHERE ip.invoice_id = $inv_id_req
                 ORDER BY ip.paid_at DESC
             ")->fetch_all(MYSQLI_ASSOC);
-            // Mark invoice as viewed if not already
+
             if ($inv_det['status'] === 'sent') {
                 $db->query("UPDATE invoices SET status='viewed', viewed_at=NOW() WHERE id=$inv_id_req");
                 $inv_det['status'] = 'viewed';
@@ -296,22 +344,51 @@ if (isset($_GET['dl_doc']) && $client) {
     die('File not found.');
 }
 
-// ── NEW: Invoice PDF print endpoint — serves printable invoice page ──
+// ── Invoice PDF print endpoint ──
+// FIX: was reading from 'company_settings' (nonexistent table).
+// Now reads from 'invoice_settings' (same source as invoices.php) and uses
+// the correct column names: company_name, company_address, company_phone,
+// company_email, company_reg_no, company_vat, company_logo, invoice_footer,
+// bank_name, bank_account, bank_branch, bank_swift, signature_image, stamp_image.
 if (isset($_GET['print_invoice']) && $client) {
     $cid = $client['contact_id'];
     $inv_id_p = (int)$_GET['print_invoice'];
-    $stmt_pi = $db->prepare("SELECT i.*,c.name AS client_name,c.company,c.email AS client_email,c.address,c.phone,p.title AS project_title FROM invoices i LEFT JOIN contacts c ON c.id=i.contact_id LEFT JOIN projects p ON p.id=i.project_id WHERE i.id=? AND i.contact_id=? AND i.status!='draft' LIMIT 1");
+    $stmt_pi = $db->prepare(
+        "SELECT i.*, c.name AS client_name, c.company, c.email AS client_email,
+                c.address, c.phone, p.title AS project_title
+         FROM invoices i
+         LEFT JOIN contacts c ON c.id=i.contact_id
+         LEFT JOIN projects p ON p.id=i.project_id
+         WHERE i.id=? AND i.contact_id=? AND i.status!='draft'
+         LIMIT 1"
+    );
     $stmt_pi->bind_param("ii",$inv_id_p,$cid);
     $stmt_pi->execute();
     $pi = $stmt_pi->get_result()->fetch_assoc();
     if ($pi) {
         $pi_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id=$inv_id_p ORDER BY sort_order,id")->fetch_all(MYSQLI_ASSOC);
-        $pi_pays  = $db->query("SELECT * FROM invoice_payments WHERE invoice_id=$inv_id_p ORDER BY paid_at DESC")->fetch_all(MYSQLI_ASSOC);
-        // Fetch company settings for letterhead
-        $co = $db->query("SELECT * FROM company_settings LIMIT 1")->fetch_assoc() ?? [];
-        // Fetch signature/stamp (from invoices table extended columns — gracefully skip if columns absent)
-        $sig_path = $pi['signature_image'] ?? null;
-        $stm_path = $pi['stamp_image'] ?? null;
+        // FIX: LEFT JOIN so payment history still renders when the staff user was deleted
+        $pi_pays = $db->query(
+            "SELECT ip.*, u.name AS recorded_by_name
+             FROM invoice_payments ip
+             LEFT JOIN users u ON u.id = ip.recorded_by
+             WHERE ip.invoice_id = $inv_id_p
+             ORDER BY ip.paid_at DESC"
+        )->fetch_all(MYSQLI_ASSOC);
+
+        // FIX: correct table — invoice_settings, not company_settings
+        $co = $db->query("SELECT * FROM invoice_settings WHERE id=1")->fetch_assoc() ?? [];
+
+        // FIX: resolve sig/stamp with same two-tier fallback as invoices.php
+        $sig_path = portalResolveSigOrStamp(
+            $pi['signature_image'] ?? null,
+            $co['signature_image'] ?? null
+        );
+        $stm_path = portalResolveSigOrStamp(
+            $pi['stamp_image'] ?? null,
+            $co['stamp_image'] ?? null
+        );
+
         render_printable_invoice($pi, $pi_items, $pi_pays, $co, $sig_path, $stm_path);
         exit;
     }
@@ -321,12 +398,23 @@ if (isset($_GET['print_invoice']) && $client) {
 // ══════════════════════════════════════════
 // PRINTABLE INVOICE RENDERER (standalone page)
 // ══════════════════════════════════════════
-function render_printable_invoice(array $inv, array $items, array $payments, array $co, ?string $sig, ?string $stm): void {
+// FIX SUMMARY for render_printable_invoice():
+//  - Letterhead now uses invoice_settings columns (company_name, company_address,
+//    company_phone, company_email, company_reg_no, company_vat, company_logo)
+//    instead of the nonexistent company_settings columns (logo, address, phone,
+//    email, website, gst_no, tax_no, footer_note)
+//  - Added bank details section (bank_name, bank_account, bank_branch, bank_swift)
+//    which was entirely absent from the original
+//  - Footer uses invoice_settings.invoice_footer column
+//  - Signature/stamp paths are already resolved by the caller via portalResolveSigOrStamp()
+function render_printable_invoice(array $inv, array $items, array $payments, array $co, string $sig, string $stm): void {
     $sym = match($inv['currency'] ?? 'LKR') { 'USD'=>'$','EUR'=>'€','GBP'=>'£','INR'=>'₹', default=>'Rs. ' };
     $sc  = match($inv['status'] ?? '') {
         'paid'=>'#10b981','partial'=>'#f59e0b','overdue'=>'#ef4444',
         'sent'=>'#6366f1','viewed'=>'#8b5cf6', default=>'#94a3b8'
     };
+    $is_overdue = !empty($inv['due_date']) && $inv['due_date'] < date('Y-m-d') && $inv['status'] !== 'paid';
+    $balance    = max(0, (float)$inv['total'] - (float)$inv['amount_paid']);
     ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -336,226 +424,375 @@ function render_printable_invoice(array $inv, array $items, array $payments, arr
 *{box-sizing:border-box;margin:0;padding:0}
 @page{size:A4;margin:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px;line-height:1.5}
-.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 16mm 14mm;background:#fff;position:relative}
-.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #f97316}
-.inv-company-name{font-size:24px;font-weight:800;color:#1a1a2e;letter-spacing:-.5px;margin-bottom:4px}
-.inv-company-detail{font-size:12px;color:#555;line-height:1.7}
-.inv-doc-block{text-align:right}
-.inv-doc-label{font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
-.inv-doc-no{font-size:22px;font-weight:800;color:#1a1a2e;letter-spacing:-.3px;margin-bottom:8px}
-.inv-status-badge{display:inline-block;padding:4px 14px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:<?= $sc ?>22;color:<?= $sc ?>;border:1.5px solid <?= $sc ?>55}
-.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
-.inv-party-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:4px}
-.inv-party-name{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px}
-.inv-party-detail{font-size:12px;color:#555;line-height:1.7}
-.inv-dates{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:14px 16px}
-.inv-date-box{}
-.inv-date-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
-.inv-date-val{font-size:13px;font-weight:700;color:#1a1a2e}
-table.items{width:100%;border-collapse:collapse;margin-bottom:0}
-table.items thead tr{background:#1a1a2e;color:#fff}
-table.items thead th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-align:left}
-table.items thead th:nth-child(2),table.items thead th:nth-child(3),table.items thead th:nth-child(4){text-align:right}
-table.items tbody tr{border-bottom:1px solid #f0f0f0}
-table.items tbody tr:nth-child(even){background:#fafafa}
-table.items tbody td{padding:11px 14px;font-size:13px;color:#333;vertical-align:top}
-table.items tbody td:nth-child(2),table.items tbody td:nth-child(3),table.items tbody td:nth-child(4){text-align:right}
-table.items tfoot tr{background:#fff3ea}
-table.items tfoot td{padding:8px 14px;font-size:13px;font-weight:600}
-table.items tfoot td:last-child{text-align:right}
-table.items tfoot tr.grand td{font-size:15px;font-weight:800;color:#f97316;padding:12px 14px;border-top:2px solid #f97316}
-table.items tfoot tr.paid-row td{color:#10b981}
-table.items tfoot tr.due-row td{color:#ef4444;font-size:14px}
-.inv-bottom{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
-.inv-notes-label{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-.inv-notes-body{font-size:12px;color:#555;line-height:1.7;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:12px}
-.inv-sign-area{display:flex;gap:20px;justify-content:flex-end;margin-top:40px;align-items:flex-end}
-.inv-sign-block{text-align:center;min-width:130px}
-.inv-sign-img{height:64px;object-fit:contain;display:block;margin:0 auto 6px}
-.inv-sign-placeholder{height:64px;border-bottom:2px solid #ccc;margin-bottom:6px;width:130px}
-.inv-sign-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.inv-stamp-img{height:80px;width:80px;object-fit:contain;opacity:.85}
-.inv-footer{margin-top:28px;padding-top:14px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#aaa;line-height:1.7}
-.payments-section{margin-top:20px}
-.payments-title{font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.pay-row-print{display:flex;justify-content:space-between;padding:7px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;margin-bottom:5px;font-size:12px}
+.page{width:210mm;min-height:297mm;margin:0 auto;padding:0 0 14mm;background:#fff;position:relative}
+
+/* ── Header band — mirrors invoices.php dark band ── */
+.inv-hdr-band{background:#0f1923;padding:28px 36px 24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:0}
+.inv-logo-img{max-height:40px;max-width:140px;object-fit:contain;display:block;margin-bottom:10px;border-radius:3px}
+.inv-logo-fb{width:38px;height:38px;border-radius:7px;background:#e86a2b;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;margin-bottom:10px}
+.inv-co-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:2px}
+.inv-co-tag{font-size:10px;color:rgba(255,255,255,.38);letter-spacing:.04em;margin-bottom:8px}
+.inv-co-det{font-size:11px;color:rgba(255,255,255,.48);line-height:1.85}
+.inv-no-block{text-align:right;flex-shrink:0}
+.inv-doc-type{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:7px}
+.inv-no-display{font-size:18px;font-weight:600;color:#e86a2b;letter-spacing:-.2px;margin-bottom:10px;font-family:'Courier New',monospace}
+.inv-status-badge{display:inline-block;padding:3px 12px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:<?= $sc ?>22;color:<?= $sc ?>;border:1px solid <?= $sc ?>55;margin-bottom:8px}
+.inv-amount-hero{font-size:26px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:5px}
+.inv-balance-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;background:rgba(232,106,43,.18);border:.5px solid rgba(232,106,43,.4);color:#e86a2b;font-size:10.5px;font-weight:500}
+.inv-paid-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.15);border:.5px solid rgba(16,185,129,.35);color:#34d399;font-size:10.5px;font-weight:600}
+
+/* ── Body ── */
+.inv-body{padding:28px 36px}
+
+/* Parties */
+.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid #e8eaef}
+.inv-party-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e86a2b;margin-bottom:7px}
+.inv-party-nm{font-size:13.5px;font-weight:700;color:#1a1a2e;margin-bottom:2px}
+.inv-party-co{font-size:12px;font-weight:500;color:#444;margin-bottom:2px}
+.inv-party-det{font-size:11.5px;color:#666;line-height:1.75}
+
+/* Meta strip */
+.inv-meta-strip{display:flex;border:1px solid #e8eaef;border-radius:7px;overflow:hidden;margin-bottom:24px}
+.inv-meta-cell{flex:1;padding:10px 14px;border-right:1px solid #e8eaef}
+.inv-meta-cell:last-child{border-right:none}
+.inv-meta-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:3px}
+.inv-meta-val{font-size:12.5px;font-weight:600;color:#1a1a2e}
+.inv-meta-val.overdue{color:#ef4444}
+
+/* Items table */
+.inv-items-tbl{width:100%;border-collapse:collapse;border:1px solid #e8eaef;border-radius:7px;overflow:hidden;margin-bottom:18px}
+.inv-items-tbl thead tr{background:#1a1a2e}
+.inv-items-tbl thead th{padding:9px 13px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.8);text-align:left;border-bottom:none}
+.inv-items-tbl thead th.r{text-align:right}
+.inv-items-tbl tbody tr{border-bottom:1px solid #f0f0f2}
+.inv-items-tbl tbody tr:nth-child(even){background:#fafafa}
+.inv-items-tbl tbody tr:last-child{border-bottom:none}
+.inv-items-tbl tbody td{padding:11px 13px;font-size:12.5px;color:#333;vertical-align:top}
+.inv-items-tbl tbody td.r{text-align:right}
+.inv-items-tbl tbody td.mono{font-family:'Courier New',monospace;font-size:12px;color:#666}
+.inv-items-tbl tbody td.mono.r{color:#1a1a2e;font-weight:600}
+.inv-items-tbl tbody td.idx{font-family:'Courier New',monospace;font-size:11px;color:#aaa}
+
+/* Totals */
+.inv-totals-wrap{display:flex;justify-content:flex-end;margin-bottom:22px}
+.inv-totals-inner{width:260px}
+.inv-total-line{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid #f0f0f2}
+.inv-total-line:last-child{border-bottom:none}
+.inv-total-line .tl{color:#666}
+.inv-total-line .tv{font-family:'Courier New',monospace;font-size:12px;font-weight:600;color:#1a1a2e}
+.inv-total-line.disc .tv{color:#10b981}
+.inv-total-grand{display:flex;justify-content:space-between;align-items:center;background:#0f1923;border-radius:7px;padding:12px 14px;margin-top:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.inv-total-grand .tl{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase}
+.inv-total-grand .tv{font-size:17px;font-weight:700;color:#fff;letter-spacing:-.3px}
+
+/* Bank details */
+.inv-bank-box{background:#f8f9fc;border:1px solid #e8eaef;border-radius:7px;padding:14px 18px;margin-bottom:20px}
+.inv-bank-title{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:10px}
+.inv-bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
+.inv-bank-row{display:flex;gap:8px;font-size:11.5px;align-items:baseline}
+.inv-bank-lbl{color:#888;min-width:72px;flex-shrink:0}
+.inv-bank-val{color:#1a1a2e;font-weight:600;font-family:'Courier New',monospace;font-size:11px}
+
+/* Notes / Terms */
+.inv-note-box{padding:12px 16px;background:#f8f9fc;border-radius:5px;margin-bottom:10px}
+.inv-note-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#888;margin-bottom:5px}
+.inv-note-body{font-size:12px;color:#444;line-height:1.75}
+.inv-terms-box{padding:12px 16px;background:#f8f9fc;border-left:2.5px solid #e86a2b;border-radius:0 5px 5px 0;margin-bottom:24px}
+
+/* Signature section */
+.inv-sign-section{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid #e8eaef;padding-top:24px;margin-bottom:0}
+.inv-sign-block{text-align:center;padding:0 20px}
+.inv-sign-block:first-child{border-right:1px solid #e8eaef}
+.inv-sign-area{height:72px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:12px}
+.inv-sign-img{max-height:64px;max-width:160px;object-fit:contain;display:block}
+.inv-stamp-img{max-height:70px;max-width:70px;object-fit:contain;display:block}
+.inv-sign-placeholder{width:160px;height:1px;background:#ccc}
+.inv-stamp-placeholder{width:68px;height:68px;border:1.5px dashed #ccc;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#aaa}
+.inv-sign-role{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:4px}
+.inv-sign-nm{font-size:12px;font-weight:600;color:#1a1a2e}
+
+/* Payment history */
+.pay-row-print{display:flex;justify-content:space-between;padding:7px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;margin-bottom:5px;font-size:11.5px}
 .pay-amount{font-weight:700;color:#10b981}
+.pay-section-title{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;margin-bottom:8px;margin-top:20px}
+
+/* Footer band */
+.inv-footer-band{background:#f8f9fc;border-top:1px solid #e8eaef;padding:11px 36px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:24px}
+.inv-footer-msg{font-size:11.5px;color:#666}
+.inv-footer-gen{font-size:10px;color:#aaa;font-family:'Courier New',monospace}
+
 @media print{
   .no-print{display:none!important}
-  body{margin:0}
-  .page{padding:12mm 14mm;margin:0}
+  body,html{margin:0;padding:0}
+  .page{padding:0}
+  .inv-hdr-band{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .inv-total-grand{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .inv-items-tbl thead tr{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .inv-sign-section{page-break-inside:avoid}
 }
 </style>
 </head>
 <body>
 <div class="page">
-  <!-- Print bar (hidden when printing) -->
-  <div class="no-print" style="background:#1a1a2e;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin:-18mm -16mm 18mm;position:relative;z-index:10">
+
+  <!-- Print toolbar (hidden when printing) -->
+  <div class="no-print" style="background:#0f1923;color:#fff;padding:11px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px">
     <div style="font-size:13px;font-weight:600">Invoice <?= ph($inv['invoice_no']) ?> — Printable View</div>
     <div style="display:flex;gap:10px">
-      <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print / Save PDF</button>
-      <a href="client_portal.php?page=invoice_detail&id=<?= $inv['id'] ?>" style="background:#333;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none">← Back</a>
+      <button onclick="window.print()" style="background:#e86a2b;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print / Save PDF</button>
+      <a href="client_portal.php?page=invoice_detail&id=<?= $inv['id'] ?>" style="background:#1e2538;color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px;text-decoration:none">← Back</a>
     </div>
   </div>
 
-  <!-- LETTERHEAD -->
-  <div class="inv-header">
+  <!-- ══ DARK HEADER BAND ══ -->
+  <div class="inv-hdr-band">
+    <!-- Left: company identity (from invoice_settings) -->
     <div>
-      <?php if (!empty($co['logo'])): ?>
-      <img src="<?= ph($co['logo']) ?>" alt="Logo" style="height:48px;object-fit:contain;margin-bottom:10px;display:block">
+      <?php
+      $logo = $co['company_logo'] ?? '';
+      if ($logo && file_exists(portalAbsPath($logo))): ?>
+      <img src="<?= ph($logo) ?>" class="inv-logo-img" alt="<?= ph($co['company_name'] ?? 'Company') ?> logo">
+      <?php else: ?>
+      <div class="inv-logo-fb"><?= strtoupper(substr($co['company_name'] ?? 'P', 0, 1)) ?></div>
       <?php endif; ?>
-      <div class="inv-company-name"><?= ph($co['company_name'] ?? 'Padak') ?></div>
-      <div class="inv-company-detail">
-        <?php if ($co['address'] ?? ''): ?><?= nl2br(ph($co['address'])) ?><br><?php endif; ?>
-        <?php if ($co['phone'] ?? ''): ?>📞 <?= ph($co['phone']) ?><br><?php endif; ?>
-        <?php if ($co['email'] ?? ''): ?>✉ <?= ph($co['email']) ?><br><?php endif; ?>
-        <?php if ($co['website'] ?? ''): ?>🌐 <?= ph($co['website']) ?><?php endif; ?>
+      <div class="inv-co-name"><?= ph($co['company_name'] ?? 'Padak') ?></div>
+      <?php if (!empty($co['company_tagline'])): ?>
+      <div class="inv-co-tag"><?= ph($co['company_tagline']) ?></div>
+      <?php endif; ?>
+      <div class="inv-co-det">
+        <?php if (!empty($co['company_address'])): echo nl2br(ph($co['company_address'])).'<br>'; endif; ?>
+        <?php if (!empty($co['company_phone'])): echo ph($co['company_phone']); endif; ?>
+        <?php if (!empty($co['company_phone']) && !empty($co['company_email'])): echo ' &nbsp;·&nbsp; '; endif; ?>
+        <?php if (!empty($co['company_email'])): echo ph($co['company_email']).'<br>'; endif; ?>
+        <?php if (!empty($co['company_reg_no'])): echo 'Reg: '.ph($co['company_reg_no']); endif; ?>
+        <?php if (!empty($co['company_reg_no']) && !empty($co['company_vat'])): echo ' &nbsp;·&nbsp; '; endif; ?>
+        <?php if (!empty($co['company_vat'])): echo 'VAT: '.ph($co['company_vat']); endif; ?>
       </div>
     </div>
-    <div class="inv-doc-block">
-      <div class="inv-doc-label">Tax Invoice</div>
-      <div class="inv-doc-no"><?= ph($inv['invoice_no']) ?></div>
-      <div><span class="inv-status-badge"><?= ucfirst($inv['status']) ?></span></div>
-      <?php if ($co['gst_no'] ?? $co['tax_no'] ?? ''): ?>
-      <div style="font-size:11px;color:#999;margin-top:8px">GST/Tax No: <?= ph($co['gst_no'] ?? $co['tax_no'] ?? '') ?></div>
+    <!-- Right: invoice identity -->
+    <div class="inv-no-block">
+      <div class="inv-doc-type">Tax Invoice</div>
+      <div class="inv-no-display"><?= ph($inv['invoice_no']) ?></div>
+      <!-- <div style="margin-bottom:8px"><span class="inv-status-badge"><?= ucfirst($inv['status']) ?></span></div> -->
+      <?php if ($is_overdue): ?>
+      <div style="margin-bottom:8px;font-size:10px;font-weight:700;color:#f87171;letter-spacing:.04em">⚠ OVERDUE</div>
+      <?php endif; ?>
+      <div class="inv-amount-hero"><?= $sym ?><?= number_format((float)$inv['total'],2) ?></div>
+      <?php if ($balance > 0 && $inv['status'] !== 'paid'): ?>
+      <div><span class="inv-balance-pill">Balance Due: <?= $sym ?><?= number_format($balance,2) ?></span></div>
+      <?php elseif ($inv['status'] === 'paid'): ?>
+      <div><span class="inv-paid-pill">✓ Paid in Full</span></div>
       <?php endif; ?>
     </div>
   </div>
 
-  <!-- BILL TO / BILL FROM / DATES -->
-  <div class="inv-parties">
-    <div>
-      <div class="inv-party-label">Bill To</div>
-      <div class="inv-party-name"><?= ph($inv['client_name'] ?? '—') ?></div>
-      <div class="inv-party-detail">
-        <?php if ($inv['company'] ?? ''): ?><?= ph($inv['company']) ?><br><?php endif; ?>
-        <?php if ($inv['client_email'] ?? ''): ?><?= ph($inv['client_email']) ?><br><?php endif; ?>
-        <?php if ($inv['phone'] ?? ''): ?><?= ph($inv['phone']) ?><br><?php endif; ?>
-        <?php if ($inv['address'] ?? ''): ?><?= nl2br(ph($inv['address'])) ?><?php endif; ?>
+  <!-- ══ DOCUMENT BODY ══ -->
+  <div class="inv-body">
+
+    <!-- Bill To / Project Reference -->
+    <div class="inv-parties">
+      <div>
+        <div class="inv-party-lbl">From</div>
+        <div class="inv-party-nm"><?= ph($co['company_name'] ?? 'Padak') ?></div>
+        <?php if (!empty($co['company_address'])): ?><div class="inv-party-det"><?= nl2br(ph($co['company_address'])) ?></div><?php endif; ?>
+        <?php if (!empty($co['company_email'])): ?><div class="inv-party-det"><?= ph($co['company_email']) ?></div><?php endif; ?>
+        <?php if (!empty($co['company_reg_no'])): ?><div class="inv-party-det">Reg: <?= ph($co['company_reg_no']) ?></div><?php endif; ?>
+      </div>
+      <div>
+        <div class="inv-party-lbl">Bill To</div>
+        <div class="inv-party-nm"><?= ph($inv['client_name'] ?? '—') ?></div>
+        <?php if ($inv['company'] ?? ''): ?><div class="inv-party-co"><?= ph($inv['company']) ?></div><?php endif; ?>
+        <?php if ($inv['client_email'] ?? ''): ?><div class="inv-party-det"><?= ph($inv['client_email']) ?></div><?php endif; ?>
+        <?php if ($inv['phone'] ?? ''): ?><div class="inv-party-det"><?= ph($inv['phone']) ?></div><?php endif; ?>
+        <?php if ($inv['address'] ?? ''): ?><div class="inv-party-det"><?= nl2br(ph($inv['address'])) ?></div><?php endif; ?>
       </div>
     </div>
-    <div>
+
+    <!-- Horizontal meta strip -->
+    <div class="inv-meta-strip">
+      <div class="inv-meta-cell">
+        <div class="inv-meta-lbl">Invoice No</div>
+        <div class="inv-meta-val" style="font-family:'Courier New',monospace;font-size:11.5px"><?= ph($inv['invoice_no']) ?></div>
+      </div>
+      <div class="inv-meta-cell">
+        <div class="inv-meta-lbl">Issue Date</div>
+        <div class="inv-meta-val"><?= pDate($inv['issue_date']) ?></div>
+      </div>
+      <div class="inv-meta-cell">
+        <div class="inv-meta-lbl">Due Date</div>
+        <div class="inv-meta-val <?= $is_overdue ? 'overdue' : '' ?>"><?= $inv['due_date'] ? pDate($inv['due_date']) : 'On Receipt' ?></div>
+      </div>
+      <div class="inv-meta-cell">
+        <div class="inv-meta-lbl">Currency</div>
+        <div class="inv-meta-val"><?= ph($inv['currency'] ?? 'LKR') ?></div>
+      </div>
       <?php if ($inv['project_title'] ?? ''): ?>
-      <div class="inv-party-label">Project Reference</div>
-      <div class="inv-party-name" style="font-size:13px"><?= ph($inv['project_title']) ?></div>
+      <div class="inv-meta-cell">
+        <div class="inv-meta-lbl">Project</div>
+        <div class="inv-meta-val" style="font-size:11.5px"><?= ph($inv['project_title']) ?></div>
+      </div>
       <?php endif; ?>
     </div>
-  </div>
 
-  <div class="inv-dates">
-    <div class="inv-date-box">
-      <div class="inv-date-label">Issue Date</div>
-      <div class="inv-date-val"><?= pDate($inv['issue_date']) ?></div>
-    </div>
-    <div class="inv-date-box">
-      <div class="inv-date-label">Due Date</div>
-      <div class="inv-date-val" style="<?= ($inv['due_date']&&$inv['due_date']<date('Y-m-d')&&$inv['status']!='paid')?'color:#ef4444':'' ?>"><?= pDate($inv['due_date']) ?></div>
-    </div>
-    <div class="inv-date-box">
-      <div class="inv-date-label">Currency</div>
-      <div class="inv-date-val"><?= ph($inv['currency'] ?? 'LKR') ?></div>
-    </div>
-  </div>
-
-  <!-- LINE ITEMS TABLE -->
-  <table class="items">
-    <thead>
+    <!-- Line items -->
+    <table class="inv-items-tbl">
+      <thead>
+        <tr>
+          <th style="width:30px">#</th>
+          <th>Description</th>
+          <th class="r" style="width:60px">Qty</th>
+          <th class="r" style="width:100px">Unit Price</th>
+          <th class="r" style="width:100px">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php if ($items): foreach ($items as $idx => $it): ?>
       <tr>
-        <th>#</th>
-        <th>Description</th>
-        <th>Qty</th>
-        <th>Unit Price</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php if ($items): foreach ($items as $i => $it): ?>
-      <tr>
-        <td style="color:#aaa;font-size:12px"><?= $i+1 ?></td>
-        <td><strong><?= ph($it['description']) ?></strong></td>
-        <td><?= rtrim(rtrim(number_format((float)$it['quantity'],2),'0'),'.') ?></td>
-        <td><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
-        <td><strong><?= $sym ?><?= number_format((float)$it['amount'],2) ?></strong></td>
+        <td class="idx"><?= str_pad($idx+1,2,'0',STR_PAD_LEFT) ?></td>
+        <td><?= ph($it['description']) ?></td>
+        <td class="mono r"><?= rtrim(rtrim(number_format((float)$it['quantity'],2,'.',','),'0'),'.') ?></td>
+        <td class="mono r"><?= $sym ?><?= number_format((float)$it['unit_price'],2) ?></td>
+        <td class="mono r" style="font-weight:700"><?= $sym ?><?= number_format((float)$it['amount'],2) ?></td>
       </tr>
       <?php endforeach; else: ?>
-      <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">No line items</td></tr>
+      <tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa">No line items</td></tr>
       <?php endif; ?>
-    </tbody>
-    <tfoot>
-      <tr><td colspan="4">Subtotal</td><td><?= $sym ?><?= number_format((float)$inv['subtotal'],2) ?></td></tr>
-      <?php if ((float)($inv['tax_rate']??0) > 0): ?>
-      <tr><td colspan="4">Tax (<?= ph($inv['tax_rate']) ?>%)</td><td><?= $sym ?><?= number_format((float)$inv['tax_amount'],2) ?></td></tr>
-      <?php endif; ?>
-      <?php if ((float)($inv['discount']??0) > 0): ?>
-      <tr style="color:#10b981"><td colspan="4">Discount</td><td>−<?= $sym ?><?= number_format((float)$inv['discount'],2) ?></td></tr>
-      <?php endif; ?>
-      <tr class="grand"><td colspan="4">Total Due</td><td><?= $sym ?><?= number_format((float)$inv['total'],2) ?></td></tr>
-      <?php if ((float)($inv['amount_paid']??0) > 0): ?>
-      <tr class="paid-row"><td colspan="4">Amount Paid</td><td><?= $sym ?><?= number_format((float)$inv['amount_paid'],2) ?></td></tr>
-      <?php if ($inv['status'] !== 'paid'): ?>
-      <tr class="due-row"><td colspan="4"><strong>Balance Due</strong></td><td><strong><?= $sym ?><?= number_format(max(0,(float)$inv['total']-(float)$inv['amount_paid']),2) ?></strong></td></tr>
-      <?php endif; ?>
-      <?php endif; ?>
-    </tfoot>
-  </table>
+      </tbody>
+    </table>
 
-  <!-- PAYMENT HISTORY (if any) -->
-  <?php if ($payments): ?>
-  <div class="payments-section">
-    <div class="payments-title">Payment History</div>
+    <!-- Totals -->
+    <div class="inv-totals-wrap">
+      <div class="inv-totals-inner">
+        <div class="inv-total-line">
+          <span class="tl">Subtotal</span>
+          <span class="tv"><?= $sym ?><?= number_format((float)$inv['subtotal'],2) ?></span>
+        </div>
+        <?php if ((float)($inv['tax_rate']??0) > 0): ?>
+        <div class="inv-total-line">
+          <span class="tl">Tax (<?= ph($inv['tax_rate']) ?>%)</span>
+          <span class="tv"><?= $sym ?><?= number_format((float)$inv['tax_amount'],2) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ((float)($inv['discount']??0) > 0): ?>
+        <div class="inv-total-line disc">
+          <span class="tl">Discount</span>
+          <span class="tv">−<?= $sym ?><?= number_format((float)$inv['discount'],2) ?></span>
+        </div>
+        <?php endif; ?>
+        <div class="inv-total-grand">
+          <span class="tl">Total Due</span>
+          <span class="tv"><?= $sym ?><?= number_format((float)$inv['total'],2) ?></span>
+        </div>
+        <?php if ((float)($inv['amount_paid']??0) > 0): ?>
+        <div class="inv-total-line" style="margin-top:8px;color:#10b981">
+          <span class="tl" style="color:#10b981">Amount Paid</span>
+          <span class="tv" style="color:#10b981"><?= $sym ?><?= number_format((float)$inv['amount_paid'],2) ?></span>
+        </div>
+        <?php if ($inv['status'] !== 'paid'): ?>
+        <div class="inv-total-line" style="color:#ef4444">
+          <span class="tl" style="color:#ef4444;font-weight:700">Balance Due</span>
+          <span class="tv" style="color:#ef4444"><?= $sym ?><?= number_format($balance,2) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Bank details — FIX: this entire section was missing in the original -->
+    <?php if (!empty($co['bank_name']) || !empty($co['bank_account'])): ?>
+    <div class="inv-bank-box">
+      <div class="inv-bank-title">Payment &amp; Bank Details</div>
+      <div class="inv-bank-grid">
+        <?php foreach ([
+          ['Bank Name',   $co['bank_name']    ?? ''],
+          ['Account No',  $co['bank_account'] ?? ''],
+          ['Branch',      $co['bank_branch']  ?? ''],
+          ['SWIFT / BIC', $co['bank_swift']   ?? ''],
+        ] as [$lbl,$val]): if (!$val) continue; ?>
+        <div class="inv-bank-row">
+          <span class="inv-bank-lbl"><?= $lbl ?></span>
+          <span class="inv-bank-val"><?= ph($val) ?></span>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Payment history -->
+    <?php if ($payments): ?>
+    <div class="pay-section-title">Payment History</div>
     <?php foreach ($payments as $py): ?>
     <div class="pay-row-print">
-      <span><?= pDate($py['paid_at']) ?> · <?= ph(ucfirst(str_replace('_',' ',$py['method']))) ?><?= $py['reference'] ? ' · Ref: '.ph($py['reference']) : '' ?></span>
+      <span>
+        <?= pDate($py['paid_at']) ?>
+        &nbsp;·&nbsp; <?= ph(ucfirst(str_replace('_',' ',$py['method']))) ?>
+        <?= $py['reference'] ? ' &nbsp;·&nbsp; Ref: '.ph($py['reference']) : '' ?>
+        <?php if (!empty($py['recorded_by_name'])): ?> &nbsp;·&nbsp; <?= ph($py['recorded_by_name']) ?><?php endif; ?>
+      </span>
       <span class="pay-amount"><?= $sym ?><?= number_format((float)$py['amount'],2) ?></span>
     </div>
     <?php endforeach; ?>
-  </div>
-  <?php endif; ?>
+    <?php endif; ?>
 
-  <!-- NOTES & TERMS -->
-  <div class="inv-bottom">
-    <div>
-      <?php if ($inv['notes'] ?? ''): ?>
-      <div class="inv-notes-label">Notes</div>
-      <div class="inv-notes-body"><?= nl2br(ph($inv['notes'])) ?></div>
-      <?php endif; ?>
-      <?php if ($inv['terms'] ?? ''): ?>
-      <div class="inv-notes-label" style="margin-top:12px">Terms & Conditions</div>
-      <div class="inv-notes-body" style="color:#777"><?= nl2br(ph($inv['terms'])) ?></div>
-      <?php endif; ?>
-    </div>
-    <div></div>
-  </div>
-
-  <!-- SIGNATURE & STAMP -->
-  <div class="inv-sign-area">
-    <?php if ($stm): ?>
-    <div class="inv-sign-block">
-      <img src="<?= ph($stm) ?>" alt="Stamp" class="inv-stamp-img">
-      <div class="inv-sign-label">Official Stamp</div>
+    <!-- Notes -->
+    <?php if ($inv['notes'] ?? ''): ?>
+    <div class="inv-note-box" style="margin-top:18px">
+      <div class="inv-note-lbl">Notes</div>
+      <div class="inv-note-body"><?= nl2br(ph($inv['notes'])) ?></div>
     </div>
     <?php endif; ?>
-    <div class="inv-sign-block">
-      <?php if ($sig): ?>
-      <img src="<?= ph($sig) ?>" alt="Signature" class="inv-sign-img">
+
+    <!-- Terms -->
+    <?php if ($inv['terms'] ?? ''): ?>
+    <div class="inv-terms-box" style="margin-top:10px">
+      <div class="inv-note-lbl">Terms &amp; Conditions</div>
+      <div class="inv-note-body" style="color:#555"><?= nl2br(ph($inv['terms'])) ?></div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Signature & Stamp — mirrors the two-column layout of invoices.php -->
+    <div class="inv-sign-section">
+      <div class="inv-sign-block">
+        <div class="inv-sign-area">
+          <?php if ($sig && file_exists(portalAbsPath($sig))): ?>
+          <img src="<?= ph($sig) ?>" class="inv-sign-img" alt="Authorised Signature">
+          <?php else: ?>
+          <div class="inv-sign-placeholder"></div>
+          <?php endif; ?>
+        </div>
+        <div class="inv-sign-role">Authorised Signatory</div>
+        <div class="inv-sign-nm"><?= ph($co['company_name'] ?? 'Padak') ?></div>
+      </div>
+      <div class="inv-sign-block">
+        <div class="inv-sign-area">
+          <?php if ($stm && file_exists(portalAbsPath($stm))): ?>
+          <img src="<?= ph($stm) ?>" class="inv-stamp-img" alt="Company Stamp">
+          <?php else: ?>
+          <div class="inv-stamp-placeholder"><span>Stamp</span></div>
+          <?php endif; ?>
+        </div>
+        <div class="inv-sign-role">Company Stamp</div>
+        <div class="inv-sign-nm">
+          <?= !empty($co['company_reg_no']) ? 'Reg: '.ph($co['company_reg_no']) : ph($co['company_name'] ?? '') ?>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end inv-body -->
+
+  <!-- Footer band — FIX: uses invoice_settings.invoice_footer, not company_settings.footer_note -->
+  <div class="inv-footer-band">
+    <div class="inv-footer-msg">
+      <?php if (!empty($co['invoice_footer'])): ?>
+      <?= ph($co['invoice_footer']) ?>
       <?php else: ?>
-      <div class="inv-sign-placeholder"></div>
+      Thank you for your business. Please make payment by the due date.
       <?php endif; ?>
-      <div class="inv-sign-label">Authorised Signature</div>
-      <div style="font-size:12px;color:#333;margin-top:3px;font-weight:600"><?= ph($co['company_name'] ?? 'Padak') ?></div>
     </div>
+    <div class="inv-footer-gen">Computer-generated · <?= ph($inv['invoice_no']) ?> · <?= date('Y') ?></div>
   </div>
 
-  <!-- FOOTER -->
-  <div class="inv-footer">
-    <?php if ($co['footer_note'] ?? ''): ?>
-    <?= ph($co['footer_note']) ?><br>
-    <?php else: ?>
-    Thank you for your business. Please make payment by the due date.<br>
-    <?php endif; ?>
-    Generated by Padak CRM · <?= ph($inv['invoice_no']) ?> · <?= date('M j, Y') ?>
-  </div>
-</div>
+</div><!-- end .page -->
 </body>
 </html><?php
 }
@@ -704,7 +941,7 @@ button,input,select,textarea{font-family:var(--font)}
 .inv-dates{font-size:11.5px;color:var(--text3)}
 .inv-amount{font-size:16px;font-weight:800;color:var(--text);font-family:var(--font-d);text-align:right;min-width:100px}
 
-/* ── NEW: INVOICE DETAIL (portal) ── */
+/* ── INVOICE DETAIL (portal) ── */
 .inv-detail-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:16px}
 .inv-detail-head{padding:28px 28px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%)}
 .inv-detail-title{font-family:var(--font-d);font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-.3px}
@@ -737,6 +974,14 @@ button,input,select,textarea{font-family:var(--font)}
 .inv-total-row.balance-row{color:var(--red);font-weight:800;font-size:14px}
 .inv-total-label{color:var(--text2)}
 .inv-total-val{font-weight:700}
+
+/* Bank details (portal detail view) */
+.inv-bank-panel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;margin-top:20px}
+.inv-bank-panel-title{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.inv-bank-panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+.inv-bank-panel-row{display:flex;gap:8px;font-size:12.5px;align-items:baseline}
+.inv-bank-panel-lbl{color:var(--text3);min-width:80px;flex-shrink:0}
+.inv-bank-panel-val{color:var(--text);font-weight:600}
 
 /* Payment history (portal) */
 .pay-hist-row{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:7px}
@@ -835,6 +1080,7 @@ button,input,select,textarea{font-family:var(--font)}
   .portal-items-table thead th.hide-sm,.portal-items-table tbody td.hide-sm{display:none}
   .inv-totals-inner{min-width:100%;width:100%}
   .inv-totals-wrap{display:block}
+  .inv-bank-panel-grid{grid-template-columns:1fr}
 }
 @media(max-width:400px){
   .pstats{grid-template-columns:1fr}
@@ -1252,7 +1498,7 @@ button,input,select,textarea{font-family:var(--font)}
 
     <?php
     // ══════════════════════════════════════
-    // ══ INVOICE DETAIL — Full professional view (NEW)
+    // ══ INVOICE DETAIL
     // ══════════════════════════════════════
     elseif ($page === 'invoice_detail'):
       if (!$inv_det): ?>
@@ -1262,9 +1508,16 @@ button,input,select,textarea{font-family:var(--font)}
         $ic         = invColor($inv_det['status']);
         $balance    = max(0, (float)$inv_det['total'] - (float)$inv_det['amount_paid']);
         $is_overdue = $inv_det['due_date'] && $inv_det['due_date'] < date('Y-m-d') && $inv_det['status'] !== 'paid';
-        // Gracefully get sig/stamp (columns may or may not exist)
-        $sig_img = $inv_det['signature_image'] ?? null;
-        $stm_img = $inv_det['stamp_image'] ?? null;
+
+        // FIX: two-tier fallback — per-invoice first, then global invoice_settings
+        $sig_img = portalResolveSigOrStamp(
+            $inv_det['signature_image'] ?? null,
+            $inv_settings['signature_image'] ?? null
+        );
+        $stm_img = portalResolveSigOrStamp(
+            $inv_det['stamp_image'] ?? null,
+            $inv_settings['stamp_image'] ?? null
+        );
     ?>
 
     <!-- Back + Action Bar -->
@@ -1284,7 +1537,7 @@ button,input,select,textarea{font-family:var(--font)}
             <div class="inv-detail-no">TAX INVOICE · <?= ph($inv_det['invoice_no']) ?></div>
             <div class="inv-detail-title"><?= ph($inv_det['title']) ?></div>
             <div style="margin-top:10px">
-              <span class="sbadge" style="background:<?= $ic ?>22;color:<?= $ic ?>;font-size:12px;padding:4px 14px"><?= ucfirst($inv_det['status']) ?></span>
+              <!-- <span class="sbadge" style="background:<?= $ic ?>22;color:<?= $ic ?>;font-size:12px;padding:4px 14px"><?= ucfirst($inv_det['status']) ?></span> -->
               <?php if ($is_overdue): ?>
               <span class="sbadge" style="background:var(--red-bg);color:var(--red);font-size:11px;padding:3px 10px;margin-left:6px">⚠ Overdue</span>
               <?php endif; ?>
@@ -1302,8 +1555,12 @@ button,input,select,textarea{font-family:var(--font)}
         </div>
       </div>
 
-      <!-- Meta Strip -->
+      <!-- Meta Strip — FIX: added "From" company cell -->
       <div class="inv-meta-strip">
+        <div class="inv-meta-cell">
+          <div class="inv-meta-lbl">From</div>
+          <div class="inv-meta-val" style="font-size:12px"><?= ph($inv_settings['company_name'] ?? 'Padak') ?></div>
+        </div>
         <div class="inv-meta-cell">
           <div class="inv-meta-lbl">Bill To</div>
           <div class="inv-meta-val"><?= ph($inv_det['client_name'] ?? '—') ?></div>
@@ -1352,8 +1609,6 @@ button,input,select,textarea{font-family:var(--font)}
                 <td class="num"><?= $idx + 1 ?></td>
                 <td>
                   <div style="font-weight:700;color:var(--text)"><?= ph($it['description']) ?></div>
-                  <!-- Show qty × price on mobile inline -->
-                  <div class="hide-sm" style="display:none"></div>
                   <div style="font-size:11.5px;color:var(--text3);margin-top:2px;display:none" class="mob-item-detail">
                     <?= rtrim(rtrim(number_format((float)$it['quantity'],2),'0'),'.') ?> × <?= $sym ?><?= number_format((float)$it['unit_price'],2) ?>
                   </div>
@@ -1408,9 +1663,29 @@ button,input,select,textarea{font-family:var(--font)}
           </div>
         </div>
 
+        <!-- Bank Details — FIX: new section, was entirely absent -->
+        <?php if (!empty($inv_settings['bank_name']) || !empty($inv_settings['bank_account'])): ?>
+        <div class="inv-bank-panel">
+          <div class="inv-bank-panel-title">Payment &amp; Bank Details</div>
+          <div class="inv-bank-panel-grid">
+            <?php foreach ([
+              ['Bank Name',   $inv_settings['bank_name']    ?? ''],
+              ['Account No',  $inv_settings['bank_account'] ?? ''],
+              ['Branch',      $inv_settings['bank_branch']  ?? ''],
+              ['SWIFT / BIC', $inv_settings['bank_swift']   ?? ''],
+            ] as [$lbl,$val]): if (!$val) continue; ?>
+            <div class="inv-bank-panel-row">
+              <span class="inv-bank-panel-lbl"><?= $lbl ?></span>
+              <span class="inv-bank-panel-val"><?= ph($val) ?></span>
+            </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Notes & Terms -->
         <?php if ($inv_det['notes'] || $inv_det['terms']): ?>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px" class="upload-grid">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px" class="upload-grid">
           <?php if ($inv_det['notes']): ?>
           <div>
             <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Notes</div>
@@ -1419,14 +1694,14 @@ button,input,select,textarea{font-family:var(--font)}
           <?php endif; ?>
           <?php if ($inv_det['terms']): ?>
           <div>
-            <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Terms & Conditions</div>
+            <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Terms &amp; Conditions</div>
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:12px;color:var(--text3);line-height:1.7"><?= nl2br(ph($inv_det['terms'])) ?></div>
           </div>
           <?php endif; ?>
         </div>
         <?php endif; ?>
 
-        <!-- Signature & Stamp Block -->
+        <!-- Signature & Stamp — FIX: uses resolved paths with global fallback -->
         <?php if ($sig_img || $stm_img): ?>
         <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;align-items:flex-end;gap:24px;flex-wrap:wrap">
           <?php if ($stm_img): ?>
@@ -1450,7 +1725,7 @@ button,input,select,textarea{font-family:var(--font)}
           <?php endif; ?>
         </div>
         <?php else: ?>
-        <!-- Always show signature line even without image — professional standard -->
+        <!-- Always show signature line — professional standard -->
         <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
           <div style="text-align:center">
             <div style="width:160px;height:48px;border-bottom:1.5px solid var(--border2);margin-bottom:6px"></div>

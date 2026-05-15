@@ -1,4 +1,8 @@
 <?php
+/**
+ * calendar.php — ob_start() first so header() always works regardless of requires
+ */
+ob_start();
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
@@ -24,7 +28,6 @@ $TYPES = [
 ];
 
 // ── POST HANDLERS ──
-ob_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -38,15 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $desc  = trim($_POST['description'] ?? '');
         $type  = $_POST['event_type'] ?? 'other';
-        $start = trim($_POST['start_datetime'] ?? '');   // never null for 's' bind_param
-        $end   = trim($_POST['end_datetime'] ?? '');       // '' not null — PHP 8.1 safe for 's'
+        // Convert browser datetime-local format to MySQL format
+        $start_raw = trim($_POST['start_datetime'] ?? '');
+        $start = $start_raw ? str_replace('T', ' ', $start_raw) . ':00' : '';
+        // CRITICAL: empty end_datetime must be NULL not '' — MySQL DATETIME rejects empty string
+        $end_raw = trim($_POST['end_datetime'] ?? '');
+        $end = $end_raw ? str_replace('T', ' ', $end_raw) . ':00' : null;
         $allday= isset($_POST['all_day']) ? 1 : 0;
         $loc   = trim($_POST['location'] ?? '');
         $color = $TYPES[$type]['color'] ?? '#f97316';
-        // FIX BUG 2 & 7: cast to int (0 not null) so bind_param 'i' never gets null
-        $proj  = (int)($_POST['project_id'] ?? 0);
-        $task  = (int)($_POST['task_id']    ?? 0);
-        $cont  = (int)($_POST['contact_id'] ?? 0);
+        // FK columns: use null (not 0) so FK constraint doesn't fail on id=0
+        $proj  = (int)($_POST['project_id'] ?? 0) ?: null;
+        $task  = (int)($_POST['task_id']    ?? 0) ?: null;
+        $cont  = (int)($_POST['contact_id'] ?? 0) ?: null;
         $recur = $_POST['recur']   ?? 'none';
         $stat  = $_POST['status']  ?? 'scheduled';
         $atts  = $_POST['attendees'] ?? [];
@@ -58,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $was_existing = (bool)$eid;
 
+        try {
         if ($eid) {
             // FIX BUG 1: correct format string = 14 chars for 14 params
             // s(title) s(desc) s(type) s(start) s(end) i(allday) s(loc) s(color)
@@ -147,9 +155,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        } // end try
+        catch (Throwable $e) {
+            flash('Could not save event: ' . $e->getMessage(), 'error');
+            ob_end_clean(); header('Location: calendar.php'); exit;
+        }
+
         flash('Event saved.', 'success');
+        $rts = strtotime($start);
         ob_end_clean();
-        header('Location: calendar.php?y=' . date('Y', strtotime($start)) . '&m=' . date('m', strtotime($start)));
+        header('Location: calendar.php?y=' . date('Y', $rts) . '&m=' . date('m', $rts));
         exit;
     }
 

@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $desc  = trim($_POST['description'] ?? '');
         $type  = $_POST['event_type'] ?? 'other';
-        $start = $_POST['start_datetime'] ?: null;
-        $end   = ($_POST['end_datetime'] ?? '') ?: null;   // string|null — safe for 's'
+        $start = trim($_POST['start_datetime'] ?? '');   // never null for 's' bind_param
+        $end   = trim($_POST['end_datetime'] ?? '');       // '' not null — PHP 8.1 safe for 's'
         $allday= isset($_POST['all_day']) ? 1 : 0;
         $loc   = trim($_POST['location'] ?? '');
         $color = $TYPES[$type]['color'] ?? '#f97316';
@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      recur=?,status=?
                  WHERE id=?"
             );
+            if (!$s) { flash('DB prepare error: ' . $db->error, 'error'); ob_end_clean(); header('Location: calendar.php'); exit; }
             $s->bind_param(
                 "sssssissiiissi",   // 14 chars, 14 vars ✓
                 $title, $desc, $type, $start, $end,
@@ -90,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      location,color,project_id,task_id,contact_id,recur,status,created_by)
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             );
+            if (!$s) { flash('DB prepare error: ' . $db->error, 'error'); ob_end_clean(); header('Location: calendar.php'); exit; }
             $s->bind_param(
                 "sssssissiiissi",   // 14 chars, 14 vars ✓
                 $title, $desc, $type, $start, $end,
@@ -106,7 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Save attendees — always include creator
         $atts[] = $uid;
         $atts   = array_unique(array_map('intval', $atts));
-        $sa     = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
+        $sa = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
+        if (!$sa) { flash('Attendee error: ' . $db->error, 'error'); ob_end_clean(); header('Location: calendar.php'); exit; }
         foreach ($atts as $aid) {
             $sa->bind_param("ii", $eid, $aid);
             $sa->execute();

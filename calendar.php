@@ -2,6 +2,13 @@
 require_once 'config.php';
 require_once 'includes/layout.php';
 requireLogin();
+
+// FIX BUG 3: Load notify helper safely if present
+if (function_exists('notify') === false) {
+    $nhelper = __DIR__ . '/notify_helper.php';
+    if (file_exists($nhelper)) require_once $nhelper;
+}
+
 $db   = getCRMDB();
 $user = currentUser();
 $uid  = (int)$user['id'];
@@ -22,25 +29,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_event') {
-        // Only managers can create/edit events; members can only RSVP
         if (!isManager()) {
             flash('Only managers can create or edit events.', 'error');
             ob_end_clean(); header('Location: calendar.php'); exit;
         }
+
         $eid   = (int)($_POST['eid'] ?? 0);
         $title = trim($_POST['title'] ?? '');
         $desc  = trim($_POST['description'] ?? '');
         $type  = $_POST['event_type'] ?? 'other';
         $start = $_POST['start_datetime'] ?: null;
-        $end   = $_POST['end_datetime'] ?: null;
+        $end   = ($_POST['end_datetime'] ?? '') ?: null;   // string|null — safe for 's'
         $allday= isset($_POST['all_day']) ? 1 : 0;
         $loc   = trim($_POST['location'] ?? '');
         $color = $TYPES[$type]['color'] ?? '#f97316';
-        $proj  = (int)($_POST['project_id'] ?? 0) ?: null;
-        $task  = (int)($_POST['task_id']    ?? 0) ?: null;
-        $cont  = (int)($_POST['contact_id'] ?? 0) ?: null;
-        $recur = $_POST['recur'] ?? 'none';
-        $stat  = $_POST['status'] ?? 'scheduled';
+        // FIX BUG 2 & 7: cast to int (0 not null) so bind_param 'i' never gets null
+        $proj  = (int)($_POST['project_id'] ?? 0);
+        $task  = (int)($_POST['task_id']    ?? 0);
+        $cont  = (int)($_POST['contact_id'] ?? 0);
+        $recur = $_POST['recur']   ?? 'none';
+        $stat  = $_POST['status']  ?? 'scheduled';
         $atts  = $_POST['attendees'] ?? [];
 
         if (!$title || !$start) {
@@ -48,38 +56,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ob_end_clean(); header('Location: calendar.php'); exit;
         }
 
-        // ADD THIS LINE:
-        $eid_was_existing = (bool)$eid;
+        $was_existing = (bool)$eid;
+
         if ($eid) {
-            $s = $db->prepare("UPDATE calendar_events SET title=?,description=?,event_type=?,start_datetime=?,end_datetime=?,all_day=?,location=?,color=?,project_id=?,task_id=?,contact_id=?,recur=?,status=? WHERE id=?");
-            $s->bind_param("sssssiissiiissi",$title,$desc,$type,$start,$end,$allday,$loc,$color,$proj,$task,$cont,$recur,$stat,$eid);
+            // FIX BUG 1: correct format string = 14 chars for 14 params
+            // s(title) s(desc) s(type) s(start) s(end) i(allday) s(loc) s(color)
+            // i(proj)  i(task) i(cont) s(recur) s(stat) i(eid)
+            $s = $db->prepare(
+                "UPDATE calendar_events
+                 SET title=?,description=?,event_type=?,start_datetime=?,end_datetime=?,
+                     all_day=?,location=?,color=?,project_id=?,task_id=?,contact_id=?,
+                     recur=?,status=?
+                 WHERE id=?"
+            );
+            $s->bind_param(
+                "sssssissiiissi",   // 14 chars, 14 vars ✓
+                $title, $desc, $type, $start, $end,
+                $allday, $loc, $color,
+                $proj, $task, $cont,
+                $recur, $stat,
+                $eid
+            );
             $s->execute();
             $db->query("DELETE FROM calendar_attendees WHERE event_id=$eid");
-            logActivity('updated event',$title,$eid);
-            // ADD THIS LINE:
-            notifyMany($db, $atts, 'calendar_updated', 'meeting', $eid, 'Event Updated: '.$title, 'Updated by '.$user['name'], 'calendar.php?view=event&eid='.$eid, $uid);
+            logActivity('updated event', $title, $eid);
         } else {
-            $s = $db->prepare("INSERT INTO calendar_events (title,description,event_type,start_datetime,end_datetime,all_day,location,color,project_id,task_id,contact_id,recur,status,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $s->bind_param("sssssiissiiissi",$title,$desc,$type,$start,$end,$allday,$loc,$color,$proj,$task,$cont,$recur,$stat,$uid);
+            // FIX BUG 1: INSERT also had the same 15-vs-14 mismatch
+            // s(title) s(desc) s(type) s(start) s(end) i(allday) s(loc) s(color)
+            // i(proj)  i(task) i(cont) s(recur) s(stat) i(uid)
+            $s = $db->prepare(
+                "INSERT INTO calendar_events
+                    (title,description,event_type,start_datetime,end_datetime,all_day,
+                     location,color,project_id,task_id,contact_id,recur,status,created_by)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            );
+            $s->bind_param(
+                "sssssissiiissi",   // 14 chars, 14 vars ✓
+                $title, $desc, $type, $start, $end,
+                $allday, $loc, $color,
+                $proj, $task, $cont,
+                $recur, $stat,
+                $uid
+            );
             $s->execute();
-            $eid = $db->insert_id;
-            logActivity('created event',$title,$eid);
+            $eid = (int)$db->insert_id;
+            logActivity('created event', $title, $eid);
         }
-        // Save attendees + always include creator
+
+        // Save attendees — always include creator
         $atts[] = $uid;
-        $atts = array_unique(array_map('intval', $atts));
-        $sa = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
-        foreach ($atts as $aid) { $sa->bind_param("ii",$eid,$aid); $sa->execute(); }
-        // ADD THESE LINES:
-        if (!$eid_was_existing) {
-            foreach ($atts as $aid) {
-                if ($aid !== $uid) {
-                    notify($db, $aid, 'calendar_invited', 'meeting', $eid, 'Event: '.$title, 'Invited by '.$user['name'], 'calendar.php?view=event&eid='.$eid, $uid);
+        $atts   = array_unique(array_map('intval', $atts));
+        $sa     = $db->prepare("INSERT IGNORE INTO calendar_attendees (event_id,user_id) VALUES (?,?)");
+        foreach ($atts as $aid) {
+            $sa->bind_param("ii", $eid, $aid);
+            $sa->execute();
+        }
+
+        // FIX BUG 8: notify AFTER attendees are saved
+        if (function_exists('notify') && function_exists('notifyMany')) {
+            if ($was_existing) {
+                // Notify existing attendees of the update
+                $notify_ids = array_filter($atts, fn($id) => $id !== $uid);
+                if (!empty($notify_ids)) {
+                    notifyMany(
+                        $db, array_values($notify_ids),
+                        'calendar_updated', 'meeting', $eid,
+                        'Event Updated: ' . mb_substr($title, 0, 60),
+                        'Updated by ' . $user['name'],
+                        'calendar.php?view=event&eid=' . $eid,
+                        $uid
+                    );
+                }
+            } else {
+                // Notify new invitees
+                foreach ($atts as $aid) {
+                    if ($aid !== $uid) {
+                        notify(
+                            $db, $aid,
+                            'calendar_invited', 'meeting', $eid,
+                            'Event: ' . mb_substr($title, 0, 60),
+                            'Invited by ' . $user['name'],
+                            'calendar.php?view=event&eid=' . $eid,
+                            $uid
+                        );
+                    }
                 }
             }
         }
-        flash('Event saved.','success');
-        ob_end_clean(); header('Location: calendar.php?y='.date('Y',strtotime($start)).'&m='.date('m',strtotime($start))); exit;
+
+        flash('Event saved.', 'success');
+        ob_end_clean();
+        header('Location: calendar.php?y=' . date('Y', strtotime($start)) . '&m=' . date('m', strtotime($start)));
+        exit;
     }
 
     if ($action === 'delete_event') {
@@ -87,66 +155,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ev  = $db->query("SELECT created_by,title FROM calendar_events WHERE id=$eid")->fetch_assoc();
         if ($ev && ($ev['created_by'] == $uid || isManager())) {
             $db->query("DELETE FROM calendar_events WHERE id=$eid");
-            logActivity('deleted event',$ev['title'],$eid);
-            flash('Event deleted.','success');
+            $db->query("DELETE FROM calendar_attendees WHERE event_id=$eid");
+            logActivity('deleted event', $ev['title'], $eid);
+            flash('Event deleted.', 'success');
         }
         ob_end_clean(); header('Location: calendar.php'); exit;
     }
 
     if ($action === 'rsvp') {
         $eid  = (int)$_POST['eid'];
-        $rsvp = $_POST['rsvp'] ?? 'pending';
+        $rsvp = in_array($_POST['rsvp'] ?? '', ['accepted','declined','pending'])
+                ? $_POST['rsvp'] : 'pending';
         $db->query("UPDATE calendar_attendees SET rsvp='$rsvp' WHERE event_id=$eid AND user_id=$uid");
-        flash('Response saved.','success');
-        ob_end_clean(); header('Location: calendar.php?view=event&eid='.$eid); exit;
+        flash('Response saved.', 'success');
+        ob_end_clean(); header('Location: calendar.php?view=event&eid=' . $eid); exit;
     }
 }
 ob_end_clean();
 
 // ── VIEW PARAMS ──
-$view   = $_GET['view']   ?? 'month';    // month | week | list | event
-$year   = (int)($_GET['y'] ?? date('Y'));
-$month  = (int)($_GET['m'] ?? date('m'));
-$week   = (int)($_GET['w'] ?? date('W'));
-$edit_id= (int)($_GET['edit'] ?? 0);
-$view_eid=(int)($_GET['eid'] ?? 0);
-$type_f = $_GET['type'] ?? '';
+$view    = $_GET['view']   ?? 'month';
+$year    = (int)($_GET['y'] ?? date('Y'));
+$month   = (int)($_GET['m'] ?? date('m'));
+$week    = (int)($_GET['w'] ?? date('W'));
+$edit_id = (int)($_GET['edit'] ?? 0);
+$view_eid= (int)($_GET['eid']  ?? 0);
+$type_f  = $_GET['type'] ?? '';
 
-// Clamp
-$month = max(1, min(12, $month));
+$month = max(1,  min(12,   $month));
 $year  = max(2020, min(2099, $year));
 
-// ── LOAD REFERENCE DATA ──
-$all_users= $db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
-$projects = $db->query("SELECT id,title FROM projects WHERE status NOT IN ('cancelled') ORDER BY title")->fetch_all(MYSQLI_ASSOC);
-$contacts = $db->query("SELECT id,name FROM contacts ORDER BY name")->fetch_all(MYSQLI_ASSOC);
-$all_tasks= $db->query("SELECT id,title,due_date FROM tasks WHERE status!='done' ORDER BY title")->fetch_all(MYSQLI_ASSOC);
+// ── REFERENCE DATA ──
+$all_users = $db->query("SELECT id,name FROM users WHERE status='active' ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+$projects  = $db->query("SELECT id,title FROM projects WHERE status NOT IN ('cancelled') ORDER BY title")->fetch_all(MYSQLI_ASSOC);
+$contacts  = $db->query("SELECT id,name FROM contacts ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+$all_tasks = $db->query("SELECT id,title,due_date FROM tasks WHERE status!='done' ORDER BY title")->fetch_all(MYSQLI_ASSOC);
 
-// ── LOAD EVENTS (month range + upcoming tasks/deadlines) ──
+// ── DATE RANGES ──
 $range_start = sprintf('%04d-%02d-01', $year, $month);
 $range_end   = date('Y-m-t', strtotime($range_start));
+$week_start  = date('Y-m-d', strtotime($year . 'W' . sprintf('%02d', $week) . '1'));
+$week_end    = date('Y-m-d', strtotime($year . 'W' . sprintf('%02d', $week) . '7'));
 
-// For week view
-$week_start = date('Y-m-d', strtotime($year.'W'.sprintf('%02d',$week).'1'));
-$week_end   = date('Y-m-d', strtotime($year.'W'.sprintf('%02d',$week).'7'));
+$type_where = $type_f
+    ? " AND ce.event_type='" . $db->real_escape_string($type_f) . "'"
+    : '';
 
-$type_where = $type_f ? " AND ce.event_type='".$db->real_escape_string($type_f)."'" : '';
-
-// Fetch events visible to current user:
-function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type_where='', bool $is_manager=false): array {
-    // Managers see all events; members see only events they created or are invited to
+// ── EVENT LOADER ──
+function loadEvents(mysqli $db, string $from, string $to, int $uid,
+                    string $type_where = '', bool $is_manager = false): array {
     $scope = $is_manager
         ? "1=1"
         : "(ce.created_by=$uid OR EXISTS(SELECT 1 FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid))";
     return $db->query("
         SELECT ce.*, u.name AS creator_name,
-            p.title AS proj_title, t.title AS task_title, c.name AS contact_name,
-            (SELECT GROUP_CONCAT(us.name ORDER BY us.name SEPARATOR ', ')
-             FROM calendar_attendees ca JOIN users us ON us.id=ca.user_id
-             WHERE ca.event_id=ce.id) AS attendee_names,
-            (SELECT rsvp FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid) AS my_rsvp
+               p.title AS proj_title, t.title AS task_title, c.name AS contact_name,
+               (SELECT GROUP_CONCAT(us.name ORDER BY us.name SEPARATOR ', ')
+                FROM calendar_attendees ca JOIN users us ON us.id=ca.user_id
+                WHERE ca.event_id=ce.id) AS attendee_names,
+               (SELECT rsvp FROM calendar_attendees WHERE event_id=ce.id AND user_id=$uid LIMIT 1) AS my_rsvp
         FROM calendar_events ce
-        LEFT JOIN users   u ON u.id=ce.created_by
+        LEFT JOIN users    u ON u.id=ce.created_by
         LEFT JOIN projects p ON p.id=ce.project_id
         LEFT JOIN tasks    t ON t.id=ce.task_id
         LEFT JOIN contacts c ON c.id=ce.contact_id
@@ -157,14 +226,10 @@ function loadEvents(mysqli $db, string $from, string $to, int $uid, string $type
     ")->fetch_all(MYSQLI_ASSOC);
 }
 
-$is_mgr       = isManager();
-$month_events = loadEvents($db, $range_start, $range_end, $uid, $type_where, $is_mgr);
-$week_events  = loadEvents($db, $week_start,  $week_end,  $uid, $type_where, $is_mgr);
-
-// ── INJECT TASK DEADLINES ── (tasks with due_date in range, as pseudo-events)
+// ── TASK DEADLINES (pseudo-events) ──
 function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
     $rows = $db->query("
-        SELECT t.id, t.title, t.due_date, t.priority, t.status, p.title AS proj_title
+        SELECT t.id, t.title, t.due_date, t.priority, p.title AS proj_title
         FROM tasks t LEFT JOIN projects p ON p.id=t.project_id
         WHERE t.due_date BETWEEN '$from' AND '$to'
           AND t.status != 'done'
@@ -174,64 +239,73 @@ function taskDeadlines(mysqli $db, string $from, string $to, int $uid): array {
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
-            'id'=>'t'.$r['id'], 'title'=>'⏰ '.$r['title'],
-            'event_type'=>'deadline', 'color'=>'#ef4444',
-            'start_datetime'=>$r['due_date'].' 00:00:00',
-            'all_day'=>1, 'is_task'=>true,
-            'proj_title'=>$r['proj_title'], 'priority'=>$r['priority'],
-            'task_id'=>$r['id'],
+            'id'             => 't' . $r['id'],
+            'title'          => '⏰ ' . $r['title'],
+            'event_type'     => 'deadline',
+            'color'          => '#ef4444',
+            'start_datetime' => $r['due_date'] . ' 00:00:00',
+            'all_day'        => 1,
+            'is_task'        => true,
+            'task_id'        => $r['id'],
+            'proj_title'     => $r['proj_title'],
         ];
     }
     return $out;
 }
 
-// ── PROJECT MILESTONES (due dates) ──
-function projMilestones(mysqli $db, string $from, string $to, int $uid=0, bool $is_manager=false): array {
+// ── PROJECT MILESTONES (pseudo-events) ──
+function projMilestones(mysqli $db, string $from, string $to,
+                        int $uid = 0, bool $is_manager = false): array {
     $scope = $is_manager
         ? "1=1"
         : "(created_by=$uid OR EXISTS(SELECT 1 FROM project_members WHERE project_id=projects.id AND user_id=$uid))";
     $rows = $db->query("
-        SELECT id,title,due_date,status FROM projects
+        SELECT id,title,due_date FROM projects
         WHERE due_date BETWEEN '$from' AND '$to'
           AND status NOT IN ('cancelled','completed')
           AND ($scope)
         ORDER BY due_date
     ")->fetch_all(MYSQLI_ASSOC);
-
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
-            'id'=>'p'.$r['id'], 'title'=>'🏁 '.$r['title'],
-            'event_type'=>'milestone', 'color'=>'#10b981',
-            'start_datetime'=>$r['due_date'].' 00:00:00', 'all_day'=>1,
-            'is_project'=>true, 'project_id'=>$r['id'],
+            'id'             => 'p' . $r['id'],
+            'title'          => '🏁 ' . $r['title'],
+            'event_type'     => 'milestone',
+            'color'          => '#10b981',
+            'start_datetime' => $r['due_date'] . ' 00:00:00',
+            'all_day'        => 1,
+            'is_project'     => true,
+            'project_id'     => $r['id'],
         ];
     }
     return $out;
 }
 
+$is_mgr          = isManager();
+$month_events    = loadEvents($db, $range_start, $range_end, $uid, $type_where, $is_mgr);
+$week_events     = loadEvents($db, $week_start,  $week_end,  $uid, $type_where, $is_mgr);
 $task_deadlines  = taskDeadlines($db, $range_start, $range_end, $uid);
 $proj_milestones = projMilestones($db, $range_start, $range_end, $uid, $is_mgr);
 
-$all_month       = array_merge($month_events, $task_deadlines, $proj_milestones);
-usort($all_month, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));
+$all_month = array_merge($month_events, $task_deadlines, $proj_milestones);
+usort($all_month, fn($a, $b) => strcmp($a['start_datetime'], $b['start_datetime']));
 
-// Group by date for calendar grid
 $events_by_date = [];
 foreach ($all_month as $e) {
-    $d = substr($e['start_datetime'],0,10);
+    $d = substr($e['start_datetime'], 0, 10);
     $events_by_date[$d][] = $e;
 }
 
-// Single event view
-$single_event = null;
+// ── SINGLE EVENT VIEW ──
+$single_event    = null;
 $event_attendees = [];
 if ($view === 'event' && $view_eid) {
     $single_event = $db->query("
         SELECT ce.*, u.name AS creator_name,
-            p.title AS proj_title, t.title AS task_title, c.name AS contact_name
+               p.title AS proj_title, t.title AS task_title, c.name AS contact_name
         FROM calendar_events ce
-        LEFT JOIN users u ON u.id=ce.created_by
+        LEFT JOIN users    u ON u.id=ce.created_by
         LEFT JOIN projects p ON p.id=ce.project_id
         LEFT JOIN tasks    t ON t.id=ce.task_id
         LEFT JOIN contacts c ON c.id=ce.contact_id
@@ -241,30 +315,30 @@ if ($view === 'event' && $view_eid) {
         $event_attendees = $db->query("
             SELECT u.id,u.name,u.role,ca.rsvp
             FROM calendar_attendees ca JOIN users u ON u.id=ca.user_id
-            WHERE ca.event_id=$view_eid
-            ORDER BY u.name
+            WHERE ca.event_id=$view_eid ORDER BY u.name
         ")->fetch_all(MYSQLI_ASSOC);
     }
 }
 
-// Edit mode
-$edit_event = null;
+// ── EDIT MODE ──
+$edit_event        = null;
 $edit_attendee_ids = [];
 if ($edit_id) {
-    $edit_event = $db->query("SELECT * FROM calendar_events WHERE id=$edit_id")->fetch_assoc();
-    $ea = $db->query("SELECT user_id FROM calendar_attendees WHERE event_id=$edit_id")->fetch_all(MYSQLI_ASSOC);
-    $edit_attendee_ids = array_column($ea,'user_id');
+    $edit_event        = $db->query("SELECT * FROM calendar_events WHERE id=$edit_id")->fetch_assoc();
+    $ea                = $db->query("SELECT user_id FROM calendar_attendees WHERE event_id=$edit_id")->fetch_all(MYSQLI_ASSOC);
+    $edit_attendee_ids = array_column($ea, 'user_id');
 }
 
-// Upcoming events for list view (next 60 days)
-$list_events = loadEvents($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $type_where, $is_mgr);
-$list_tasks  = taskDeadlines($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid);
-$list_all    = array_merge($list_events, $list_tasks, projMilestones($db, date('Y-m-d'), date('Y-m-d',strtotime('+60 days')), $uid, $is_mgr));
-usort($list_all, fn($a,$b)=>strcmp($a['start_datetime'],$b['start_datetime']));
+// ── LIST VIEW (next 60 days) ──
+$list_events = loadEvents($db, date('Y-m-d'), date('Y-m-d', strtotime('+60 days')), $uid, $type_where, $is_mgr);
+$list_tasks  = taskDeadlines($db, date('Y-m-d'), date('Y-m-d', strtotime('+60 days')), $uid);
+$list_projs  = projMilestones($db, date('Y-m-d'), date('Y-m-d', strtotime('+60 days')), $uid, $is_mgr);
+$list_all    = array_merge($list_events, $list_tasks, $list_projs);
+usort($list_all, fn($a, $b) => strcmp($a['start_datetime'], $b['start_datetime']));
 
-// Nav helpers
-$prev_m = $month === 1  ? ['y'=>$year-1,'m'=>12] : ['y'=>$year,'m'=>$month-1];
-$next_m = $month === 12 ? ['y'=>$year+1,'m'=>1]  : ['y'=>$year,'m'=>$month+1];
+// ── NAV HELPERS ──
+$prev_m = $month === 1  ? ['y' => $year-1, 'm' => 12] : ['y' => $year, 'm' => $month-1];
+$next_m = $month === 12 ? ['y' => $year+1, 'm' => 1]  : ['y' => $year, 'm' => $month+1];
 
 renderLayout('Calendar', 'calendar');
 ?>
@@ -287,15 +361,8 @@ renderLayout('Calendar', 'calendar');
 .cal-cell.other-month{background:var(--bg);opacity:.55}
 .cal-day-num{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
 .cal-day-num.today-num{color:var(--orange);font-weight:800}
-.cal-event-pill{
-  font-size:10.5px;font-weight:600;
-  padding:2px 6px;border-radius:4px;
-  margin-bottom:2px;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  display:block;line-height:1.4;
-  transition:opacity .1s;
-}
-.cal-event-pill:hover{opacity:.85}
+.cal-event-pill{font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.4;transition:opacity .1s;text-decoration:none}
+.cal-event-pill:hover{opacity:.82}
 .cal-more{font-size:10px;color:var(--text3);padding:1px 4px;cursor:pointer}
 .cal-more:hover{color:var(--orange)}
 
@@ -310,7 +377,7 @@ renderLayout('Calendar', 'calendar');
 /* LIST VIEW */
 .list-day-header{font-size:13px;font-weight:700;color:var(--text3);padding:14px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
 .list-day-header.today-hdr{color:var(--orange)}
-.list-event-row{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--ec);border-radius:var(--radius);margin-bottom:7px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.list-event-row{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--ec,#f97316);border-radius:var(--radius);margin-bottom:7px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .list-event-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.18);border-color:var(--border2)}
 .list-event-time{font-size:11.5px;font-weight:600;color:var(--text3);min-width:52px;flex-shrink:0;padding-top:2px}
 .list-event-body{flex:1;min-width:0}
@@ -354,7 +421,6 @@ renderLayout('Calendar', 'calendar');
 <div class="ev-detail-grid">
   <div>
     <div class="card" style="margin-bottom:16px">
-      <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap">
         <div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
@@ -366,7 +432,7 @@ renderLayout('Calendar', 'calendar');
             <span class="badge" style="background:<?= $t['color'] ?>20;color:<?= $t['color'] ?>"><?= $t['icon'] ?> <?= $t['label'] ?></span>
             <?php $sc=['scheduled'=>'#10b981','completed'=>'#6366f1','cancelled'=>'#ef4444'][$single_event['status']]??'#94a3b8'; ?>
             <span class="badge" style="background:<?= $sc ?>20;color:<?= $sc ?>"><?= ucfirst($single_event['status']) ?></span>
-            <?php if ($single_event['recur'] !== 'none'): ?>
+            <?php if (($single_event['recur']??'none') !== 'none'): ?>
             <span class="badge" style="background:var(--bg3);color:var(--text2)">🔁 <?= ucfirst($single_event['recur']) ?></span>
             <?php endif; ?>
           </div>
@@ -387,7 +453,6 @@ renderLayout('Calendar', 'calendar');
       <p style="color:var(--text2);font-size:13.5px;line-height:1.7;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px"><?= nl2br(h($single_event['description'])) ?></p>
       <?php endif; ?>
 
-      <!-- Meta grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
         <div class="ev-meta-box">
           <div class="ev-meta-lbl">Start</div>
@@ -421,9 +486,8 @@ renderLayout('Calendar', 'calendar');
         <?php endif; ?>
       </div>
 
-      <!-- RSVP (if attendee) -->
       <?php
-        $my_rsvp_row = array_filter($event_attendees, fn($a)=>$a['id']==$uid);
+        $my_rsvp_row = array_filter($event_attendees, fn($a) => $a['id'] == $uid);
         $my_rsvp     = $my_rsvp_row ? array_values($my_rsvp_row)[0]['rsvp'] : null;
       ?>
       <?php if ($my_rsvp !== null): ?>
@@ -441,14 +505,13 @@ renderLayout('Calendar', 'calendar');
     </div>
   </div>
 
-  <!-- Right: Attendees -->
   <div class="card">
     <div class="card-title" style="margin-bottom:14px">Attendees (<?= count($event_attendees) ?>)</div>
     <?php if (empty($event_attendees)): ?>
     <p style="font-size:13px;color:var(--text3)">No attendees.</p>
     <?php else: ?>
     <?php foreach ($event_attendees as $a):
-      $rc=['accepted'=>'#10b981','declined'=>'#ef4444','pending'=>'#f59e0b'][$a['rsvp']]??'#94a3b8';
+      $rc = ['accepted'=>'#10b981','declined'=>'#ef4444','pending'=>'#f59e0b'][$a['rsvp']] ?? '#94a3b8';
     ?>
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--bg4);color:var(--text)"><?= strtoupper(substr($a['name'],0,1)) ?></div>
@@ -476,9 +539,9 @@ renderLayout('Calendar', 'calendar');
     <span class="cal-title"><?= date('F Y', mktime(0,0,0,$month,1,$year)) ?></span>
     <a href="calendar.php?view=month&y=<?= $next_m['y'] ?>&m=<?= $next_m['m'] ?>" class="btn btn-ghost btn-sm">›</a>
     <?php elseif ($view==='week'): ?>
-    <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= $week-1 < 1 ? 52 : $week-1 ?>" class="btn btn-ghost btn-sm">‹</a>
+    <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= max(1,$week-1) ?>" class="btn btn-ghost btn-sm">‹</a>
     <span class="cal-title">Week <?= $week ?>, <?= $year ?></span>
-    <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= $week+1 > 52 ? 1 : $week+1 ?>" class="btn btn-ghost btn-sm">›</a>
+    <a href="calendar.php?view=week&y=<?= $year ?>&w=<?= min(52,$week+1) ?>" class="btn btn-ghost btn-sm">›</a>
     <?php else: ?>
     <span class="cal-title">Upcoming Events</span>
     <?php endif; ?>
@@ -496,11 +559,15 @@ renderLayout('Calendar', 'calendar');
   </div>
 </div>
 
-<!-- TYPE FILTER PILLS -->
+<!-- TYPE FILTERS -->
 <div class="type-filter">
   <a href="calendar.php?view=<?= $view ?>&y=<?= $year ?>&m=<?= $month ?>" class="type-pill <?= !$type_f?'active':'' ?>">All</a>
   <?php foreach ($TYPES as $tk=>$tv): ?>
-  <a href="calendar.php?view=<?= $view ?>&y=<?= $year ?>&m=<?= $month ?>&type=<?= $tk ?>" class="type-pill <?= $type_f===$tk?'active':'' ?>" style="<?= $type_f===$tk?"border-color:{$tv['color']};color:{$tv['color']};background:{$tv['color']}18":'' ?>"><?= $tv['icon'] ?> <?= $tv['label'] ?></a>
+  <a href="calendar.php?view=<?= $view ?>&y=<?= $year ?>&m=<?= $month ?>&type=<?= $tk ?>"
+     class="type-pill <?= $type_f===$tk?'active':'' ?>"
+     style="<?= $type_f===$tk?"border-color:{$tv['color']};color:{$tv['color']};background:{$tv['color']}18":'' ?>">
+    <?= $tv['icon'] ?> <?= $tv['label'] ?>
+  </a>
   <?php endforeach; ?>
 </div>
 
@@ -508,57 +575,68 @@ renderLayout('Calendar', 'calendar');
 
 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
   <div class="cal-grid">
-    <?php foreach (['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $dow): ?>
-    <div class="cal-dow"><?= $dow ?></div>
+    <?php foreach (['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $dow_label): ?>
+    <div class="cal-dow"><?= $dow_label ?></div>
     <?php endforeach; ?>
 
     <?php
-    $first_day = mktime(0,0,0,$month,1,$year);
-    $days_in   = (int)date('t',$first_day);
-    $dow_first = (int)date('N',$first_day); // 1=Mon..7=Sun
-    $today     = date('Y-m-d');
+    $first_day   = mktime(0,0,0,$month,1,$year);
+    $days_in     = (int)date('t', $first_day);
+    $dow_first   = (int)date('N', $first_day);   // 1=Mon..7=Sun
+    $today_str   = date('Y-m-d');
     $total_cells = $dow_first - 1 + $days_in;
     $total_cells = $total_cells + (7 - ($total_cells % 7 ?: 7));
 
+    // FIX BUG 6: don't use cal_days_in_month() — use date() instead
+    $prev_days_count = (int)date('t', mktime(0,0,0,$prev_m['m'],1,$prev_m['y']));
+
     for ($cell = 0; $cell < $total_cells; $cell++):
         $day_offset = $cell - ($dow_first - 1) + 1;
+
         if ($day_offset < 1) {
-            $prev_days = cal_days_in_month(CAL_GREGORIAN, $prev_m['m'], $prev_m['y']);
-            $actual_day = $prev_days + $day_offset;
-            $actual_date = sprintf('%04d-%02d-%02d',$prev_m['y'],$prev_m['m'],$actual_day);
-            $other = true;
+            $actual_day  = $prev_days_count + $day_offset;
+            $actual_date = sprintf('%04d-%02d-%02d', $prev_m['y'], $prev_m['m'], $actual_day);
+            $other       = true;
         } elseif ($day_offset > $days_in) {
-            $actual_day = $day_offset - $days_in;
-            $actual_date = sprintf('%04d-%02d-%02d',$next_m['y'],$next_m['m'],$actual_day);
-            $other = true;
+            $actual_day  = $day_offset - $days_in;
+            $actual_date = sprintf('%04d-%02d-%02d', $next_m['y'], $next_m['m'], $actual_day);
+            $other       = true;
         } else {
-            $actual_day = $day_offset;
-            $actual_date = sprintf('%04d-%02d-%02d',$year,$month,$actual_day);
-            $other = false;
+            $actual_day  = $day_offset;
+            $actual_date = sprintf('%04d-%02d-%02d', $year, $month, $actual_day);
+            $other       = false;
         }
-        $is_today   = ($actual_date === $today);
+
+        $is_today   = ($actual_date === $today_str);
         $day_events = $events_by_date[$actual_date] ?? [];
         $has_events = !empty($day_events);
-        $classes    = 'cal-cell'.($is_today?' today':'').($other?' other-month':'').($has_events?' has-events':'');
+        $classes    = 'cal-cell'
+            . ($is_today   ? ' today'       : '')
+            . ($other      ? ' other-month' : '')
+            . ($has_events ? ' has-events'  : '');
     ?>
     <div class="<?= $classes ?>" onclick="dayClick('<?= $actual_date ?>')">
       <div class="cal-day-num <?= $is_today?'today-num':'' ?>">
         <span><?= $actual_day ?></span>
         <?php if ($is_today): ?><span style="font-size:9px;background:var(--orange);color:#fff;padding:1px 5px;border-radius:99px">Today</span><?php endif; ?>
       </div>
-      <?php
-        $shown = 0;
-        foreach (array_slice($day_events, 0, 3) as $e):
-          $shown++;
-          $ec = $e['color'] ?? '#f97316';
-          $is_task = !empty($e['is_task']) || !empty($e['is_project']);
+      <?php foreach (array_slice($day_events, 0, 3) as $e):
+        $ec = $e['color'] ?? '#f97316';
+        // FIX BUG 4: correct href for task/project pseudo-events
+        if (!empty($e['is_task'])) {
+            $pill_href = 'tasks.php?edit=' . $e['task_id'];
+        } elseif (!empty($e['is_project'])) {
+            $pill_href = 'projects.php?view=' . $e['project_id'];
+        } else {
+            $pill_href = 'calendar.php?view=event&eid=' . $e['id'];
+        }
       ?>
-      <a href="<?= $is_task ? 'calendar.php?view=event&eid=0&date='.$actual_date : 'calendar.php?view=event&eid='.$e['id'] ?>"
+      <a href="<?= $pill_href ?>"
          class="cal-event-pill"
          style="background:<?= $ec ?>22;color:<?= $ec ?>;border-left:2px solid <?= $ec ?>"
          onclick="event.stopPropagation()"
          title="<?= h($e['title']) ?>">
-        <?= h(mb_substr($e['title'],0,22)).(mb_strlen($e['title'])>22?'…':'') ?>
+        <?= h(mb_substr($e['title'],0,22)) . (mb_strlen($e['title'])>22?'…':'') ?>
       </a>
       <?php endforeach; ?>
       <?php if (count($day_events) > 3): ?>
@@ -577,8 +655,7 @@ foreach ($week_events as $e) {
     $d = substr($e['start_datetime'],0,10);
     $week_events_by_day[$d][] = $e;
 }
-$week_task_deadlines = taskDeadlines($db, $week_start, $week_end, $uid);
-foreach ($week_task_deadlines as $e) {
+foreach (taskDeadlines($db, $week_start, $week_end, $uid) as $e) {
     $d = substr($e['start_datetime'],0,10);
     $week_events_by_day[$d][] = $e;
 }
@@ -586,37 +663,35 @@ $hours = range(8, 20);
 ?>
 <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;overflow-x:auto">
   <div class="week-grid" style="min-width:600px">
-    <!-- Header row -->
     <div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg3)"></div>
-    <?php for ($d=0;$d<7;$d++):
-      $day_date = date('Y-m-d', strtotime($week_start." +$d days"));
-      $day_label= date('D j', strtotime($day_date));
+    <?php for ($d=0; $d<7; $d++):
+      $day_date = date('Y-m-d', strtotime($week_start . " +$d days"));
       $is_today = ($day_date === date('Y-m-d'));
     ?>
     <div class="week-dow <?= $is_today?'today-col':'' ?>">
       <div style="font-size:10px;color:var(--text3);font-weight:700"><?= date('D',strtotime($day_date)) ?></div>
       <div style="font-size:14px;font-weight:800;color:<?= $is_today?'var(--orange)':'var(--text)' ?>"><?= date('j',strtotime($day_date)) ?></div>
-      <!-- All-day events -->
       <?php foreach ($week_events_by_day[$day_date]??[] as $e):
-        if (!$e['all_day']) continue;
-        $ec=$e['color']??'#f97316';
+        if (!$e['all_day']) continue; $ec=$e['color']??'#f97316';
       ?>
-      <div style="font-size:9px;background:<?= $ec ?>22;color:<?= $ec ?>;border-left:2px solid <?= $ec ?>;padding:1px 4px;border-radius:2px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= h(mb_substr($e['title'],0,14)) ?></div>
+      <a href="<?= !empty($e['is_task'])?'tasks.php?edit='.$e['task_id']:(!empty($e['is_project'])?'projects.php?view='.$e['project_id']:'calendar.php?view=event&eid='.$e['id']) ?>" style="font-size:9px;display:block;background:<?= $ec ?>22;color:<?= $ec ?>;border-left:2px solid <?= $ec ?>;padding:1px 4px;border-radius:2px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none"><?= h(mb_substr($e['title'],0,14)) ?></a>
       <?php endforeach; ?>
     </div>
     <?php endfor; ?>
 
-    <!-- Hour rows -->
-    <?php foreach ($hours as $h_val): ?>
-    <div class="week-hour"><?= $h_val ?>:00</div>
-    <?php for ($d=0;$d<7;$d++):
-      $day_date = date('Y-m-d', strtotime($week_start." +$d days"));
-      $is_today = ($day_date === date('Y-m-d'));
-      $slot_events = array_filter($week_events_by_day[$day_date]??[], function($e) use($h_val){
-          if ($e['all_day']) return false;
-          $eh = (int)date('G',strtotime($e['start_datetime']));
-          return $eh === $h_val;
-      });
+    <?php foreach ($hours as $hr):
+      $h_label = $hr . ':00';
+    ?>
+    <div class="week-hour"><?= $h_label ?></div>
+    <?php for ($d=0; $d<7; $d++):
+      $day_date   = date('Y-m-d', strtotime($week_start . " +$d days"));
+      $is_today   = ($day_date === date('Y-m-d'));
+      $slot_events = array_filter(
+          $week_events_by_day[$day_date] ?? [],
+          function($e) use ($hr) {
+              return !$e['all_day'] && (int)date('G', strtotime($e['start_datetime'])) === $hr;
+          }
+      );
     ?>
     <div class="week-slot <?= $is_today?'today-col':'' ?>">
       <?php foreach ($slot_events as $e): $ec=$e['color']??'#f97316'; ?>
@@ -639,19 +714,27 @@ $hours = range(8, 20);
       $grouped[$d][] = $e;
   }
   foreach ($grouped as $date => $evs):
-    $is_today = ($date === date('Y-m-d'));
-    $is_tomorrow = ($date === date('Y-m-d',strtotime('+1 day')));
-    $label = $is_today ? 'Today — '.date('l, M j', strtotime($date))
-           : ($is_tomorrow ? 'Tomorrow — '.date('l, M j', strtotime($date))
-           : date('l, M j, Y', strtotime($date)));
+    $is_today    = ($date === date('Y-m-d'));
+    $is_tomorrow = ($date === date('Y-m-d', strtotime('+1 day')));
+    $label = $is_today
+        ? 'Today — '    . date('l, M j', strtotime($date))
+        : ($is_tomorrow
+            ? 'Tomorrow — ' . date('l, M j', strtotime($date))
+            : date('l, M j, Y', strtotime($date)));
 ?>
 <div class="list-day-header <?= $is_today?'today-hdr':'' ?>"><?= $label ?></div>
 <?php foreach ($evs as $e):
-  $ec     = $e['color'] ?? '#f97316';
-  $is_sys = !empty($e['is_task']) || !empty($e['is_project']);
-  $href   = $is_sys ? ($e['is_task']??false ? 'tasks.php?edit='.$e['task_id'] : 'projects.php?view='.$e['project_id'])
-                    : 'calendar.php?view=event&eid='.$e['id'];
-  $tstr   = $e['all_day'] ? 'All day' : date('g:ia', strtotime($e['start_datetime']));
+  $ec       = $e['color'] ?? '#f97316';
+  $is_sys   = !empty($e['is_task']) || !empty($e['is_project']);
+  // FIX BUG 4: correct href for system pseudo-events in list view too
+  if (!empty($e['is_task'])) {
+      $href = 'tasks.php?edit=' . $e['task_id'];
+  } elseif (!empty($e['is_project'])) {
+      $href = 'projects.php?view=' . $e['project_id'];
+  } else {
+      $href = 'calendar.php?view=event&eid=' . $e['id'];
+  }
+  $tstr     = ($e['all_day'] ?? 0) ? 'All day' : date('g:ia', strtotime($e['start_datetime']));
   $type_cfg = $TYPES[$e['event_type']] ?? $TYPES['other'];
 ?>
 <div class="list-event-row" style="--ec:<?= $ec ?>" onclick="location.href='<?= $href ?>'">
@@ -661,45 +744,39 @@ $hours = range(8, 20);
     <div class="list-event-meta">
       <span><?= $type_cfg['icon'] ?> <?= $type_cfg['label'] ?></span>
       <?php if (!empty($e['proj_title'])): ?> · 📁 <?= h($e['proj_title']) ?><?php endif; ?>
-      <?php if (!empty($e['location'])): ?> · 📍 <?= h($e['location']) ?><?php endif; ?>
+      <?php if (!empty($e['location'])): ?>   · 📍 <?= h($e['location'])   ?><?php endif; ?>
       <?php if (!empty($e['attendee_names'])): ?> · 👥 <?= h($e['attendee_names']) ?><?php endif; ?>
     </div>
   </div>
   <div style="width:10px;height:10px;border-radius:50%;background:<?= $ec ?>;flex-shrink:0;margin-top:4px"></div>
 </div>
 <?php endforeach; ?>
-<?php endforeach; ?>
-<?php endif; ?>
+<?php endforeach; endif; ?>
 <?php endif; // end views ?>
-
 <?php endif; // end single/list ?>
 
 <!-- ══ CREATE / EDIT EVENT MODAL ══ -->
-<div class="modal-overlay <?= ($edit_id)?'open':'' ?>" id="modal-event">
+<div class="modal-overlay <?= $edit_id?'open':'' ?>" id="modal-event">
   <div class="modal" style="max-width:620px">
     <div class="modal-header">
-      <div class="modal-title" id="modal-event-title"><?= $edit_id ? 'Edit Event' : '＋ New Event' ?></div>
+      <div class="modal-title"><?= $edit_id ? 'Edit Event' : '＋ New Event' ?></div>
       <button class="modal-close" onclick="closeModal('modal-event');<?= $edit_id?"location.href='calendar.php'":'' ?>">✕</button>
     </div>
     <form method="POST">
       <input type="hidden" name="action" value="save_event">
       <input type="hidden" name="eid"    value="<?= $edit_id ?>">
       <div class="modal-body">
-
         <div class="form-group">
           <label class="form-label">Title *</label>
           <input type="text" name="title" class="form-control" required
-            value="<?= h($edit_event['title']??$_GET['prefill_title']??'') ?>"
-            placeholder="e.g. Client Kickoff Meeting">
+            value="<?= h($edit_event['title'] ?? '') ?>" placeholder="e.g. Client Kickoff Meeting">
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Event Type</label>
-            <select name="event_type" class="form-control" id="ev-type" onchange="updateColor(this)">
+            <select name="event_type" class="form-control">
               <?php foreach ($TYPES as $tk=>$tv): ?>
-              <option value="<?= $tk ?>" data-color="<?= $tv['color'] ?>"
-                <?= ($edit_event['event_type']??'other')===$tk?'selected':'' ?>><?= $tv['icon'] ?> <?= $tv['label'] ?></option>
+              <option value="<?= $tk ?>" <?= ($edit_event['event_type']??'other')===$tk?'selected':'' ?>><?= $tv['icon'] ?> <?= $tv['label'] ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -712,20 +789,18 @@ $hours = range(8, 20);
             </select>
           </div>
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Start *</label>
-            <input type="datetime-local" name="start_datetime" class="form-control" required
-              value="<?= h($edit_event ? date('Y-m-d\TH:i',strtotime($edit_event['start_datetime'])) : (isset($_GET['date'])?$_GET['date'].'T09:00':date('Y-m-d\TH:i'))) ?>">
+            <input type="datetime-local" name="start_datetime" class="form-control" required id="cal-start"
+              value="<?= h($edit_event ? date('Y-m-d\TH:i',strtotime($edit_event['start_datetime'])) : date('Y-m-d\T').'09:00') ?>">
           </div>
           <div class="form-group">
             <label class="form-label">End</label>
-            <input type="datetime-local" name="end_datetime" class="form-control"
+            <input type="datetime-local" name="end_datetime" class="form-control" id="cal-end"
               value="<?= h($edit_event && $edit_event['end_datetime'] ? date('Y-m-d\TH:i',strtotime($edit_event['end_datetime'])) : '') ?>">
           </div>
         </div>
-
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);cursor:pointer">
             <input type="checkbox" name="all_day" <?= ($edit_event['all_day']??0)?'checked':'' ?> style="accent-color:var(--orange)">
@@ -740,7 +815,6 @@ $hours = range(8, 20);
             </select>
           </div>
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Location</label>
@@ -757,14 +831,13 @@ $hours = range(8, 20);
             </select>
           </div>
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Link to Task</label>
             <select name="task_id" class="form-control">
               <option value="">— None —</option>
-              <?php foreach ($all_tasks as $t): ?>
-              <option value="<?= $t['id'] ?>" <?= ($edit_event['task_id']??'')==$t['id']?'selected':'' ?>><?= h($t['title']) ?></option>
+              <?php foreach ($all_tasks as $t_item): ?>
+              <option value="<?= $t_item['id'] ?>" <?= ($edit_event['task_id']??'')==$t_item['id']?'selected':'' ?>><?= h($t_item['title']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -772,34 +845,31 @@ $hours = range(8, 20);
             <label class="form-label">Link to Contact</label>
             <select name="contact_id" class="form-control">
               <option value="">— None —</option>
-              <?php foreach ($contacts as $c): ?>
-              <option value="<?= $c['id'] ?>" <?= ($edit_event['contact_id']??'')==$c['id']?'selected':'' ?>><?= h($c['name']) ?></option>
+              <?php foreach ($contacts as $c_item): ?>
+              <option value="<?= $c_item['id'] ?>" <?= ($edit_event['contact_id']??'')==$c_item['id']?'selected':'' ?>><?= h($c_item['name']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
         </div>
-
         <div class="form-group">
           <label class="form-label">Description</label>
           <textarea name="description" class="form-control" style="min-height:70px"
             placeholder="Agenda, notes, links…"><?= h($edit_event['description']??'') ?></textarea>
         </div>
-
         <div class="form-group">
           <label class="form-label">Invite Team Members</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto">
-            <?php foreach ($all_users as $u): ?>
+            <?php foreach ($all_users as $u_item): ?>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;padding:3px">
-              <input type="checkbox" name="attendees[]" value="<?= $u['id'] ?>"
-                <?= in_array($u['id'],$edit_attendee_ids)||$u['id']==$uid?'checked':'' ?>
+              <input type="checkbox" name="attendees[]" value="<?= $u_item['id'] ?>"
+                <?= (in_array($u_item['id'],$edit_attendee_ids) || $u_item['id']==$uid) ? 'checked' : '' ?>
                 style="accent-color:var(--orange)">
-              <?= h($u['name']) ?>
+              <?= h($u_item['name']) ?>
             </label>
             <?php endforeach; ?>
           </div>
         </div>
       </div>
-
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-event');<?= $edit_id?"location.href='calendar.php'":'' ?>">Cancel</button>
         <button type="submit" class="btn btn-primary"><?= $edit_id ? 'Save Changes' : 'Create Event' ?></button>
@@ -809,16 +879,27 @@ $hours = range(8, 20);
 </div>
 
 <script>
+// Auto-fill end time (+1h) when start changes
+document.getElementById('cal-start')?.addEventListener('change', function () {
+    var endEl = document.getElementById('cal-end');
+    if (endEl && !endEl.value) {
+        var d = new Date(this.value);
+        d.setHours(d.getHours() + 1);
+        endEl.value = d.toISOString().slice(0, 16);
+    }
+});
+
+// Pre-fill date when clicking a calendar cell
 function dayClick(date) {
-  document.querySelector('[name="start_datetime"]').value = date + 'T09:00';
-  document.querySelector('[name="end_datetime"]').value   = date + 'T10:00';
-  openModal('modal-event');
+    var s = document.querySelector('[name="start_datetime"]');
+    var e = document.querySelector('[name="end_datetime"]');
+    if (s) s.value = date + 'T09:00';
+    if (e) e.value = date + 'T10:00';
+    openModal('modal-event');
 }
-function updateColor(sel) {
-  // Optional: could update a color preview
-}
+
 <?php if ($edit_id): ?>
-document.addEventListener('DOMContentLoaded', function(){ openModal('modal-event'); });
+document.addEventListener('DOMContentLoaded', function () { openModal('modal-event'); });
 <?php endif; ?>
 </script>
 
